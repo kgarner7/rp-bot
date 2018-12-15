@@ -1,0 +1,15 @@
+{
+  "name": "summer-mistakes-bot",
+  "version": "1.0.0",
+  "description": "a bot for discord rp",
+  "main": "index.js",
+  "dependencies": {
+    "discord": "^0.8.2"
+  },
+  "devDependencies": {},
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Kendall Garner",
+  "license": "MIT"
+}
