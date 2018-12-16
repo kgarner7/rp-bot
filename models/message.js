@@ -11,6 +11,7 @@ module.exports = (sequelize, Sq) => {
   });
 
   Message.associate = models => {
+    console.log(models);
     Message.hasMany(models.User);
   };
 
