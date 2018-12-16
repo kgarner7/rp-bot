@@ -1,8 +1,8 @@
-const { getMembers } = require("../helper");
+import { getMembers } from "../helper";
 
-module.exports = (sequelize, Sq) => {
+export default (sequelize, Sq) => {
   const Message = sequelize.define("message", {
-    channelName: {
+    channel: {
       type: Sq.STRING
     },
     id: {
@@ -20,15 +20,20 @@ module.exports = (sequelize, Sq) => {
       through: "UserMessage"
     });
 
+    Message.hasOne(models.User, {
+      as: "sender"
+    });
+
     Message.createFromMsg = async msg => {
       let transaction = await sequelize.transaction();
       let users = getMembers(msg);
 
       try {
         let message = await Message.create({
-          channelName: msg.channel.name,
+          channel: msg.channel.id,
           id: msg.id,
-          message: msg.content
+          message: msg.content,
+          sender: msg.member.user.id
         }, {
           transaction: transaction
         });

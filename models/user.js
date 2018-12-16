@@ -1,4 +1,4 @@
-module.exports = (sequelize, Sq) => {
+export default (sequelize, Sq) => {
   const User = sequelize.define("user", {
     id: {
       primaryKey: true,
@@ -14,6 +14,23 @@ module.exports = (sequelize, Sq) => {
     User.belongsToMany(models.Message, {
       through: "UserMessage"
     });
+
+    User.belongsTo(models.Message, {
+      as: "sender"
+    });
+
+    User.createFromMember = member => {
+      if (member.user.bot !== true) {
+        User.findOrCreate({
+          defaults: {
+            id: member.id
+          },
+          where: {
+            name: member.displayName
+          }
+        })
+      }
+    }
   }
 
   return User;

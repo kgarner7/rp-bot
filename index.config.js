@@ -8,7 +8,7 @@ module.exports = {
 		},
 		instances: 1,
 		name: "discordo bot",
-    script: "./index.js",
+    script: "./dist/index.js",
     watch: true
 	}
 }
