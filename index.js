@@ -1,6 +1,6 @@
 const Discord = require("discord.js");
 const client = new Discord.Client();
-const { database, Message, User } = require("./db/database");
+const { sequelize, Message, User } = require("./models/index");
 
 client.on("ready", () => {
   client.users.forEach(user => {
@@ -26,62 +26,63 @@ client.on("messageDelete", msg => {
 });
 
 client.on("messageUpdate", async (_old, msg) => {
-  let message = await Message.findOne({
-    include: {
-      model: User
-    },
-    where: {
-      id: msg.id
-    }
-  });
-  
-  let transaction = await database.transaction();
-
-  try {
-    await message.setUsers(getMembers(msg), {
-      transaction: transaction
-    });
-
-    message.message = msg.content;
-    await message.save({transaction: transaction});
-    await transaction.commit();
-  } catch(err) {
-    await transaction.rollback();
-  }
+  return Message.updateFromMsg(msg);
 });
 
-function getMembers(msg) {
-  let users = [];
+client.on('message', msg => {
+  return Message.createFromMsg(msg);
+});
 
-  for (let member of msg.channel.members) {
-    let user = member[1].user;
-    if (user.bot !== true) {
-      users.push(user.id);
-    }
-  }
-
-  return users;
-}
-
-client.on('message', async msg => {
-  let transaction = await database.transaction();
-  let users = getMembers(msg);
-
-  try {
-    let message = await Message.create({
-      id: msg.id,
-      message: msg.content
-    }, {
-      transaction: transaction
-    });
-
-    await message.addUsers(users, {transaction: transaction});
-    transaction.commit();
-  } catch(err) {
-    await transaction.rollback();
-  }
-})
-
-database.sync().then(res => {
+sequelize.sync().then(res => {
   client.login(process.env.BOT_TOKEN);
 });
+
+async function createRoom(name) {
+  let guild = client.guilds.first();
+  let role = await guild.createRole({
+    name: name,
+    color: 'RANDOM'
+  });
+
+  let everyone = guild.roles.find(v => v.name === "@everyone").id;
+
+  await guild.createChannel(name, 'text', [{
+    allow: ["READ_MESSAGES", "SEND_MESSAGES"],
+    type: 'role',
+    id: role.id
+  }, {
+    id: everyone,
+    deny: ["READ_MESSAGES", "READ_MESSAGE_HISTORY", "SEND_MESSAGES"],
+    type: 'role'
+  }]);
+}
+
+// var user;User.findOne({
+//   include: {
+//     attributes: ["message"],
+//     model: Message,
+//     where: {
+//       channelName: "channel-2"
+//     }
+//   },
+//   order: [[ Message, "createdAt", "ASC"]],
+//   where: {
+//     name: "lavioso"
+//   }
+// }).then(u => console.log(u.messages));
+
+async function deleteRoom(name) {
+  console.log(`Deleting ${name}`);
+  let guild = client.guilds.first();
+  let channel = await guild.channels.find(v => v.name === name.toLowerCase().replace(/\ /g, "-"));
+  let role = await guild.roles
+    .find(v => v.name === name);
+
+  if (channel !== null) {
+    await channel.delete();
+  }
+
+  if (role !== null) {
+    await role.delete();
+  }
+}

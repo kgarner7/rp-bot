@@ -1,7 +1,10 @@
 module.exports = {
 	apps: {
 		env: {
-			NODE_ENV: "production"
+			"NODE_ENV": "development"
+		},
+		env_production: {
+			"NODE_ENV": "production"
 		},
 		instances: 1,
 		name: "discordo bot",

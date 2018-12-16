@@ -10,5 +10,11 @@ module.exports = (sequelize, Sq) => {
     }
   });
 
+  User.associate = models => {
+    User.belongsToMany(models.Message, {
+      through: "UserMessage"
+    });
+  }
+
   return User;
 };
