@@ -15,8 +15,8 @@ export default (sequelize, Sq) => {
       through: "UserMessage"
     });
 
-    User.belongsTo(models.Message, {
-      as: "sender"
+    User.hasMany(models.Message, {
+      as: "sentMessages"
     });
 
     User.createFromMember = member => {
