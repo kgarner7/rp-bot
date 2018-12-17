@@ -43,7 +43,7 @@ client.on('message', async (msg: Discord.Message) => {
 });
 
 sequelize.sync({force: true}).then(() => {
-  client.login(process.env.BOT_TOKEN);
+  client.login(config.botToken);
 });
 
 async function createRoom(name: string) {
