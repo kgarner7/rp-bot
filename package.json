@@ -26,7 +26,6 @@
   "devDependencies": {
     "@types/sequelize": "github:types/sequelize",
     "@types/tmp": "0.0.33",
-    "reflect-metadata": "^0.1.12",
-    "typeorm": "^0.2.9"
+    "reflect-metadata": "^0.1.12"
   }
 }
