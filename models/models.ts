@@ -1,5 +1,3 @@
-import { User}  from './user';
-
-User.findAll().then(u => {
-  console.log(u);
-});
+export { Message } from './message';
+export { User } from './user';
+export { default } from './connection';

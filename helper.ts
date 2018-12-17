@@ -6,8 +6,12 @@ export function init(externalGuild: Discord.Guild) {
   guild = externalGuild;
 }
 
-export function getMembers(msg: Discord.Message): Array<String> {
-  let users: Array<String> = [];
+export function mainGuild(): Discord.Guild {
+  return guild;
+}
+
+export function getMembers(msg: Discord.Message): string[] {
+  let users: string[] = [];
 
   guild.members.forEach((member: Discord.GuildMember) => {
     if (member.user.bot !== true) {

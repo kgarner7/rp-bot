@@ -1,11 +1,14 @@
 import * as Discord from 'discord.js';
 import { init } from "./helper";
+import AdminActions from './listeners/admin';
+import sequelize, { Message, User } from "./models/models";
+import { config } from "./config/config";
+
 const client = new Discord.Client();
-const { sequelize, Message, User } = require("./models/index");
 let guild: Discord.Guild;
 
 client.on("ready", () => {
-  guild = client.guilds.find((g: Discord.Guild) => g.name === process.env.GUILD_NAME);
+  guild = client.guilds.find((g: Discord.Guild) => g.name === config.guildName);
   init(guild);
 
   guild.members.forEach((member: Discord.GuildMember) => {
@@ -25,11 +28,21 @@ client.on("messageUpdate", async (_old: Discord.Message, msg: Discord.Message) =
   return Message.updateFromMsg(msg);
 });
 
-client.on('message', (msg: Discord.Message) => {
-  return Message.createFromMsg(msg);
+client.on('message', async (msg: Discord.Message) => {
+  let endIndex: number = msg.content.indexOf(" ");
+  let command: string = endIndex == -1 ? msg.content: msg.content.substring(0, endIndex);
+
+  if (command in AdminActions) {
+    await AdminActions[command](msg);
+    if (msg.deletable) {
+      await msg.delete();
+    }
+  } else if (msg.channel instanceof Discord.TextChannel) {
+    await Message.createFromMsg(msg);
+  }
 });
 
-sequelize.sync().then(() => {
+sequelize.sync({force: true}).then(() => {
   client.login(process.env.BOT_TOKEN);
 });
 
