@@ -1,5 +1,4 @@
 import { getMembers } from "../helper";
-import * as Sequelize from "sequelize";
 import sequelize from './connection';
 import * as Discord from "discord.js";
 import { 
@@ -28,6 +27,9 @@ export class Message extends Model {
     users: BelongsToMany
   }
 
+  /**
+   * The id of the channel of origin
+   */
   public channel: string;
   public id: string;
   public message: string;

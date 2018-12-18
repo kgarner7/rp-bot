@@ -1,6 +1,4 @@
-import { extname } from 'path';
-
-export default {
+module.exports = {
 	apps: {
 		env: {
 			"NODE_ENV": "development"
@@ -10,7 +8,7 @@ export default {
 		},
 		instances: 1,
 		name: "discordo bot",
-    script: `./index${extname(__filename)}`,
-    watch: true
+    script: `dist/index.js`,
+    watch: ["dist"]
 	}
 }

@@ -1,3 +1,6 @@
+/**
+ * Database configurations
+ */
 export let database: {[env: string]: any} = {
   development: {
     username: "postgres",
@@ -22,6 +25,9 @@ export let database: {[env: string]: any} = {
   }
 }
 
+/**
+ * General environment configurations
+ */
 export let config: {[env: string]: string} = {
   botToken: process.env.BOT_TOKEN || "",
   guildName: "testing nothing to see here",

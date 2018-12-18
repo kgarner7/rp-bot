@@ -134,8 +134,7 @@
     "@types/bluebird": {
       "version": "3.5.25",
       "resolved": "https://registry.npmjs.org/@types/bluebird/-/bluebird-3.5.25.tgz",
-      "integrity": "sha512-yfhIBix+AIFTmYGtkC0Bi+XGjSkOINykqKvO/Wqdz/DuXlAKK7HmhLAXdPIGsV4xzKcL3ev/zYc4yLNo+OvGaw==",
-      "dev": true
+      "integrity": "sha512-yfhIBix+AIFTmYGtkC0Bi+XGjSkOINykqKvO/Wqdz/DuXlAKK7HmhLAXdPIGsV4xzKcL3ev/zYc4yLNo+OvGaw=="
     },
     "@types/geojson": {
       "version": "1.0.6",
@@ -155,7 +154,6 @@
     "@types/sequelize": {
       "version": "github:types/sequelize#c628e47acd0cb073b69d06b38ff3fd3ce3f47dbc",
       "from": "github:types/sequelize",
-      "dev": true,
       "requires": {
         "@types/bluebird": "^3.5.5",
         "@types/validator": "^6.3.0"
@@ -164,14 +162,12 @@
     "@types/tmp": {
       "version": "0.0.33",
       "resolved": "https://registry.npmjs.org/@types/tmp/-/tmp-0.0.33.tgz",
-      "integrity": "sha1-EHPEvIJHVK49EM+riKsCN7qWTk0=",
-      "dev": true
+      "integrity": "sha1-EHPEvIJHVK49EM+riKsCN7qWTk0="
     },
     "@types/validator": {
       "version": "6.3.0",
       "resolved": "https://registry.npmjs.org/@types/validator/-/validator-6.3.0.tgz",
-      "integrity": "sha512-fUc+9BEr1WWW8wVRl5I/pyRDGZNe9nH06kOzlGH3eN7N8VVPW/zSrE0Vdca6G2sRCVmIN/XuOenbmldAAyTYaw==",
-      "dev": true
+      "integrity": "sha512-fUc+9BEr1WWW8wVRl5I/pyRDGZNe9nH06kOzlGH3eN7N8VVPW/zSrE0Vdca6G2sRCVmIN/XuOenbmldAAyTYaw=="
     },
     "abbrev": {
       "version": "1.1.1",
@@ -2952,8 +2948,7 @@
     "reflect-metadata": {
       "version": "0.1.12",
       "resolved": "https://registry.npmjs.org/reflect-metadata/-/reflect-metadata-0.1.12.tgz",
-      "integrity": "sha512-n+IyV+nGz3+0q3/Yf1ra12KpCyi001bi4XFxSjbiWWjfqb52iTTtpGXmCCAOWWIAn9KEuFZKGqBERHmrtScZ3A==",
-      "dev": true
+      "integrity": "sha512-n+IyV+nGz3+0q3/Yf1ra12KpCyi001bi4XFxSjbiWWjfqb52iTTtpGXmCCAOWWIAn9KEuFZKGqBERHmrtScZ3A=="
     },
     "regenerator-runtime": {
       "version": "0.11.1",

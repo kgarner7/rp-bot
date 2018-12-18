@@ -3,9 +3,14 @@ import { init } from "./helper";
 import AdminActions from './listeners/admin';
 import sequelize, { Message, User } from "./models/models";
 import { config } from "./config/config";
+import { InvalidCommandError } from './config/errors';
 
 const client = new Discord.Client();
 let guild: Discord.Guild;
+
+function isMe(msg: Discord.Message) {
+  return client.user.id === msg.author.id;
+}
 
 client.on("ready", () => {
   guild = client.guilds.find((g: Discord.Guild) => g.name === config.guildName);
@@ -25,18 +30,38 @@ client.on("messageDelete", (msg: Discord.Message) => {
 });
 
 client.on("messageUpdate", async (_old: Discord.Message, msg: Discord.Message) => {
+  if (isMe(msg)) return;
+  
+
   return Message.updateFromMsg(msg);
 });
 
 client.on('message', async (msg: Discord.Message) => {
-  let endIndex: number = msg.content.indexOf(" ");
-  let command: string = endIndex == -1 ? msg.content: msg.content.substring(0, endIndex);
+  if (isMe(msg)) return;
+  
+  let content: string = msg.content;
 
-  if (command in AdminActions) {
-    await AdminActions[command](msg);
-    if (msg.deletable) {
-      await msg.delete();
+  if (content.startsWith(config.prefix)) {
+    let endIndex = content.indexOf(" ");
+    if (endIndex === -1) endIndex = content.length;
+
+    let command = msg.content.substring(1, endIndex);
+
+    try {
+      if (command in AdminActions) {
+        await AdminActions[command](msg);
+      }
+      else {
+        throw new InvalidCommandError(command);
+      }
+    } catch(err) {
+      msg.author.send(err.message);
+    } finally {
+      if (msg.deletable) {
+        await msg.delete();
+      }
     }
+
   } else if (msg.channel instanceof Discord.TextChannel) {
     await Message.createFromMsg(msg);
   }
@@ -45,51 +70,3 @@ client.on('message', async (msg: Discord.Message) => {
 sequelize.sync({force: true}).then(() => {
   client.login(config.botToken);
 });
-
-async function createRoom(name: string) {
-  let guild: Discord.Guild = client.guilds.first();
-  let role: Discord.Role = await guild.createRole({
-    name: name,
-    color: 'RANDOM'
-  });
-
-  let everyone: string = guild.roles.find(v => v.name === "@everyone").id;
-
-  await guild.createChannel(name, 'text', [{
-    allow: ["READ_MESSAGES", "SEND_MESSAGES"],
-    id: role.id
-  }, {
-    id: everyone,
-    deny: ["READ_MESSAGES", "READ_MESSAGE_HISTORY", "SEND_MESSAGES"],
-  }]);
-}
-
-// var user;User.findOne({
-//   include: {
-//     attributes: ["message"],
-//     model: Message,
-//     where: {
-//       channelName: "channel-2"
-//     }
-//   },
-//   order: [[ Message, "createdAt", "ASC"]],
-//   where: {
-//     name: "lavioso"
-//   }
-// }).then(u => console.log(u.messages));
-
-async function deleteRoom(name: string) {
-  console.log(`Deleting ${name}`);
-  let guild = client.guilds.first();
-  let channel = await guild.channels.find(v => v.name === name.toLowerCase().replace(/\ /g, "-"));
-  let role = await guild.roles
-    .find(v => v.name === name);
-
-  if (channel !== null) {
-    await channel.delete();
-  }
-
-  if (role !== null) {
-    await role.delete();
-  }
-}
