@@ -90,7 +90,7 @@ async function showLogs(msg: Discord.Message) {
  * @throws {AccessError}
  * @throws {ExistingChannelError}
  */
-async function createRoom(msg: Discord.Message) {
+export async function createRoom(msg: Discord.Message) {
   requireAdmin(msg);
   let name: string = msg.content.split(" ")[1] || "";
   let guild: Discord.Guild = mainGuild();
@@ -122,7 +122,7 @@ async function createRoom(msg: Discord.Message) {
  * @throws {AccessError}
  * @throws {ChannelNotFoundError}
  */
-async function deleteRoom(msg: Discord.Message) {
+export async function deleteRoom(msg: Discord.Message) {
   requireAdmin(msg);
   let guild: Discord.Guild = mainGuild();
   let name: string = msg.content.split(" ")[1] || "";

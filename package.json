@@ -4,6 +4,7 @@
   "description": "a bot for discord rp",
   "main": "index.ts",
   "dependencies": {
+    "@types/glob": "^7.1.1",
     "@types/node": "^10.12.15",
     "@types/sequelize": "github:types/sequelize",
     "@types/tmp": "0.0.33",

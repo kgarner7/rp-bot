@@ -18,9 +18,9 @@ import {
   BelongsToManyRemoveAssociationsMixin,
   HasManyRemoveAssociationMixin,
   HasManyRemoveAssociationsMixin
-} from "sequelize";
+} from 'sequelize';
 
-import { GuildMember } from "discord.js";
+import { GuildMember } from 'discord.js';
 import sequelize from './connection';
 
 export class User extends Model {

@@ -1,4 +1,4 @@
-import { getMembers } from "../helper";
+import { getMembers } from '../helper';
 import sequelize from './connection';
 import * as Discord from "discord.js";
 import { 
@@ -17,7 +17,7 @@ import {
   BelongsToManyRemoveAssociationMixin, 
   BelongsToManyRemoveAssociationsMixin,
   BelongsToManySetAssociationsMixin
-} from "sequelize";
+} from 'sequelize';
 
 export class Message extends Model {
   static tableName: string = "message";

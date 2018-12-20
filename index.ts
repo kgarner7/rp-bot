@@ -1,9 +1,10 @@
 import * as Discord from 'discord.js';
-import { init } from "./helper";
+import { init } from './helper';
 import AdminActions from './listeners/admin';
-import sequelize, { Message, User } from "./models/models";
-import { config } from "./config/config";
+import sequelize, { Message, User } from './models/models';
+import { config } from './config/config';
 import { InvalidCommandError } from './config/errors';
+import { RoomManager } from './rooms/roomManager';
 
 const client = new Discord.Client();
 let guild: Discord.Guild;
@@ -19,6 +20,8 @@ client.on("ready", () => {
   guild.members.forEach((member: Discord.GuildMember) => {
     User.createFromMember(member);
   });
+
+  RoomManager.create(__dirname + "./rooms/custom");
 });
 
 client.on("messageDelete", (msg: Discord.Message) => {
@@ -36,7 +39,7 @@ client.on("messageUpdate", async (_old: Discord.Message, msg: Discord.Message) =
   return Message.updateFromMsg(msg);
 });
 
-client.on('message', async (msg: Discord.Message) => {
+client.on("message", async (msg: Discord.Message) => {
   if (isMe(msg)) return;
   
   let content: string = msg.content;
@@ -67,6 +70,6 @@ client.on('message', async (msg: Discord.Message) => {
   }
 });
 
-sequelize.sync({force: true}).then(() => {
+sequelize.sync().then(() => {
   client.login(config.botToken);
 });
