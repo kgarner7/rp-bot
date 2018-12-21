@@ -5,8 +5,10 @@ export class Item {
   public name: string;
   protected state: object = {};
   
-  public constructor(name: string, description: string, 
-    actions: { [key: string]: Function} = {}, children: Item[] = []) {
+  public constructor({actions = {}, children = [], description, name}: 
+    {actions?: { [key: string]: Function}, children?: Item[], 
+    description: string, name: string})
+    {
       
     this.actions = actions;
     this.children = children;

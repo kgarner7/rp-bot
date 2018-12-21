@@ -9,7 +9,7 @@ let guild: Discord.Guild;
 client.on("ready", () => {
   guild = client.guilds.find((g: Discord.Guild) => g.name === config.guildName);
   init(guild);
-  RoomManager.create(__dirname + "./rooms/custom", true);
+  RoomManager.create(__dirname + "/rooms/custom", true);
 });
 
 client.login(config.botToken);

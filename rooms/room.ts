@@ -1,22 +1,31 @@
 import * as Discord from 'discord.js';
 import { Item } from './item';
-import { mainGuild } from '../helper';
+import { mainGuild, everyoneRole } from '../helper';
 import { ChannelNotFoundError } from '../config/errors';
 import { RoomManager } from './roomManager';
+import { Room as RoomModel } from '../models/room';
 
 export class Room {
   public actions: { [key: string]: Function }
+  public channel: Discord.TextChannel | null = null;
   public description: string;
   public name: string;
   public items: Item[];
+  public parent: string;
+  public parentChannel: Discord.CategoryChannel | null = null;
+  public role: Discord.Role | null = null;
   protected state: object;
   protected manager: RoomManager;
 
-  public constructor(name: string, description: string, items: Item[] = [], actions: { [key: string]: Function} = {}) {
+  public constructor({ actions = {}, color = "RANDOM", description, items = [],   name, parent}: { actions?: { [k: string]: Function}, color?: string, 
+    description: string, items?: Item[], name: string, parent: string }) 
+      {
+      
     this.actions = actions;
     this.description = description;
     this.items = items;
     this.name = name;
+    this.parent = parent;
     this.state = {};
   }
 
@@ -34,52 +43,100 @@ export class Room {
     allow: Array<Discord.PermissionResolvable> = ["READ_MESSAGES", "SEND_MESSAGES"],
     deny: Array<Discord.PermissionResolvable> = ["READ_MESSAGE_HISTORY", "SEND_MESSAGES"]) {
     
+    if (this.parentChannel === null) {
+      return;
+    }
+
     this.manager = manager;
 
     let guild = mainGuild();
-    let existingChannel = guild.channels
-      .find(c => c.name === Room.discordChannelName(this.name));
-    let existingRole = guild.roles.find(r => r.name === this.name);
+    let existingChannel = await RoomModel.findOne({
+      where: {
+        name: this.name
+      }
+    });
 
-    if (existingChannel !== null || existingRole !== null) {
+    if (existingChannel) {
+      let channel = guild.channels
+        .find(c => c.name === (existingChannel as RoomModel).discordName) as Discord.TextChannel;
+      let role = guild.roles.find(r => r.name === this.name);
+
       if (force) {
-        if (existingChannel !== null) existingChannel.delete();
-        if (existingRole !== null) existingRole.delete();
+        if (channel) await channel.delete();
+        if (role) await role.delete();
+        await existingChannel.destroy();
       } else {
-        if (existingChannel) {
-          await existingChannel.setTopic(this.description);
+        if (role === null) {
+          role = await guild.createRole({
+            name: this.name,
+            color: "RANDOM"
+          });
         }
+
+        if (channel === null) {
+          channel = await guild.createChannel(this.name, 'text') as Discord.TextChannel;
+        }
+
+        this.channel = channel;
+        this.role = role;
+        await this.initChannel(allow, deny);
         return;
       }
     }
     
-    let role: Discord.Role | null = null;
-    let channel: Discord.TextChannel | null = null;
-    let everyone: string = guild.roles.find(v => v.name === "@everyone").id;
-
     try {
-      role = await guild.createRole({
+      this.role = await guild.createRole({
         name: this.name,
         color: "RANDOM"
       });
 
-      channel = await guild.createChannel(this.name, 'text', [{
-        allow: allow as Discord.Permissions[],
-        id: role.id
-      }, {
-        deny: deny as Discord.Permissions[],
-        id: everyone
-      }]) as Discord.TextChannel;
+      this.channel = await guild.createChannel(this.name, 'text') as Discord.TextChannel;
 
-      await channel.setTopic(this.description);
+      await this.initChannel(allow, deny);
+
+      await RoomModel.create({
+        discordName: this.channel.name,
+        id: this.channel.id,
+        name: this.name
+      });
 
       guild.owner.send(`Created room ${this.name}`);
     } catch(err) {
-      if (role !== null) (role as Discord.Role).delete();
-      if (channel !== null) (channel as Discord.Channel).delete();
+      if (this.role !== null) {
+        (this.role as Discord.Role).delete();
+        this.role = null;
+      }
+
+      if (this.channel !== null) {
+        (this.channel as Discord.GuildChannel).delete();
+        this.role = null;
+      } 
       
       guild.owner.send(`Could not create room ${this.name}: ${(err as Error).message}`)
     }
+  }
+
+  private async initChannel(allow: Array<Discord.PermissionResolvable>, 
+      deny: Array<Discord.PermissionResolvable>) {
+      
+      let everyone: string = everyoneRole().id;
+
+      if (this.channel === null || this.role === null || this.parentChannel === null) {
+        return;
+      }
+
+      await this.channel.replacePermissionOverwrites({
+        overwrites: [{
+          allow: allow as Discord.Permissions[],
+          id: this.role.id
+        }, {
+          deny: deny as Discord.Permissions[],
+          id: everyone
+        }]
+      });
+
+      await this.channel.setTopic(this.description);
+      await this.channel.setParent(this.parentChannel);
   }
 
   static async deleteRoom(name: string) {

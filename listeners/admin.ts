@@ -3,7 +3,7 @@ import moment from 'moment';
 import tmp from 'tmp';
 import { writeFileSync } from 'fs';
 import { mainGuild, requireAdmin } from '../helper';
-import { Message, User } from '../models/models';
+import { Message, Room as RoomModel, User } from '../models/models';
 import { 
   AccessError,
   ChannelNotFoundError,
@@ -35,36 +35,40 @@ async function showLogs(msg: Discord.Message) {
         channelId = channel.id;
         channelName = channel.name;
       }
+    } else {
+      throw new NoLogError(msg);
     }
   }
-  
-  let user: User | null = await User.findOne({
+
+  let room: RoomModel | null = await RoomModel.findOne({
     include: [{
-      include: [{
-        as: 'sender',
-        model: User
-      }],
       attributes: ["createdAt", "message"],
       model: Message,
-      where: {
-        channel: channelId
-      }
+      include: [{
+        model: User,
+        where: {
+          id: sender.id
+        }
+      }, {
+        as: "Sender",
+        model: User
+      }]
     }],
     order: [[Message, "createdAt", "ASC"]],
     where: {
-      id: sender.id
+      id: channelId
     }
   });
 
-  if (user === null) {
+  if (room === null) {
     throw new NoLogError(msg);
   } else {
     tmp.file((err, path, _fd, callback) => {
-      if (err || user === null) return;
+      if (err || room === null) return;
 
-      writeFileSync(path, user.Messages.map((message: any) => {
-        let name: string = message.sender.name;
-        if (message.sender.id === sender.id) {
+      writeFileSync(path, room.Messages.map((message: any) => {
+        let name: string = message.Sender.name;
+        if (message.Sender.id === sender.id) {
           name = "You";
         }
         return `${name} (${moment().format("M/DD/YY h:mm A")}): ${message.message}`;
@@ -124,25 +128,33 @@ export async function createRoom(msg: Discord.Message) {
  */
 export async function deleteRoom(msg: Discord.Message) {
   requireAdmin(msg);
-  let guild: Discord.Guild = mainGuild();
-  let name: string = msg.content.split(" ")[1] || "";
-  let channel = guild.channels
-    .find(v => v.name === name);
 
-  if (channel === null || !(channel instanceof Discord.TextChannel)) throw new ChannelNotFoundError(name);
+  let guild = mainGuild();
+  let name: string = msg.content.substring(msg.content.indexOf(" ") + 1);
+  let room = await RoomModel.findOne({
+    where: {
+      name: name
+    }
+  });
 
-  let role: Discord.Role = guild.roles
-    .find(c => c.id === channel.permissionOverwrites
-    .find(p => p.deny === 0).id);
+  if (room !== null) {
+    let channel = guild.channels.find(c => c.id === (room as RoomModel).id);
+    let role = guild.roles.find(r => r.name === name);
 
-  if (role === null) throw new ChannelNotFoundError(name);
-  
-  try {
-    await channel.delete();
-    await role.delete();
-    msg.author.send(`Successfully deleted room ${name}`);
-  } catch(err) {
-    throw err;
+    if (channel || role) {
+      if (channel) {
+        await channel.delete();
+      }
+
+      if (role) {
+        await role.delete();
+      }
+
+      msg.author.send(`Deleted room ${name}`);
+      console.log("DONE!");
+    } else {
+      throw new ChannelNotFoundError(name);
+    }
   }
 }
 

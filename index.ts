@@ -1,7 +1,7 @@
 import * as Discord from 'discord.js';
 import { init } from './helper';
 import AdminActions from './listeners/admin';
-import sequelize, { Message, User } from './models/models';
+import sequelize, { Message, Room, User } from './models/models';
 import { config } from './config/config';
 import { InvalidCommandError } from './config/errors';
 import { RoomManager } from './rooms/roomManager';
@@ -13,7 +13,7 @@ function isMe(msg: Discord.Message) {
   return client.user.id === msg.author.id;
 }
 
-client.on("ready", () => {
+client.on("ready", async () => {
   guild = client.guilds.find((g: Discord.Guild) => g.name === config.guildName);
   init(guild);
 
@@ -21,7 +21,8 @@ client.on("ready", () => {
     User.createFromMember(member);
   });
 
-  RoomManager.create(__dirname + "./rooms/custom");
+  let begin = __filename.endsWith(".js") ? "dist/": "";
+  await RoomManager.create(`./${begin}rooms/custom`);
 });
 
 client.on("messageDelete", (msg: Discord.Message) => {

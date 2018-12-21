@@ -43,7 +43,7 @@ export class User extends Model {
   public removeMessages: BelongsToManyRemoveAssociationsMixin<Message, string>; 
   public setMessages: BelongsToManySetAssociationsMixin<Message, string>;
   
-  public sentMessages: Message[];
+  public SentMessages: Message[];
   public addSentMessage: HasManyAddAssociationMixin<Message, string>;
   public addSentMessages: HasManyAddAssociationsMixin<Message, string>;
   public createSentMessage: HasManyCreateAssociationMixin<Message>;
@@ -82,7 +82,7 @@ User.init({
 import { Message } from "./message";
 
 User.hasMany(Message, {
-  as: "sentMessages"
+  as: "SentMessages"
 });
 
 User.belongsToMany(Message, {

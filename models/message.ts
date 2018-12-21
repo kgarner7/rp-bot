@@ -1,6 +1,6 @@
 import { getMembers } from '../helper';
 import sequelize from './connection';
-import * as Discord from "discord.js";
+import * as Discord from 'discord.js';
 import { 
   Model, 
   STRING, 
@@ -20,9 +20,8 @@ import {
 } from 'sequelize';
 
 export class Message extends Model {
-  static tableName: string = "message";
-
   static associations: {
+    channel: BelongsTo
     sender: BelongsTo
     users: BelongsToMany
   }
@@ -30,11 +29,22 @@ export class Message extends Model {
   /**
    * The id of the channel of origin
    */
-  public channel: string;
   public id: string;
   public message: string;
   public createdAt: Date;
   public updatedAt: Date;
+
+  public Room: Room;
+  public RoomId: string;
+  public createRoom: BelongsToCreateAssociationMixin<Room>;
+  public getRoom: BelongsToGetAssociationMixin<Room>;
+  public setRoom: BelongsToSetAssociationMixin<Room, string>;  
+  
+  public Sender: User;
+  public SenderId: string;
+  public createSender: BelongsToCreateAssociationMixin<User>;
+  public getSender: BelongsToGetAssociationMixin<User>;
+  public setSender: BelongsToSetAssociationMixin<User, string>;  
 
   public Users: User[];
   public addUser: BelongsToManyAddAssociationMixin<User, string>;
@@ -45,22 +55,16 @@ export class Message extends Model {
   public removeUsers: BelongsToManyRemoveAssociationsMixin<User, string>;
   public setUsers: BelongsToManySetAssociationsMixin<User, string>;
 
-  public sender: User;
-  public senderId: string;
-  public createSender: BelongsToCreateAssociationMixin<User>;
-  public getSender: BelongsToGetAssociationMixin<User>;
-  public setSender: BelongsToSetAssociationMixin<User, string>;  
-
   static async createFromMsg(msg: Discord.Message) {
     let transaction = await sequelize.transaction();
     let users = getMembers(msg);
     
     try {
       let message: Message = await Message.create({
-        channel: msg.channel.id,
+        RoomId: msg.channel.id,
         id: msg.id,
         message: msg.content,
-        senderId: msg.author.id
+        SenderId: msg.author.id
       }, {
         transaction: transaction
       });
@@ -120,11 +124,14 @@ Message.init({
 });
 
 import { User } from './user';
+import { Room } from './room';
 
 Message.belongsTo(User, {
-  as: "sender"
+  as: "Sender"
 });
 
 Message.belongsToMany(User, {
   through: "UserMessage"
 });
+
+Message.belongsTo(Room);

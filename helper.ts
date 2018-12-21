@@ -2,6 +2,7 @@ import * as Discord from 'discord.js';
 import { AccessError } from './config/errors';
 
 let guild: Discord.Guild;
+let everyone: Discord.Role;
 
 /**
  * Initializes the local server to be passed between modules
@@ -18,6 +19,15 @@ export function init(externalGuild: Discord.Guild) {
  */
 export function mainGuild(): Discord.Guild {
   return guild;
+}
+
+export function everyoneRole() {
+  if (everyone !== undefined) {
+    return everyone;
+  } else {
+    everyone = guild.roles.find(r => r.name === "@everyone");
+    return everyone;
+  }
 }
 
 /**
