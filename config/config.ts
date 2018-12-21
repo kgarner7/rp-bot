@@ -1,3 +1,5 @@
+import * as Sequelize from "sequelize";
+
 /**
  * Database configurations
  */
@@ -6,22 +8,28 @@ export let database: {[env: string]: any} = {
     username: "postgres",
     password: undefined,
     database: "discordo",
-    host: "127.0.0.1",
-    dialect: "postgres",
+    options: {
+      dialect: "postgres",
+      operatorsAliases: false
+    },
   },
   test: {
     username: "postgres",
     password: undefined,
     database: "discordo_testing",
-    host: "127.0.0.1",
-    dialect: "postgres"
+    options: {
+      dialect: "postgres",
+      operatorsAliases: false
+    },
   },
   production: {
     username: process.env.DB_USERNAME,
     password: process.env.DB_PASSWORD,
     database: process.env.DB_NAME,
-    host: process.env.DB_HOSTNAME,
-    dialect: "postgres"
+    options: {
+      dialect: "postgres",
+      operatorsAliases: false
+    },
   }
 }
 
