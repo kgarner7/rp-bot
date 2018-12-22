@@ -1,12 +1,10 @@
-import * as Sequelize from "sequelize";
-
 /**
  * Database configurations
  */
 export let database: {[env: string]: any} = {
   development: {
-    username: "postgres",
-    password: undefined,
+    username: "discordo",
+    password: "discordo",
     database: "discordo",
     options: {
       dialect: "postgres",
@@ -14,8 +12,8 @@ export let database: {[env: string]: any} = {
     },
   },
   test: {
-    username: "postgres",
-    password: undefined,
+    username: "discordo_testing",
+    password: "discordo_testing",
     database: "discordo_testing",
     options: {
       dialect: "postgres",
