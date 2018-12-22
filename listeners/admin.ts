@@ -66,12 +66,13 @@ async function showLogs(msg: Discord.Message) {
     tmp.file((err, path, _fd, callback) => {
       if (err || room === null) return;
 
-      writeFileSync(path, room.Messages.map((message: any) => {
+      writeFileSync(path, room.Messages.map((message: Message) => {
         let name: string = message.Sender.name;
         if (message.Sender.id === sender.id) {
           name = "You";
         }
-        return `${name} (${moment().format("M/DD/YY h:mm A")}): ${message.message}`;
+        
+        return `${name} (${moment(message.createdAt).format("M/DD/YY h:mm A")}): ${message.message}`;
       }).join("\n"));
 
       sender.send({
