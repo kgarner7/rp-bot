@@ -3,10 +3,9 @@ import * as path from 'path';
 import { Room, PrivateRoom } from './room';
 import { mainGuild, everyoneRole } from '../helper';
 import { CategoryChannel, PermissionOverwrites, PermissionResolvable, PermissionObject } from 'discord.js';
-import { dir } from 'tmp';
 
 export class RoomManager {
-  rooms: { [name: string]: Room } = {};
+  public rooms: { [name: string]: Room } = {};
 
   constructor(rooms: Room[], force: boolean = false) {
     rooms.forEach((room: Room) => {

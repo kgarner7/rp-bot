@@ -2,14 +2,20 @@ import * as Discord from 'discord.js';
 import moment from 'moment';
 import tmp from 'tmp';
 import { writeFileSync } from 'fs';
-import { mainGuild, requireAdmin } from '../helper';
-import { Message, Room as RoomModel, User } from '../models/models';
+import { mainGuild, requireAdmin, roomManager } from '../helper';
+import sequelize, { Message, Room as RoomModel, User, Room, Op } from '../models/models';
 import { 
   AccessError,
   ChannelNotFoundError,
   ExistingChannelError,
   NoLogError 
 } from '../config/errors';
+
+function parseParameters(msg: Discord.Message) {
+  let space = msg.content.indexOf(" ");
+  if (space === -1) return "";
+  else return msg.content.substring(space + 1);
+}
 
 /**
  * Shows the logs for a channel. 
@@ -25,9 +31,11 @@ async function showLogs(msg: Discord.Message) {
   if (msg.channel instanceof Discord.TextChannel) {
     channelName = msg.channel.name;
   } else {
-    let room: string = msg.content.split(" ")[1];
+    let room: string = parseParameters(msg);
 
-    if (room !== undefined) {
+    if (room.length > 0) {
+      let roomModel = await getRoom(msg, false);
+      
       let channel: Discord.GuildChannel = mainGuild().channels
         .find(c => c.name === room);
   
@@ -97,7 +105,7 @@ async function showLogs(msg: Discord.Message) {
  */
 export async function createRoom(msg: Discord.Message) {
   requireAdmin(msg);
-  let name: string = msg.content.split(" ")[1] || "";
+  let name: string = parseParameters(msg);
   let guild: Discord.Guild = mainGuild();
 
   if (name === "" || guild.channels.find(c => c.name === name)) {
@@ -131,7 +139,7 @@ export async function deleteRoom(msg: Discord.Message) {
   requireAdmin(msg);
 
   let guild = mainGuild();
-  let name: string = msg.content.substring(msg.content.indexOf(" ") + 1);
+  let name: string = parseParameters(msg);
   let room = await RoomModel.findOne({
     where: {
       name: name
@@ -152,10 +160,100 @@ export async function deleteRoom(msg: Discord.Message) {
       }
 
       msg.author.send(`Deleted room ${name}`);
-      console.log("DONE!");
     } else {
       throw new ChannelNotFoundError(name);
     }
+  }
+}
+
+async function getRoom(msg: Discord.Message, requirePresence: boolean = true) {
+  let alternate = parseParameters(msg);
+  let roomModel: RoomModel | null = null;
+  let guild = mainGuild();
+
+  if (alternate.length > 0) {
+    roomModel = await RoomModel.findOne({
+      where: {
+        [Op.or]: [
+          { discordName: alternate },
+          { name: alternate }
+        ]
+      }
+    });
+  }
+
+  if (roomModel === null) {
+    roomModel = await RoomModel.findOne({
+      where: {
+        id: msg.channel.id
+      }
+    });
+  }
+
+  if (roomModel === null) return null;
+
+  let member = guild.members.find(m => m.id === msg.author.id);
+
+  if (requirePresence === true && member.roles
+    .find(r => r.name === (roomModel as RoomModel).name) === null && 
+    msg.author.id !== guild.ownerID) return null;
+
+  return roomModel;
+}
+
+async function members(msg: Discord.Message) {
+  let channel = msg.channel;
+  let guild = mainGuild();
+  let room = await getRoom(msg);
+
+  if (room === null) {
+    msg.author.send("Either you do not have access to this room, or that room does not exist");
+  } else {
+    let members: string = "";
+    let users = guild.roles.find(r => r.name === (room as RoomModel).name).members
+    
+    if (users.size === 0) {
+      channel.send(`There is no one in the ${room.name}`);
+      return;
+    }
+
+    users.sort().forEach(m => {
+      if (m.user.bot === true || m.id === guild.ownerID) {
+        return;
+      }
+      members += m + ", ";
+    });
+
+    channel.send(`The following people are in ${room.name}: ${members.substring(0, members.length - 2)}`);
+  }
+}
+
+async function items(msg: Discord.Message) {
+  let roomModel = await getRoom(msg);
+  
+  if (roomModel) {
+    let manager = roomManager();
+    let room = manager.rooms[roomModel.name];
+    
+    if (room.items.length === 0) {
+      msg.reply("There are no items here");
+    } else {
+      msg.reply("The following items are present: \n" + 
+        room.items.map(i => i.name).join("\n"));
+    }
+  }
+}
+
+async function inspect(msg: Discord.Message) {
+  let roomModel = await RoomModel.findOne({
+    where: {
+      id: msg.channel.id
+    }
+  });
+  
+  if (roomModel) {
+    let manager = roomManager();
+    let room = manager.rooms[roomModel.name];
   }
 }
 
@@ -165,7 +263,9 @@ export async function deleteRoom(msg: Discord.Message) {
 let actions: {[key: string]: Function} = {
   'create-room': createRoom,
   'delete-room': deleteRoom,
-  'log': showLogs
+  'items': items,
+  'log': showLogs,
+  'who': members
 }
 
 export default actions;

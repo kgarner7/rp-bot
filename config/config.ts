@@ -36,6 +36,6 @@ export let database: {[env: string]: any} = {
  */
 export let config: {[env: string]: string} = {
   botToken: process.env.BOT_TOKEN || "",
-  guildName: "testing nothing to see here",
+  guildName: process.env.GUILD_NAME || "",
   prefix: "!"
 }

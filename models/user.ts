@@ -56,10 +56,10 @@ export class User extends Model {
     if (member.user.bot !== true) {
       User.findOrCreate({
         defaults: {
-          id: member.id
+          name: member.displayName
         }, 
         where: {
-          name: member.displayName
+          id: member.id
         }
       });
     }

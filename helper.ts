@@ -1,14 +1,16 @@
 import * as Discord from 'discord.js';
 import { AccessError } from './config/errors';
+import { RoomManager } from './rooms/roomManager';
 
-let guild: Discord.Guild;
 let everyone: Discord.Role;
+let guild: Discord.Guild;
+let manager: RoomManager;
 
 /**
  * Initializes the local server to be passed between modules
  * @param externalGuild the global server for this bot
  */
-export function init(externalGuild: Discord.Guild) {
+export function initGuild(externalGuild: Discord.Guild) {
   guild = externalGuild;
 }
 
@@ -19,6 +21,14 @@ export function init(externalGuild: Discord.Guild) {
  */
 export function mainGuild(): Discord.Guild {
   return guild;
+}
+
+export function initRooms(externalManager: RoomManager) {
+  manager = externalManager;
+}
+
+export function roomManager(): RoomManager {
+  return manager;
 }
 
 export function everyoneRole() {

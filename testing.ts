@@ -1,5 +1,5 @@
 import * as Discord from 'discord.js';
-import { init } from './helper';
+import { initGuild } from './helper';
 import { config } from './config/config';
 import { RoomManager } from './rooms/roomManager';
 
@@ -8,7 +8,7 @@ let guild: Discord.Guild;
 
 client.on("ready", () => {
   guild = client.guilds.find((g: Discord.Guild) => g.name === config.guildName);
-  init(guild);
+  initGuild(guild);
   RoomManager.create(__dirname + "/rooms/custom", true);
 });
 

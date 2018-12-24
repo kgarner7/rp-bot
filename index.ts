@@ -1,5 +1,5 @@
 import * as Discord from 'discord.js';
-import { init } from './helper';
+import { initGuild, initRooms } from './helper';
 import AdminActions from './listeners/admin';
 import sequelize, { Message, Room, User } from './models/models';
 import { config } from './config/config';
@@ -9,23 +9,27 @@ import { RoomManager } from './rooms/roomManager';
 const client = new Discord.Client();
 let guild: Discord.Guild;
 
-function isMe(msg: Discord.Message) {
-  return client.user.id === msg.author.id;
+function invalid(msg: Discord.Message) {
+  return client.user.id === msg.author.id || 
+    (msg.guild !== guild && msg.guild !== null);
 }
 
 client.on("ready", async () => {
   guild = client.guilds.find((g: Discord.Guild) => g.name === config.guildName);
-  init(guild);
+  initGuild(guild);
 
   guild.members.forEach((member: Discord.GuildMember) => {
     User.createFromMember(member);
   });
 
   let begin = __filename.endsWith(".js") ? "dist/": "";
-  await RoomManager.create(`./${begin}rooms/custom`);
+  let manager = await RoomManager.create(`./${begin}rooms/custom`);
+  initRooms(manager);
 });
 
 client.on("messageDelete", (msg: Discord.Message) => {
+  if (invalid(msg)) return;
+
   Message.destroy({
     where: {
       id: msg.id
@@ -34,14 +38,14 @@ client.on("messageDelete", (msg: Discord.Message) => {
 });
 
 client.on("messageUpdate", async (_old: Discord.Message, msg: Discord.Message) => {
-  if (isMe(msg)) return;
+  if (invalid(msg)) return;
   
 
   return Message.updateFromMsg(msg);
 });
 
 client.on("message", async (msg: Discord.Message) => {
-  if (isMe(msg)) return;
+  if (invalid(msg)) return;
   
   let content: string = msg.content;
 
@@ -52,6 +56,7 @@ client.on("message", async (msg: Discord.Message) => {
     let command = msg.content.substring(1, endIndex);
 
     try {
+      console.log(`command: ${command}`)
       if (command in AdminActions) {
         await AdminActions[command](msg);
       }

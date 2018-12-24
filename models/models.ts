@@ -1,4 +1,4 @@
 export { Message } from './message';
 export { Room } from './room';
 export { User } from './user';
-export { default } from './connection';
+export { default, Op } from './connection';
