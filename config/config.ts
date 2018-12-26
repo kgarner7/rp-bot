@@ -1,11 +1,13 @@
+import { Dict } from "../helper";
+
 /**
  * Database configurations
  */
-export let database: {[env: string]: any} = {
+export let database: Dict<any> = {
   development: {
     username: "discordo",
     password: "discordo",
-    database: "discordo",
+    database: "discordo-testing-2",
     options: {
       dialect: "postgres",
       operatorsAliases: false
@@ -34,7 +36,7 @@ export let database: {[env: string]: any} = {
 /**
  * General environment configurations
  */
-export let config: {[env: string]: string} = {
+export let config: Dict<string> = {
   botToken: process.env.BOT_TOKEN || "",
   guildName: process.env.GUILD_NAME || "",
   prefix: "!"

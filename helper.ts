@@ -69,3 +69,15 @@ export function requireAdmin(msg: Discord.Message) {
     throw new AccessError(msg.content);
   }
 }
+
+export type Dict<T> = { [k: string]: T };
+export type FunctionResolvable = Function | string | string[];
+
+export function toFunction(fn: FunctionResolvable, env: any): Function {
+  if (fn instanceof Function) {
+    return fn.bind(env);
+  } else if (fn instanceof Array) {
+    fn = fn.join("\n");
+  }
+  return new Function(fn).bind(env);
+}

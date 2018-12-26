@@ -1,6 +1,6 @@
 import * as glob from 'glob';
 import * as path from 'path';
-import { Room, PrivateRoom } from './room';
+import { Room, RoomResolvable, RoomAttributes } from './room';
 import { mainGuild, everyoneRole } from '../helper';
 import { CategoryChannel, PermissionOverwrites, PermissionResolvable, PermissionObject } from 'discord.js';
 
@@ -34,11 +34,29 @@ export class RoomManager {
 
       if (existing === undefined) {
         categories.set(room.parent, [room]);
-        status.set(room.parent, room instanceof PrivateRoom);
+        status.set(room.parent, room.isPrivate);
       } else {
         existing.push(room);
         status.set(room.parent, 
-          (status.get(room.parent) === true) && room instanceof PrivateRoom);
+          (status.get(room.parent) === true) && room.isPrivate);
+      }
+    }
+
+    for (let file of glob.sync(`${directory}/*.json`, { absolute: true })) {
+      let localPath = `./${path.relative(__dirname, file)}`;
+      let json = await import(localPath);
+      let room = new Room(json.default as RoomAttributes);
+      rooms.push(room);
+
+      let existing = categories.get(room.parent);
+
+      if (existing === undefined) {
+        categories.set(room.parent, [room]);
+        status.set(room.parent, room.isPrivate);
+      } else {
+        existing.push(room);
+        status.set(room.parent, 
+          (status.get(room.parent) === true) && room.isPrivate);
       }
     }
 

@@ -2,6 +2,7 @@ import * as Discord from 'discord.js';
 import { initGuild } from './helper';
 import { config } from './config/config';
 import { RoomManager } from './rooms/roomManager';
+import { Room, RoomAttributes } from './rooms/room';
 
 const client = new Discord.Client();
 let guild: Discord.Guild;

@@ -1,7 +1,7 @@
 import * as Discord from 'discord.js';
 import { initGuild, initRooms } from './helper';
 import AdminActions from './listeners/admin';
-import sequelize, { Message, Room, User } from './models/models';
+import sequelize, { initDB, Message, Room, User } from './models/models';
 import { config } from './config/config';
 import { InvalidCommandError } from './config/errors';
 import { RoomManager } from './rooms/roomManager';
@@ -76,6 +76,11 @@ client.on("message", async (msg: Discord.Message) => {
   }
 });
 
-sequelize.sync().then(() => {
-  client.login(config.botToken);
+initDB().then(async () => {
+  try {
+    await sequelize.sync();
+    await client.login(config.botToken);
+  } catch(err) {
+    console.error((err as Error).stack);
+  }
 });

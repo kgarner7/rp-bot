@@ -1,19 +1,42 @@
+import { FunctionResolvable, toFunction } from '../helper';
+import { Room } from './room';
+
+export type ItemAttributes = {
+  actions?: { [key: string]: FunctionResolvable }, 
+  children?: ItemAttributes[], 
+  description: string, 
+  name: string
+};
+
+export type ItemResolvable = ItemAttributes | Item;
+
 export class Item {
-  public actions: { [key: string]: Function };
-  public children: Item[];
+  public actions: { [key: string]: Function } = {};
+  public children: ItemResolvable[] = [];
   public description: string;
   public name: string;
+  public room: Room;
   protected state: object = {};
   
-  public constructor({actions = {}, children = [], description, name}: 
-    {actions?: { [key: string]: Function}, children?: Item[], 
-    description: string, name: string})
+  public constructor({actions = {}, children = [], description, name}: ItemAttributes
+    )
     {
       
-    this.actions = actions;
-    this.children = children;
     this.description = description;
     this.name = name;
+
+    Object.keys(actions).forEach((action: string) => {
+      this.actions[action] = toFunction(actions[action], this);
+    
+    });
+
+    children.forEach((c: ItemResolvable) => {
+      if (c instanceof Item) {
+        this.children.push(c);
+      } else {
+        this.children.push(new Item(c));
+      }
+    });
   }
 
   public interact(action: string) {

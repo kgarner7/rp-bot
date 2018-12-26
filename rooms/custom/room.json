@@ -1,0 +1,13 @@
+{
+  "color": "BLUE",
+  "description": "A test room made from JSON",
+  "itemsList": [
+    {
+      "description": "A book",
+      "name": "a book of books"
+    }
+  ],
+  "name": "JSON room",
+  "parent": "JSON channel",
+  "isPrivate": true 
+}

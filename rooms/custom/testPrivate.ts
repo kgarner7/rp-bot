@@ -1,13 +1,15 @@
-import { PrivateRoom } from '../room';
-import { Item } from '../item';
+import { Room } from '../room';
 
-let items: Item[] = [
-  new Item({name: "book", description: "a simple book"}),
-];
-
-let customRoom = new PrivateRoom({
-  description: "description", 
-  items: items,
+let customRoom = new Room({
+  color: "BLUE",
+  description: "this is a somewhat long description", 
+  isPrivate: true,
+  itemsList: [
+    {
+      description: "a simple book",
+      name: "book"
+    }
+  ],
   name: "testing", 
   parent: "test channel"
 });

@@ -1,32 +1,61 @@
 import * as Discord from 'discord.js';
-import { Item } from './item';
-import { mainGuild, everyoneRole } from '../helper';
+import { Item, ItemResolvable } from './item';
+import { 
+  everyoneRole,
+  mainGuild, 
+  toFunction, 
+  Dict, 
+  FunctionResolvable
+} from '../helper';
 import { ChannelNotFoundError } from '../config/errors';
 import { RoomManager } from './roomManager';
 import { Room as RoomModel } from '../models/room';
 
+export type RoomAttributes = { 
+  actions?: Dict<FunctionResolvable>, 
+  color?: string | number, 
+  description: string, 
+  itemsList?: ItemResolvable[], 
+  name: string, 
+  parent: string,
+  isPrivate?: boolean
+};
+
+export type RoomResolvable = RoomAttributes | Room;
+
 export class Room {
-  public actions: { [key: string]: Function }
+  public actions: Dict<Function> = {};
   public channel: Discord.TextChannel | null = null;
+  public color: string | number;
   public description: string;
   public name: string;
-  public items: Item[];
+  public items: Dict<Item> = {};
   public parent: string;
   public parentChannel: Discord.CategoryChannel | null = null;
+  public isPrivate: boolean = false;
   public role: Discord.Role | null = null;
-  protected state: object;
+  protected state: object = {}
   protected manager: RoomManager;
 
-  public constructor({ actions = {}, color = "RANDOM", description, items = [],   name, parent}: { actions?: { [k: string]: Function}, color?: string, 
-    description: string, items?: Item[], name: string, parent: string }) 
+  public constructor({ actions = {}, color = "RANDOM", description, 
+    isPrivate = false, itemsList = [], name, parent}: RoomAttributes) 
       {
-      
-    this.actions = actions;
+
+    this.color = color;
     this.description = description;
-    this.items = items;
+    this.isPrivate = isPrivate;
     this.name = name;
     this.parent = parent;
-    this.state = {};
+
+    Object.keys(actions).forEach((key: string) => {
+      this.actions[key] = toFunction(actions[key], this);
+    });
+    
+    itemsList.forEach((i: ItemResolvable) => {
+      let item: Item = i instanceof Item ? i: new Item(i);
+      item.room = this;
+      this.items[item.name] = item;
+    });
   }
 
   public interact(action: string) {
@@ -39,9 +68,15 @@ export class Room {
     }
   }
 
-  public async init(manager: RoomManager, force: boolean = false,
-    allow: Array<Discord.PermissionResolvable> = ["READ_MESSAGES", "SEND_MESSAGES"],
-    deny: Array<Discord.PermissionResolvable> = ["READ_MESSAGE_HISTORY", "SEND_MESSAGES"]) {
+  public async init(manager: RoomManager, force: boolean = false) {
+    let allow: Discord.PermissionResolvable[] = 
+      ["READ_MESSAGES", "SEND_MESSAGES"];
+    let deny: Discord.PermissionResolvable[] = 
+      ["READ_MESSAGE_HISTORY", "SEND_MESSAGES"];
+
+    if (this.isPrivate) {
+      deny.push("READ_MESSAGES");
+    }
     
     if (this.parentChannel === null) {
       return;
@@ -69,12 +104,19 @@ export class Room {
         if (role === null) {
           role = await guild.createRole({
             name: this.name,
-            color: "RANDOM"
+            color: this.color
           });
+        } else {
+          await role.setColor(this.color);
         }
 
         if (channel === null) {
           channel = await guild.createChannel(this.name, 'text') as Discord.TextChannel;
+          await existingChannel.update({
+            id: channel.id
+          });
+        } else {
+          await channel.setTopic(this.description);
         }
 
         this.channel = channel;
@@ -85,12 +127,24 @@ export class Room {
     }
     
     try {
-      this.role = await guild.createRole({
-        name: this.name,
-        color: "RANDOM"
-      });
+      let role = guild.roles.find(r => r.name === this.name);
+      if (role) {
+        this.role = role;
+        await role.setColor(this.color);
+      } else {
+        this.role = await guild.createRole({
+          name: this.name,
+          color: this.color
+        });
+      }
 
-      this.channel = await guild.createChannel(this.name, 'text') as Discord.TextChannel;
+      let channel = guild.channels.find(c => c.name === Room.discordChannelName(this.name));
+
+      if (channel && channel instanceof Discord.TextChannel) {
+        this.channel = channel;
+      } else {
+        this.channel = await guild.createChannel(this.name, 'text') as Discord.TextChannel;
+      }
 
       await this.initChannel(allow, deny);
 
@@ -166,18 +220,5 @@ export class Room {
   static discordChannelName(name: string) {
     return name.toLowerCase().replace(/\ /g, '-')
       .replace(/[^a-zA-z0-9-_]/g, "");
-  }
-}
-
-export class PublicRoom extends Room {
-  public async init(manager: RoomManager, force: boolean = false) {
-    super.init(manager, force);
-  }
-}
-
-export class PrivateRoom extends Room {
-  public async init(manager: RoomManager, force: boolean = false) {
-    super.init(manager, force, undefined, ["READ_MESSAGES", 
-      "READ_MESSAGE_HISTORY", "SEND_MESSAGES"]);
   }
 }

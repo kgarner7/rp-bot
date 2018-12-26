@@ -6,6 +6,7 @@
   "dependencies": {
     "@types/glob": "^7.1.1",
     "@types/node": "^10.12.15",
+    "@types/pg": "^7.4.11",
     "@types/sequelize": "github:types/sequelize",
     "@types/tmp": "0.0.33",
     "discord.js": "^11.4.2",
