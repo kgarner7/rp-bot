@@ -23,6 +23,7 @@
     "typescript": "^3.2.2"
   },
   "scripts": {
+    "build": "tsc; cp -R ./rooms/custom/*.json ./dist/rooms/custom/",
     "log": "pm2 log",
     "restart": "pm2 restart index.config.js --watch",
     "start": "pm2 startOrReload index.config.js --watch",
