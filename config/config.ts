@@ -7,7 +7,6 @@ export let database: Dict<any> = {
   development: {
     username: "discordo",
     password: "discordo",
-    database: "discordo-testing-2",
     options: {
       dialect: "postgres",
       operatorsAliases: false
@@ -16,7 +15,6 @@ export let database: Dict<any> = {
   test: {
     username: "discordo_testing",
     password: "discordo_testing",
-    database: "discordo_testing",
     options: {
       dialect: "postgres",
       operatorsAliases: false
@@ -25,7 +23,6 @@ export let database: Dict<any> = {
   production: {
     username: process.env.DB_USERNAME,
     password: process.env.DB_PASSWORD,
-    database: process.env.DB_NAME,
     options: {
       dialect: "postgres",
       operatorsAliases: false

@@ -1,0 +1,7 @@
+{
+  "description": "room b: test",
+  "isPrivate": true,
+  "name": "room b",
+  "neighbors": [],
+  "parent": "test map"
+}

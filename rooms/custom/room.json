@@ -5,6 +5,10 @@
     {
       "description": "A book",
       "name": "a book of books"
+    }, 
+    {
+      "description": "A very fact cat",
+      "name": "snick"
     }
   ],
   "name": "JSON room",

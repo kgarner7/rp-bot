@@ -1,23 +1,23 @@
-import { 
-  Model, 
-  STRING, 
-  TEXT, 
-  HasMany, 
-  HasManySetAssociationsMixin, 
-  HasManyAddAssociationMixin, 
-  HasManyCreateAssociationMixin, 
-  HasManyGetAssociationsMixin, 
-  BelongsToMany, 
-  BelongsToManyAddAssociationMixin, 
+import {
+  Model,
+  STRING,
+  TEXT,
+  HasMany,
+  HasManySetAssociationsMixin,
+  HasManyAddAssociationMixin,
+  HasManyCreateAssociationMixin,
+  HasManyGetAssociationsMixin,
+  BelongsToMany,
+  BelongsToManyAddAssociationMixin,
   BelongsToManyAddAssociationsMixin,
   BelongsToManyCreateAssociationMixin,
   BelongsToManyGetAssociationsMixin,
   BelongsToManyRemoveAssociationMixin,
-  BelongsToManySetAssociationsMixin, 
+  BelongsToManySetAssociationsMixin,
   HasManyAddAssociationsMixin,
   BelongsToManyRemoveAssociationsMixin,
   HasManyRemoveAssociationMixin,
-  HasManyRemoveAssociationsMixin
+  HasManyRemoveAssociationsMixin,
 } from 'sequelize';
 
 import { GuildMember } from 'discord.js';
@@ -25,8 +25,9 @@ import sequelize from './connection';
 
 export class User extends Model {
   static associations: {
-    messages: BelongsToMany
-    sentMessages: HasMany
+    messages: BelongsToMany;
+    sentMessages: HasMany;
+    visitors: BelongsToMany;
   }
 
   public id: string;
@@ -40,9 +41,9 @@ export class User extends Model {
   public createMessage: BelongsToManyCreateAssociationMixin<Message>;
   public getMessages: BelongsToManyGetAssociationsMixin<Message>;
   public removeMessage: BelongsToManyRemoveAssociationMixin<Message, string>;
-  public removeMessages: BelongsToManyRemoveAssociationsMixin<Message, string>; 
+  public removeMessages: BelongsToManyRemoveAssociationsMixin<Message, string>;
   public setMessages: BelongsToManySetAssociationsMixin<Message, string>;
-  
+
   public SentMessages: Message[];
   public addSentMessage: HasManyAddAssociationMixin<Message, string>;
   public addSentMessages: HasManyAddAssociationsMixin<Message, string>;
@@ -54,14 +55,16 @@ export class User extends Model {
 
   static createFromMember(member: GuildMember) {
     if (member.user.bot !== true) {
-      User.findOrCreate({
+      return User.findOrCreate({
         defaults: {
           name: member.displayName
-        }, 
+        },
         where: {
           id: member.id
         }
       });
+    } else {
+      return null;
     }
   }
 }
@@ -75,8 +78,8 @@ User.init({
     allowNull: false,
     type: TEXT
   }
-}, { 
-  sequelize, 
+}, {
+  sequelize,
 });
 
 import { Message } from "./message";

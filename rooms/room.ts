@@ -11,40 +11,48 @@ import { ChannelNotFoundError } from '../config/errors';
 import { RoomManager } from './roomManager';
 import { Room as RoomModel } from '../models/room';
 
+export type Neighbor = {
+  locked: boolean;
+  to: string;
+};
+
 export type RoomAttributes = { 
   actions?: Dict<FunctionResolvable>, 
   color?: string | number, 
   description: string, 
+  isPrivate?: boolean,
   itemsList?: ItemResolvable[], 
   name: string, 
-  parent: string,
-  isPrivate?: boolean
+  neighbors?: Neighbor[];
+  parent: string
 };
 
 export type RoomResolvable = RoomAttributes | Room;
 
 export class Room {
   public actions: Dict<Function> = {};
-  public channel: Discord.TextChannel | null = null;
+  public channel?: Discord.TextChannel;
   public color: string | number;
   public description: string;
   public name: string;
-  public items: Dict<Item> = {};
-  public parent: string;
-  public parentChannel: Discord.CategoryChannel | null = null;
   public isPrivate: boolean = false;
-  public role: Discord.Role | null = null;
-  protected state: object = {}
+  public items: Dict<Item> = {};
+  public neighbors?: Neighbor[];
+  public parent: string;
+  public parentChannel?: Discord.CategoryChannel;
+  public role?: Discord.Role;
+  protected state: object = {};
   protected manager: RoomManager;
 
   public constructor({ actions = {}, color = "RANDOM", description, 
-    isPrivate = false, itemsList = [], name, parent}: RoomAttributes) 
+    isPrivate = false, itemsList = [], name, neighbors, parent}: RoomAttributes) 
       {
 
     this.color = color;
     this.description = description;
     this.isPrivate = isPrivate;
     this.name = name;
+    this.neighbors = neighbors;
     this.parent = parent;
 
     Object.keys(actions).forEach((key: string) => {
@@ -107,21 +115,21 @@ export class Room {
             color: this.color
           });
         } else {
-          await role.setColor(this.color);
+          role.setColor(this.color);
         }
 
         if (channel === null) {
           channel = await guild.createChannel(this.name, 'text') as Discord.TextChannel;
-          await existingChannel.update({
+          existingChannel.update({
             id: channel.id
           });
         } else {
-          await channel.setTopic(this.description);
+          channel.setTopic(this.description);
         }
 
         this.channel = channel;
         this.role = role;
-        await this.initChannel(allow, deny);
+        this.initChannel(allow, deny);
         return;
       }
     }
@@ -130,7 +138,7 @@ export class Room {
       let role = guild.roles.find(r => r.name === this.name);
       if (role) {
         this.role = role;
-        await role.setColor(this.color);
+        role.setColor(this.color);
       } else {
         this.role = await guild.createRole({
           name: this.name,
@@ -146,7 +154,7 @@ export class Room {
         this.channel = await guild.createChannel(this.name, 'text') as Discord.TextChannel;
       }
 
-      await this.initChannel(allow, deny);
+      this.initChannel(allow, deny);
 
       await RoomModel.create({
         discordName: this.channel.name,
@@ -156,26 +164,26 @@ export class Room {
 
       guild.owner.send(`Created room ${this.name}`);
     } catch(err) {
-      if (this.role !== null) {
-        (this.role as Discord.Role).delete();
-        this.role = null;
+      if (this.role) {
+        this.role.delete();
+        this.role = undefined;
       }
 
-      if (this.channel !== null) {
-        (this.channel as Discord.GuildChannel).delete();
-        this.role = null;
+      if (this.channel) {
+        this.channel.delete();
+        this.role = undefined;
       } 
       
       guild.owner.send(`Could not create room ${this.name}: ${(err as Error).message}`)
     }
   }
 
-  private async initChannel(allow: Array<Discord.PermissionResolvable>, 
-      deny: Array<Discord.PermissionResolvable>) {
+  private async initChannel(allow: Discord.PermissionResolvable[], 
+      deny: Discord.PermissionResolvable[]) {
       
       let everyone: string = everyoneRole().id;
 
-      if (this.channel === null || this.role === null || this.parentChannel === null) {
+      if (this.channel === undefined || this.role === undefined || this.parentChannel === undefined) {
         return;
       }
 

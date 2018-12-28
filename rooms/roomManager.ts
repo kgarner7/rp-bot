@@ -1,10 +1,19 @@
 import * as glob from 'glob';
 import * as path from 'path';
-import { Room, RoomResolvable, RoomAttributes } from './room';
-import { mainGuild, everyoneRole } from '../helper';
-import { CategoryChannel, PermissionOverwrites, PermissionResolvable, PermissionObject } from 'discord.js';
+import { Link, Room as RoomModel } from '../models/models';
+import { Neighbor, Room, RoomAttributes } from './room';
+import { everyoneRole, mainGuild } from '../helper';
+import { 
+  CategoryChannel, 
+  PermissionObject, 
+  Role, 
+  TextChannel
+} from 'discord.js';
+import { Op } from 'sequelize';
 
 export class RoomManager {
+  public links: Map<string, Set<Neighbor>> = new Map();
+  public roles: Set<string> = new Set();
   public rooms: { [name: string]: Room } = {};
 
   constructor(rooms: Room[], force: boolean = false) {
@@ -12,9 +21,78 @@ export class RoomManager {
       this.rooms[room.name as string] = room;
     });
 
+    this.initialize(force);
+  }
+
+  async initialize(force: boolean) {
+    let roomIds: string[] = [];
+
     for (let key in this.rooms) {
-      this.rooms[key].init(this, force);
+      let room = this.rooms[key];
+
+      await room.init(this, force);
+      await this.roles.add((room.role as Role).id);
+      roomIds.push((room.channel as TextChannel).id);
     }
+
+    RoomModel.destroy({
+      where: {
+        id: {
+          [Op.not]: roomIds
+        }
+      }
+    });
+
+    let ids: number[] = [];
+
+    for (let key in this.rooms) {
+      let source = this.rooms[key];
+
+      if (source.neighbors) {
+        for (let neighbor of source.neighbors) {
+          let target = this.rooms[neighbor.to];
+
+          if (target) {
+            let existing = this.links.get(source.name);
+            
+            let [link] = await Link.findOrCreate({
+              defaults: {
+                locked: neighbor.locked
+              },
+              where: {
+                sourceId: (source.channel as TextChannel).id,
+                targetId: (target.channel as TextChannel).id
+              }
+            });
+
+            ids.push(link.id);
+
+            let connection: Neighbor = {
+              locked: link.locked,
+              to: neighbor.to
+            }
+
+            if (existing) {
+              existing.add(connection);
+            } else {
+              this.links.set(source.name, new Set([connection]));
+            }
+            
+          }
+        }
+        source.neighbors = undefined; 
+      }      
+    }
+
+    console.log(this.links);
+
+    await Link.destroy({
+      where: {
+        id: {
+          [Op.not]: ids
+        }
+      }
+    })
   }
 
   static async create(directory: string, force: boolean = false) {

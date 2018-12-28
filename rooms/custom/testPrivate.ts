@@ -11,6 +11,7 @@ let customRoom = new Room({
     }
   ],
   name: "testing", 
+  neighbors: [],
   parent: "test channel"
 });
 

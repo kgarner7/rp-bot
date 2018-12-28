@@ -11,24 +11,93 @@ import {
   NoLogError 
 } from '../config/errors';
 
-function parseParameters(msg: Discord.Message) {
-  let space = msg.content.indexOf(" ");
-  if (space === -1) return "";
-  else return msg.content.substring(space + 1);
+type Command = {
+  args: Dict<string[]>;
+  params: string[];
+};
+
+export function parseFunction(msg: string, 
+  words: Iterable<string> = ["in"]): Command {
+
+  let keywords = new Set<string>(words);
+  let split: string[] = msg.split(" ");
+  let command: Command = {
+    args: {},
+    params: []
+  }
+  
+  let argName: string = "";
+  let built: string = "";
+  let params: string[] = [];
+
+  for (let part of split.slice(1)) {
+    if (keywords.has(part)) {
+      if (built.length > 0) {
+        params.push(built);
+        built = "";
+      }
+
+      if (argName === "") {
+        command.params = params;
+      } else {
+
+        command.args[argName] = params;
+      }
+
+      argName = part;
+      params = [];
+    } else {
+      let isList: boolean = false;
+      if (part.endsWith(",")) {
+        isList = true;
+        part = part.substr(0, part.length - 1);
+      }
+
+      if (built.length > 0) {
+        built += " ";
+      }
+      built += part;
+
+      if (isList) {
+        params.push(built);
+        built = "";
+      }
+    }
+  }
+
+  if (built.length > 0) {
+    params.push(built);
+  }
+
+  if (params.length > 0) {
+    if (argName === "") {
+      command.params = params;
+    } else {
+      command.args[argName] = params;
+    }
+  }
+  
+  return command;
 }
 
 type RoomName = { name: string, user: boolean } | null;
 
 function roomName(msg: Discord.Message, override: boolean = false): RoomName {
-  let split = msg.content.split(" in ");
-  if (split.length === 1 || override === true) {
+  let command = parseFunction(msg.content);
+  if (command.args.in === undefined || override === true) {
     if (msg.channel instanceof Discord.TextChannel) {
-      return { name: msg.channel.name, user: false };
+      return { 
+        name: msg.channel.name, 
+        user: false 
+      };
     } else {
       return null;
     }
   } else {
-    return { name: split.pop() as string, user: true };
+    return { 
+      name: command.args.in.join() as string, 
+      user: true 
+    };
   }
 }
 
@@ -129,7 +198,8 @@ async function showLogs(msg: Discord.Message) {
  */
 export async function createRoom(msg: Discord.Message) {
   requireAdmin(msg);
-  let name: string = parseParameters(msg);
+  let name: string = parseFunction(msg.content).params.join("");
+
   let guild: Discord.Guild = mainGuild();
 
   if (name === "" || guild.channels.find(c => c.name === name)) {
@@ -163,8 +233,7 @@ export async function deleteRoom(msg: Discord.Message) {
   requireAdmin(msg);
 
   let guild = mainGuild();
-  let name: string = parseParameters(msg);
-  let room = await getRoomModel(name);
+  let room = await getRoom(msg);
 
   if (room !== null) {
     let channel = guild.channels.find(c => c.id === (room as RoomModel).id);
@@ -276,16 +345,65 @@ async function items(msg: Discord.Message) {
 
 async function inspect(msg: Discord.Message) {
   let roomModel = await getRoom(msg, true);
-  let item = parseParameters(msg).split(" in ")[0];
+  let items = parseFunction(msg.content);
   
   if (roomModel) {
     let manager = roomManager();
     let room = manager.rooms[roomModel.name];
     
-    if (item in room.items) {
-      msg.channel.send(`**${item}**:${room.items[item].description}`);
+    let descriptions: string[] = [];
+    for (let item of items.params) {
+      if (item in room.items) {
+        descriptions.push(`**${item}**: ${room.items[item].description}`)
+      }
     }
+
+    msg.channel.send(descriptions.join("\n"));
   }
+}
+
+async function move(msg: Discord.Message) {
+  requireAdmin(msg);
+
+  let command = parseFunction(msg.content, ["to"]);
+  let guild = mainGuild();
+  let manager = roomManager();
+  let targetName = (command.args.to || []).join("\n");
+  let targetRoom = await getRoomModel(targetName);
+
+  if (targetRoom === null) {
+    msg.author.send(`Could not find room ${targetName}`);
+    return;
+  }
+  
+  command.params.forEach(async (name: string) => {
+    let member = guild.members.find((m: Discord.GuildMember) => { 
+      return m.displayName === name || m.toString() === name;
+    });
+
+    if (member) {
+      let roles: string[] = [];
+
+      member.roles.forEach((r: Discord.Role) => {
+        if (!manager.roles.has(r.id)) {
+          roles.push(r.id)
+        }
+      });
+
+      let newRole = guild.roles
+        .find((r: Discord.Role) => r.name === (targetRoom as RoomModel).name);
+
+      roles.push(newRole.id);
+
+      await member.setRoles(roles);
+      if (member.user.bot === false) {
+        member.send(`You were moved to ${targetName}`);
+      }
+      
+      msg.author
+        .send(`Successfully moved ${member.displayName} to ${targetName}`);
+    }
+  });
 }
 
 /**
@@ -297,6 +415,7 @@ let actions: Dict<Function> = {
   'inspect': inspect,
   'items': items,
   'log': showLogs,
+  'move': move,
   'who': members
 }
 
