@@ -1,16 +1,22 @@
-import * as Discord from 'discord.js';
+import {
+  Guild,
+  GuildMember,
+  Message,
+  Role,
+  TextChannel
+} from 'discord.js';
 import { AccessError } from './config/errors';
 import { RoomManager } from './rooms/roomManager';
 
-let everyone: Discord.Role;
-let guild: Discord.Guild;
+let everyone: Role;
+let guild: Guild;
 let manager: RoomManager;
 
 /**
  * Initializes the local server to be passed between modules
  * @param externalGuild the global server for this bot
  */
-export function initGuild(externalGuild: Discord.Guild) {
+export function initGuild(externalGuild: Guild) {
   guild = externalGuild;
 }
 
@@ -19,7 +25,7 @@ export function initGuild(externalGuild: Discord.Guild) {
  * Should only be called after initialization
  * @returns {Discord.Guild} the shared guild instance
  */
-export function mainGuild(): Discord.Guild {
+export function mainGuild(): Guild {
   return guild;
 }
 
@@ -45,11 +51,11 @@ export function everyoneRole() {
  * @param {Discord.Message} msg the message to be parsed
  * @returns {string[]} an array of the member of IDS when a message is sent
  */
-export function getMembers(msg: Discord.Message): string[] {
+export function getMembers(msg: Message): string[] {
   let users: string[] = [];
   
-  if (msg.channel instanceof Discord.TextChannel) {
-    msg.channel.members.forEach((member: Discord.GuildMember) => {
+  if (msg.channel instanceof TextChannel) {
+    msg.channel.members.forEach((member: GuildMember) => {
       if (member.user.bot !== true) {
         users.push(member.id);
       }
@@ -64,7 +70,7 @@ export function getMembers(msg: Discord.Message): string[] {
  * @param msg the message we are handling
  * @throws {AccessError}
  */
-export function requireAdmin(msg: Discord.Message) {
+export function requireAdmin(msg: Message) {
   if (msg.author.id !== mainGuild().ownerID) {
     throw new AccessError(msg.content);
   }

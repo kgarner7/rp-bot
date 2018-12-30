@@ -4,10 +4,13 @@
   "name": "room a",
   "neighbors": [
     {
-      "locked": false,
+      "name": "Door 1",
       "to": "room c"
+    },
+    {
+      "name": "Door 2",
+      "to": "room d"
     }
   ],
-
   "parent": "test map"
 }

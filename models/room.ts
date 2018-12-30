@@ -10,16 +10,25 @@ import {
   HasManySetAssociationsMixin, 
   STRING,
   TEXT,
-  BelongsTo
+  BelongsToMany,
+  BelongsToManyAddAssociationMixin,
+  BelongsToManyAddAssociationsMixin,
+  BelongsToManyCreateAssociationMixin,
+  BelongsToManyCountAssociationsMixin,
+  BelongsToManyGetAssociationsMixin,
+  BelongsToManyRemoveAssociationMixin,
+  BelongsToManyRemoveAssociationsMixin,
+  BelongsToManySetAssociationsMixin
 } from 'sequelize';
 import sequelize from './connection';
-import * as Discord from 'discord.js';
+import { GuildChannel, TextChannel } from 'discord.js';
 
 export class Room extends Model {
   static associations: {
     messages: HasMany;
     sources: HasMany;
     targets: HasMany;
+    visitors: BelongsToMany;
   }
 
   public discordName: string;
@@ -55,8 +64,18 @@ export class Room extends Model {
   public removeTargets: HasManyRemoveAssociationsMixin<Link, string>;
   public setTargets: HasManySetAssociationsMixin<Link, string>;
 
-  static async createFromChannel(channel: Discord.GuildChannel) {
-    if (channel instanceof Discord.TextChannel) {
+  public visitors: User[];
+  public addVisitor: BelongsToManyAddAssociationMixin<User, string>;
+  public addVisitors: BelongsToManyAddAssociationsMixin<User, string>;
+  public countVisitors: BelongsToManyCountAssociationsMixin;
+  public createVisitor: BelongsToManyCreateAssociationMixin<User>;
+  public getVisitors: BelongsToManyGetAssociationsMixin<User>;
+  public removeVisitor: BelongsToManyRemoveAssociationMixin<User, string>;
+  public removeVisitors: BelongsToManyRemoveAssociationsMixin<User, string>;
+  public setVisitors: BelongsToManySetAssociationsMixin<User, string>;
+
+  static async createFromChannel(channel: GuildChannel) {
+    if (channel instanceof TextChannel) {
       Room.findOrCreate({
         defaults: {
           name: channel.name
@@ -84,6 +103,7 @@ Room.init({
 
 import { Message } from './message';
 import { Link } from './link';
+import { User } from './user';
 
 Room.hasMany(Message);
 
@@ -93,4 +113,9 @@ Room.hasMany(Link, {
 
 Room.hasMany(Link, {
   as: "targets"
+});
+
+Room.belongsToMany(User, {
+  as: "visitors",
+  through: "Visitation"
 });

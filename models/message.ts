@@ -1,6 +1,6 @@
 import { getMembers } from '../helper';
 import sequelize from './connection';
-import * as Discord from 'discord.js';
+import { Message as DiscordMessage } from 'discord.js';
 import { 
   Model, 
   STRING, 
@@ -55,7 +55,7 @@ export class Message extends Model {
   public removeUsers: BelongsToManyRemoveAssociationsMixin<User, string>;
   public setUsers: BelongsToManySetAssociationsMixin<User, string>;
 
-  static async createFromMsg(msg: Discord.Message) {
+  static async createFromMsg(msg: DiscordMessage) {
     let transaction = await sequelize.transaction();
     let users = getMembers(msg);
     
@@ -76,7 +76,7 @@ export class Message extends Model {
     }
   }
 
-  static async updateFromMsg(msg: Discord.Message) {
+  static async updateFromMsg(msg: DiscordMessage) {
     let message: Message | null = await Message.findOne({
       where: {
         id: msg.id

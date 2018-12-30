@@ -1,15 +1,23 @@
-import * as Discord from 'discord.js';
+import { 
+  Guild,
+  GuildMember,
+  Message as DiscordMessage,
+  Role,
+  TextChannel,
+  User as DiscordUser
+ } from 'discord.js';
 import moment from 'moment';
 import tmp from 'tmp';
-import { writeFileSync } from 'fs';
+import { writeFileSync, link } from 'fs';
 import { mainGuild, requireAdmin, roomManager, Dict } from '../helper';
-import sequelize, { Message, Room as RoomModel, User, Room, Op } from '../models/models';
+import sequelize, { Link, Message, Room as RoomModel, User, Op } from '../models/models';
 import { 
   AccessError,
   ChannelNotFoundError,
   ExistingChannelError,
   NoLogError 
 } from '../config/errors';
+import { Room, Neighbor } from '../rooms/room';
 
 type Command = {
   args: Dict<string[]>;
@@ -30,7 +38,11 @@ export function parseFunction(msg: string,
   let built: string = "";
   let params: string[] = [];
 
-  for (let part of split.slice(1)) {
+  if (split[0].startsWith("!")) {
+    split = split.splice(1);
+  }
+
+  for (let part of split) {
     if (keywords.has(part)) {
       if (built.length > 0) {
         params.push(built);
@@ -69,12 +81,10 @@ export function parseFunction(msg: string,
     params.push(built);
   }
 
-  if (params.length > 0) {
-    if (argName === "") {
-      command.params = params;
-    } else {
-      command.args[argName] = params;
-    }
+  if (argName === "") {
+    command.params = params;
+  } else {
+    command.args[argName] = params;
   }
   
   return command;
@@ -82,16 +92,29 @@ export function parseFunction(msg: string,
 
 type RoomName = { name: string, user: boolean } | null;
 
-function roomName(msg: Discord.Message, override: boolean = false): RoomName {
+function currentRoom(msg: DiscordMessage): string | null {
+  let guild = mainGuild(),
+    manager = roomManager(),
+    member = guild.members.find((m: GuildMember) => m.id === msg.author.id),
+    role = member.roles.find((r: Role) => manager.roles.has(r.id));
+
+  return role === null ? null: role.name;
+}
+
+function roomName(msg: DiscordMessage, override: boolean = false): RoomName {
   let command = parseFunction(msg.content);
   if (command.args.in === undefined || override === true) {
-    if (msg.channel instanceof Discord.TextChannel) {
+    if (msg.channel instanceof TextChannel) {
       return { 
         name: msg.channel.name, 
         user: false 
       };
     } else {
-      return null;
+      let name = currentRoom(msg);
+      return name === null ? null: {
+        name: name,
+        user: false
+      }
     }
   } else {
     return { 
@@ -105,9 +128,9 @@ function roomName(msg: Discord.Message, override: boolean = false): RoomName {
  * Shows the logs for a channel. 
  * If this is called in a TextChannel, sends the logs of that channel. 
  * If called in a DM, sends the logs of a particular channel
- * @param {Discord.Message} msg the message we are handling
+ * @param {DiscordMessage} msg the message we are handling
  */
-async function showLogs(msg: Discord.Message) {
+async function showLogs(msg: DiscordMessage) {
   function getChannel(name: string) {
     return RoomModel.findOne({
       include: [{
@@ -132,7 +155,7 @@ async function showLogs(msg: Discord.Message) {
       }
     });  
   }
-  let sender: Discord.User = msg.author;
+  let sender: DiscordUser = msg.author;
   let channelName = roomName(msg);
   let name: string;
   let warning: string | null = null;
@@ -192,21 +215,21 @@ async function showLogs(msg: Discord.Message) {
 
 /**
  * Creates a private room and role
- * @param {Discord.Message} msg the message we are processing
+ * @param {DiscordMessage} msg the message we are processing
  * @throws {AccessError}
  * @throws {ExistingChannelError}
  */
-export async function createRoom(msg: Discord.Message) {
+export async function createRoom(msg: DiscordMessage) {
   requireAdmin(msg);
   let name: string = parseFunction(msg.content).params.join("");
 
-  let guild: Discord.Guild = mainGuild();
+  let guild: Guild = mainGuild();
 
   if (name === "" || guild.channels.find(c => c.name === name)) {
     throw new ExistingChannelError(name);
   }
 
-  let role: Discord.Role = await guild.createRole({
+  let role: Role = await guild.createRole({
     name: name,
     color: 'RANDOM'
   });
@@ -225,11 +248,11 @@ export async function createRoom(msg: Discord.Message) {
 
 /**
  * Attempts to destory an existing private room and role
- * @param {Discord.Message} msg the message we are handling
+ * @param {DiscordMessage} msg the message we are handling
  * @throws {AccessError}
  * @throws {ChannelNotFoundError}
  */
-export async function deleteRoom(msg: Discord.Message) {
+export async function deleteRoom(msg: DiscordMessage) {
   requireAdmin(msg);
 
   let guild = mainGuild();
@@ -266,7 +289,7 @@ function getRoomModel(name: string) {
   });
 }
 
-async function getRoom(msg: Discord.Message, requirePresence: boolean = true) {
+async function getRoom(msg: DiscordMessage, requirePresence: boolean = true) {
   let channel = roomName(msg);
   let roomModel: RoomModel | null = null;
   let guild = mainGuild();
@@ -299,7 +322,7 @@ async function getRoom(msg: Discord.Message, requirePresence: boolean = true) {
   return roomModel;
 }
 
-async function members(msg: Discord.Message) {
+async function members(msg: DiscordMessage) {
   let channel = msg.channel;
   let guild = mainGuild();
   let room = await getRoom(msg);
@@ -326,7 +349,7 @@ async function members(msg: Discord.Message) {
   }
 }
 
-async function items(msg: Discord.Message) {
+async function items(msg: DiscordMessage) {
   let roomModel = await getRoom(msg);
   
   if (roomModel) {
@@ -343,7 +366,7 @@ async function items(msg: Discord.Message) {
   }
 }
 
-async function inspect(msg: Discord.Message) {
+async function inspect(msg: DiscordMessage) {
   let roomModel = await getRoom(msg, true);
   let items = parseFunction(msg.content);
   
@@ -358,11 +381,28 @@ async function inspect(msg: Discord.Message) {
       }
     }
 
-    msg.channel.send(descriptions.join("\n"));
+    msg.reply(descriptions.join("\n"));
   }
 }
 
-async function move(msg: Discord.Message) {
+async function moveMember(member: GuildMember, name: string) {
+  let guild = mainGuild(), 
+    manager = roomManager(), 
+    roles: string[] = [];
+
+  member.roles.forEach((r: Role) => {
+    if (!manager.roles.has(r.id)) {
+      roles.push(r.id)
+    }
+  });
+
+  let newRole = guild.roles.find((r: Role) => r.name === name);
+
+  roles.push(newRole.id);
+  await member.setRoles(roles);
+}
+
+async function move(msg: DiscordMessage) {
   requireAdmin(msg);
 
   let command = parseFunction(msg.content, ["to"]);
@@ -377,25 +417,13 @@ async function move(msg: Discord.Message) {
   }
   
   command.params.forEach(async (name: string) => {
-    let member = guild.members.find((m: Discord.GuildMember) => { 
+    let member = guild.members.find((m: GuildMember) => { 
       return m.displayName === name || m.toString() === name;
     });
 
     if (member) {
-      let roles: string[] = [];
+      await moveMember(member, (targetRoom as RoomModel).name);
 
-      member.roles.forEach((r: Discord.Role) => {
-        if (!manager.roles.has(r.id)) {
-          roles.push(r.id)
-        }
-      });
-
-      let newRole = guild.roles
-        .find((r: Discord.Role) => r.name === (targetRoom as RoomModel).name);
-
-      roles.push(newRole.id);
-
-      await member.setRoles(roles);
       if (member.user.bot === false) {
         member.send(`You were moved to ${targetName}`);
       }
@@ -406,17 +434,274 @@ async function move(msg: Discord.Message) {
   });
 }
 
+async function findRoomByCommand(command: Command, target: string) {
+  let arr = command.args[target];
+  let name: string;
+
+  if (arr) {
+    name = arr.join();
+  } else {
+    throw new ChannelNotFoundError(`${target} channel`);
+  }
+
+  let model = await getRoomModel(name);
+
+  if (model === null) throw new ChannelNotFoundError(name);
+
+  return model;
+}
+
+function handleLock(locked: boolean) {
+  return async function changeLock(msg: DiscordMessage) {
+    requireAdmin(msg);
+  
+    let command = parseFunction(msg.content, ["from", "to"]);
+  
+    let fromModel = await findRoomByCommand(command, "from");
+    let toModel = await findRoomByCommand(command, "to");
+  
+    let updated = await Link.update({
+      locked: locked
+    }, {
+      where: {
+        sourceId: fromModel.id,
+        targetId: toModel.id
+      }
+    });
+  
+    if (updated[0] > 0) {
+      let map = roomManager().links.get(fromModel.name);
+  
+      if (map) {
+        let neighbor = map.get(toModel.name);
+  
+        if (neighbor) neighbor.locked = locked;
+      }
+      
+      msg.author.send(`${locked === true ? "L": "Unl"}ocked link from '${fromModel.name}' to '${toModel.name}'`)
+    }
+  }
+}
+
+async function links(msg: DiscordMessage) {
+  requireAdmin(msg);
+
+  let args: Dict<any> = {},
+    command = parseFunction(msg.content, ["locked", "unlocked", "from", "to"]),
+    manager = roomManager();
+
+  if (command.args["from"]) {
+    let source = await findRoomByCommand(command, "from");
+    args.sourceId = source.id;
+  }
+
+  if (command.args["to"]) {
+    let target = await findRoomByCommand(command, "to");
+    args.targetId = target.id;
+  }
+
+  if (command.args["locked"]) {
+    args["locked"] = true;
+  } else if (command.args["unlocked"]) {
+    args["locked"] = false;
+  }
+
+  let links = await Link.findAll({
+    include: [{
+      as: "source",
+      attributes: ["name"],
+      model: RoomModel
+    }, {
+      as: "target",
+      attributes: ["name"],
+      model: RoomModel
+    }],
+    order: [
+      [{ model: RoomModel, as: "source" }, "name", "ASC"],
+      [{ model: RoomModel, as: "target"}, "name", "ASC"]
+    ],
+    where: args
+  });
+
+  let string = links.map((link: Link) => {
+    let map = manager.links.get(link.source.name) as Map<string, Neighbor>;
+    let neighbor = (map.get(link.target.name) as Neighbor).name;
+    return `Door ${neighbor}: ${link.source.name} => ${link.target.name}${link.locked ? ": locked": ""}`
+  }).join("\n");
+
+  if (string === "") {
+    msg.author.send("No links found with those parameters");
+  } else {
+    msg.author.send(string);
+  }
+}
+
+async function users(msg: DiscordMessage) {
+  requireAdmin(msg);
+
+  let guild = mainGuild();
+  let manager = roomManager();
+  let message = ""; 
+  
+  let members = await User.findAll({
+    attributes: ["id", "name"],
+    include: [
+      { 
+        as: "visitedRooms", 
+        attributes: ["name"],
+        model: RoomModel 
+      }
+    ],
+    order: [
+      ["name", "ASC"], 
+      [{ as: "visitedRooms", model: RoomModel}, "name", "ASC"]
+    ]
+  });
+
+  for (let member of members) {
+    if (member.id === guild.owner.id) continue;
+
+    let guildMember = guild.members
+      .find((gm: GuildMember) => gm.displayName === member.name);
+    
+    let rooms: string[] = [];
+    guildMember.roles.forEach((role: Role) => {
+      if (manager.roles.has(role.id)) {
+        rooms.push(role.name);
+      }
+    });
+
+    let roomString = rooms.length === 0 ? "Not in any room": 
+      `Currently in: ${rooms.join(",")}`;
+    let visitedString = member.visitedRooms.length === 0 ? "No visited rooms":
+      `Visited: ${member.visitedRooms.map(room => room.name).join(",")}`;
+    message += `${guildMember}\n${roomString}\n${visitedString}\n`;
+  }
+
+  msg.author.send(message);
+}
+
+function adjacentRooms(msg: DiscordMessage) {
+  let manager = roomManager(), 
+  roomList: string[] = [];
+
+  let member = mainGuild().members
+    .find((m: GuildMember) => m.id === msg.author.id);
+  let room = member.roles.find((r: Role) => manager.roles.has(r.id)); 
+
+  for (let name of manager.neighbors(msg.author.id, room.name)) {
+    roomList.push(name);
+  }
+
+  return roomList;
+}
+
+function getAvailableRooms(msg: DiscordMessage) {
+  let roomList: string[] = adjacentRooms(msg).sort();
+
+  msg.author.send(`Here are the rooms you can visit:\n${roomList.join("\n")}`);
+}
+
+async function userMove(msg: DiscordMessage) {
+  let command = parseFunction(msg.content, ["through"]), 
+    guild = mainGuild(),
+    manager = roomManager(),
+    member = guild.members.find((m: GuildMember) => m.id === msg.author.id),
+    name = command.params.join(),
+    roomModel = await getRoom(msg, true);
+
+  if (roomModel === null) throw new ChannelNotFoundError(name);
+  
+  if (command.args["through"]) {
+    let door = command.args["through"].join(),
+      links = manager.links.get(roomModel.name);
+
+    if (links) {
+      let targetRoom: string | undefined;
+
+      for (let [, neighbor] of links.entries()) {
+        if (neighbor.name === door) {
+          targetRoom = manager.rooms[neighbor.to].name;
+        }
+      }
+
+      if (targetRoom === undefined) {
+        throw new Error("There is no door of that name");
+      } else {
+        await moveMember(member, targetRoom);
+        return;
+      }
+    } else {
+      throw new Error("There are no available neighbors");
+    }
+  }
+
+  let neighbors = adjacentRooms(msg),
+    targetRoom = await getRoomModel(name);
+
+  if (targetRoom === null) {
+    throw new Error("That room does not exist");
+  } else if (neighbors.indexOf(targetRoom.name) === -1) {
+    throw new Error("You cannot access that room");
+  }
+
+  moveMember(member, targetRoom.name);
+}
+
+async function doors(msg: DiscordMessage) {
+  let manager = roomManager(),
+    roomModel = await getRoom(msg, true);
+
+  if (roomModel === null) {
+    throw new Error("Not in proper channel");
+  }
+  
+  let messageString = "", 
+    links = manager.links.get(roomModel.name);
+
+  if (links) {
+    for (let [,neighbor] of links.entries()) {
+      let neighboringRoom = manager.rooms[neighbor.to];
+      messageString += neighbor.name;
+
+      if (neighboringRoom.visitors.has(msg.author.id) || 
+        msg.author.id === mainGuild().ownerID) {
+        messageString += ` => ${neighbor.to}`;
+      } else {
+        messageString += " => unknown";
+      }
+
+      if (neighbor.locked === true) {
+        messageString += ": locked";
+      }
+
+      messageString += "\n";
+    }
+
+    msg.reply(messageString);
+  } else {
+    msg.reply(`There are no doors in this room`);
+  }
+}
+
 /**
  * A mapping of administrative actions to functions
  */
 let actions: Dict<Function> = {
+  'admin-move': move,
   'create-room': createRoom,
   'delete-room': deleteRoom,
+  'doors': doors,
   'inspect': inspect,
   'items': items,
+  'links': links,
+  'lock': handleLock(true),
   'log': showLogs,
-  'move': move,
-  'who': members
+  'move': userMove,
+  'rooms': getAvailableRooms,
+  'unlock': handleLock(false),
+  'who': members,
+  'users': users
 }
 
 export default actions;

@@ -12,11 +12,11 @@ import {
 import { Op } from 'sequelize';
 
 export class RoomManager {
-  public links: Map<string, Set<Neighbor>> = new Map();
+  public links: Map<string, Map<string, Neighbor>> = new Map();
   public roles: Set<string> = new Set();
   public rooms: { [name: string]: Room } = {};
 
-  constructor(rooms: Room[], force: boolean = false) {
+  public constructor(rooms: Room[], force: boolean = false) {
     rooms.forEach((room: Room) => {
       this.rooms[room.name as string] = room;
     });
@@ -24,7 +24,7 @@ export class RoomManager {
     this.initialize(force);
   }
 
-  async initialize(force: boolean) {
+  private async initialize(force: boolean) {
     let roomIds: string[] = [];
 
     for (let key in this.rooms) {
@@ -69,13 +69,14 @@ export class RoomManager {
 
             let connection: Neighbor = {
               locked: link.locked,
+              name: neighbor.name,
               to: neighbor.to
             }
 
             if (existing) {
-              existing.add(connection);
+              existing.set(neighbor.to, connection);
             } else {
-              this.links.set(source.name, new Set([connection]));
+              this.links.set(source.name, new Map([[neighbor.to, connection]]));
             }
             
           }
@@ -84,18 +85,103 @@ export class RoomManager {
       }      
     }
 
-    console.log(this.links);
-
     await Link.destroy({
       where: {
         id: {
           [Op.not]: ids
         }
       }
-    })
+    });
+
+    console.log(this.links);
   }
 
-  static async create(directory: string, force: boolean = false) {
+  public findPath(start: string, end: string): string[] | null {
+    let path: Map<string, string> = new Map();
+    let nextSearch: Set<string> = new Set();
+    let searched: Set<string> = new Set();
+    let searching: Set<string> = new Set([start]);
+    
+    while(searching.size > 0) {
+      let item = searching.keys().next().value;
+      searching.delete(item);
+
+      if (item === end) break;
+
+      searched.add(item);
+      let neighbors = this.links.get(item);
+
+      if (neighbors === undefined) continue;
+
+      for (let [target, neighbor] of neighbors.entries()) {
+        
+        if (neighbor.locked === false && !searched.has(target)) {
+          if (!path.has(target)) path.set(target, item);
+          nextSearch.add(target);
+        }
+      }
+
+      if (searching.size === 0) {
+        searching = nextSearch;
+        nextSearch = new Set();
+      }
+    }
+
+    let location = path.get(end);
+
+    if (location) {
+      let route: string[] = [start];
+
+      while (location !== start) {
+        route.splice(1, 0, location as string);
+        location = path.get(location as string);
+      }
+      
+      return route.concat([end]);
+    }
+
+    return null;
+  }
+
+  public neighbors(id: string, start: string) {
+    let nextSearch: Set<string> = new Set();
+    let searched: Set<string> = new Set();
+    let searching: Set<string> = new Set([start]);
+
+    while (searching.size > 0) {
+      let item = searching.keys().next().value,
+        neighbors = this.links.get(item),
+        skip = false;
+      searching.delete(item);
+
+      if (searched.has(item)) skip = true;
+
+      searched.add(item);
+
+      if (skip === false && neighbors !== undefined) {
+        for (let [, neighbor] of neighbors.entries()) {
+          if (neighbor.locked === true) continue;
+  
+          let target = this.rooms[neighbor.to];
+          
+          if (target.visitors.has(id) === false) continue;
+  
+          nextSearch.add(neighbor.to);
+        }
+      }
+      
+      if (searching.size === 0) {
+        searching = nextSearch;
+        nextSearch = new Set();
+      }
+    }
+
+    searched.delete(start);
+
+    return searched;
+  }
+
+  public static async create(directory: string, force: boolean = false) {
     let rooms: Room[] = [];
     let categories: Map<string, Room[]> = new Map<string, Room[]>();
     let status: Map<string, boolean> = new Map<string, boolean>();

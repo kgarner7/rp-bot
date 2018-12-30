@@ -10,6 +10,7 @@ import {
   BelongsToMany,
   BelongsToManyAddAssociationMixin,
   BelongsToManyAddAssociationsMixin,
+  BelongsToManyCountAssociationsMixin,
   BelongsToManyCreateAssociationMixin,
   BelongsToManyGetAssociationsMixin,
   BelongsToManyRemoveAssociationMixin,
@@ -27,7 +28,7 @@ export class User extends Model {
   static associations: {
     messages: BelongsToMany;
     sentMessages: HasMany;
-    visitors: BelongsToMany;
+    visitedRooms: BelongsToMany;
   }
 
   public id: string;
@@ -52,6 +53,16 @@ export class User extends Model {
   public removeSentMessage: HasManyRemoveAssociationMixin<Message, string>;
   public removeSentMessages: HasManyRemoveAssociationsMixin<Message, string>;
   public setSentMessages: HasManySetAssociationsMixin<Message, string>;
+
+  public visitedRooms: Room[];
+  public addVisitedRoom: BelongsToManyAddAssociationMixin<Room, string>;
+  public addVisitedRooms: BelongsToManyAddAssociationsMixin<Room, string>;
+  public countVisitedRooms: BelongsToManyCountAssociationsMixin;
+  public createVisitedRoom: BelongsToManyCreateAssociationMixin<Room>;
+  public getVisitedRooms: BelongsToManyGetAssociationsMixin<Room>;
+  public removeVisitedRoom: BelongsToManyRemoveAssociationMixin<Room, string>;
+  public removeVisitedRooms: BelongsToManyRemoveAssociationsMixin<Room, string>;
+  public setVisitedRooms: BelongsToManySetAssociationsMixin<Room, string>;
 
   static createFromMember(member: GuildMember) {
     if (member.user.bot !== true) {
@@ -82,7 +93,8 @@ User.init({
   sequelize,
 });
 
-import { Message } from "./message";
+import { Message } from './message';
+import { Room } from './room';
 
 User.hasMany(Message, {
   as: "SentMessages"
@@ -90,4 +102,9 @@ User.hasMany(Message, {
 
 User.belongsToMany(Message, {
   through: "UserMessage"
+});
+
+User.belongsToMany(Room, {
+  as: "visitedRooms",
+  through: "Visitation"
 });

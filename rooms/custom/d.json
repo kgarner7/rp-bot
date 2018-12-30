@@ -2,6 +2,15 @@
   "description": "room d: test",
   "isPrivate": true,
   "name": "room d",
-  "neighbors": [],
+  "neighbors": [
+    {
+      "name": "Door 7",
+      "to": "room c"
+    },
+    {
+      "name": "Door 8",
+      "to": "room e"
+    }
+  ],
   "parent": "test map"
 }

@@ -1,4 +1,11 @@
-import * as Discord from 'discord.js';
+import { 
+  Client,
+  Guild,
+  GuildMember,
+  Message as DiscordMessage,
+  Role,
+  TextChannel
+} from 'discord.js';
 import { initGuild, initRooms } from './helper';
 import AdminActions from './listeners/admin';
 import sequelize, { initDB, Message, Room, User } from './models/models';
@@ -7,17 +14,17 @@ import { InvalidCommandError } from './config/errors';
 import { RoomManager } from './rooms/roomManager';
 import { Op } from 'sequelize';
 
-const client = new Discord.Client();
-let guild: Discord.Guild;
+const client = new Client();
+let guild: Guild;
 let manager: RoomManager;
 
-function invalid(msg: Discord.Message) {
+function invalid(msg: DiscordMessage) {
   return client.user.id === msg.author.id ||
     (msg.guild !== guild && msg.guild !== null);
 }
 
 client.on("ready", async () => {
-  guild = client.guilds.find((g: Discord.Guild) => g.name === config.guildName);
+  guild = client.guilds.find((g: Guild) => g.name === config.guildName);
   initGuild(guild);
 
   let userIds: string[] = [];
@@ -43,7 +50,7 @@ client.on("ready", async () => {
   initRooms(manager);
 });
 
-client.on("messageDelete", (msg: Discord.Message) => {
+client.on("messageDelete", (msg: DiscordMessage) => {
   if (invalid(msg)) return;
 
   Message.destroy({
@@ -53,14 +60,14 @@ client.on("messageDelete", (msg: Discord.Message) => {
   });
 });
 
-client.on("messageUpdate", async (_old: Discord.Message, msg: Discord.Message) => {
+client.on("messageUpdate", async (_old: DiscordMessage, msg: DiscordMessage) => {
   if (invalid(msg)) return;
 
 
   return Message.updateFromMsg(msg);
 });
 
-client.on("message", async (msg: Discord.Message) => {
+client.on("message", async (msg: DiscordMessage) => {
   if (invalid(msg)) return;
 
   let content: string = msg.content;
@@ -71,6 +78,10 @@ client.on("message", async (msg: Discord.Message) => {
 
     let command = msg.content.substring(1, endIndex);
 
+    if (msg.deletable) {
+      await msg.delete();
+    }
+    
     try {
       if (command in AdminActions) {
         await AdminActions[command](msg);
@@ -80,36 +91,53 @@ client.on("message", async (msg: Discord.Message) => {
       }
     } catch(err) {
       msg.author.send(err.message);
-    } finally {
-      if (msg.deletable) {
-        await msg.delete();
-      }
     }
 
-  } else if (msg.channel instanceof Discord.TextChannel) {
+  } else if (msg.channel instanceof TextChannel) {
     await Message.createFromMsg(msg);
   }
 });
 
 client.on("guildMemberUpdate", 
-  (oldMember: Discord.GuildMember, newMember: Discord.GuildMember) => {
+  async (oldMember: GuildMember, newMember: GuildMember) => {
 
   if (oldMember.roles === newMember.roles) {
     return;
   }
 
-  let newRoles: string[] = [];
-  newMember.roles.forEach((r: Discord.Role) => {
+  let roomIds: string[] = [];
+  let roleNames: string[] = [];
+
+  newMember.roles.forEach((r: Role) => {
     if (!(r.name in manager.rooms)) {
       return;
     } 
 
-    if (!oldMember.roles.has(r.id)) {
-      newRoles.push(r.id);
+    if (!oldMember.roles.has(r.id) && r.name in manager.rooms) {
+      let channel = manager.rooms[r.name].channel;
+      if (channel) {
+        roomIds.push(channel.id);
+        roleNames.push(r.name);
+      }
     }
   });
 
-  console.log(newRoles);
+  let user = await User.findOne({
+    where: {
+      id: newMember.id
+    }
+  });
+
+  if (user) {
+    user.addVisitedRooms(roomIds);
+    for (let role of roleNames) {
+      let room = manager.rooms[role];
+      if (room) {
+        room.visitors.add(newMember.id);
+      }
+    }
+  }
+
 }); 
 
 initDB().then(async () => {
@@ -120,3 +148,7 @@ initDB().then(async () => {
     console.error((err as Error).stack);
   }
 });
+
+export function m() {
+  return manager;
+}
