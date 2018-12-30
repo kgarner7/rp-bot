@@ -91,6 +91,7 @@ client.on("message", async (msg: DiscordMessage) => {
       }
     } catch(err) {
       msg.author.send(err.message);
+      console.error((err as Error).stack);
     }
 
   } else if (msg.channel instanceof TextChannel) {

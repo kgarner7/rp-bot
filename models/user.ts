@@ -24,6 +24,12 @@ import {
 import { GuildMember } from 'discord.js';
 import sequelize from './connection';
 
+/**
+ * Database model corresponding to a Discord user
+ * messages {Message[]}: a list of all the messages the user was was presnet in
+ * sentMessages {Message[]}: a list of all the messages sent by this user
+ * visitedRooms {Room[]}: a list of all the rooms this user has visited
+ */
 export class User extends Model {
   static associations: {
     messages: BelongsToMany;
@@ -31,10 +37,12 @@ export class User extends Model {
     visitedRooms: BelongsToMany;
   }
 
+  /** the Discord id of the corresponding user */
   public id: string;
+  /** the display name of the corresponding Discord user */
   public name: string;
-  public createdAt: Date;
-  public updatedAt: Date;
+  public createdAt?: Date;
+  public updatedAt?: Date;
 
   public Messages: Message[];
   public addMessage: BelongsToManyAddAssociationMixin<Message, string>;
@@ -64,7 +72,11 @@ export class User extends Model {
   public removeVisitedRooms: BelongsToManyRemoveAssociationsMixin<Room, string>;
   public setVisitedRooms: BelongsToManySetAssociationsMixin<Room, string>;
 
-  static createFromMember(member: GuildMember) {
+  /**
+   * Creates a User model from a Discord GuildMember
+   * @param {GuildMember} member the guild member corresponding to this User
+   */
+  static async createFromMember(member: GuildMember) {
     if (member.user.bot !== true) {
       return User.findOrCreate({
         defaults: {

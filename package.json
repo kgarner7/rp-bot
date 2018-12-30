@@ -1,19 +1,20 @@
 {
   "name": "summer-mistakes-bot",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "a bot for discord rp",
   "main": "index.ts",
   "dependencies": {
+    "bufferutil": "^3.0.5",
     "discord.js": "^11.4.2",
+    "erlpack": "github:discordapp/erlpack",
     "moment": "^2.23.0",
     "pg": "^7.7.1",
-    "pm2": "^3.2.3",
-    "reflect-metadata": "^0.1.12",
+    "pm2": "^3.2.4",
     "sequelize": "^4.42.0"
   },
   "devDependencies": {
     "@types/glob": "^7.1.1",
-    "@types/node": "^10.12.15",
+    "@types/node": "^10.12.18",
     "@types/pg": "^7.4.11",
     "@types/sequelize": "github:types/sequelize",
     "@types/tmp": "0.0.33",
@@ -23,7 +24,7 @@
     "typescript": "^3.2.2"
   },
   "scripts": {
-    "build": "tsc; cp -R ./rooms/custom/*.json ./dist/rooms/custom/",
+    "build": "tsc; rm ./dist/rooms/custom/*; cp -R ./rooms/custom/*.json ./dist/rooms/custom/",
     "log": "pm2 log",
     "restart": "pm2 restart index.config.js --watch",
     "start": "pm2 startOrReload index.config.js --watch",

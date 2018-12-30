@@ -6,6 +6,7 @@ export type ItemAttributes = {
   children?: ItemAttributes[], 
   description: string, 
   name: string
+  quantity?: number;
 };
 
 export type ItemResolvable = ItemAttributes | Item;
@@ -15,34 +16,34 @@ export class Item {
   public children: ItemResolvable[] = [];
   public description: string;
   public name: string;
+  public quantity: number;
   public room: Room;
   protected state: object = {};
   
-  public constructor({actions = {}, children = [], description, name}: ItemAttributes
-    )
-    {
+  public constructor({actions = {}, children = [], description, name, 
+    quantity = 1}: ItemAttributes) {
       
     this.description = description;
     this.name = name;
+    this.quantity = quantity;
 
-    Object.keys(actions).forEach((action: string) => {
+    for (let action of Object.keys(actions)) {
       this.actions[action] = toFunction(actions[action], this);
-    
-    });
+    }
 
-    children.forEach((c: ItemResolvable) => {
-      if (c instanceof Item) {
-        this.children.push(c);
+    for (let child of children) {
+      if (child instanceof Item) {
+        this.children.push(child);
       } else {
-        this.children.push(new Item(c));
+        this.children.push(new Item(child));
       }
-    });
+    }
   }
 
   public interact(action: string) {
-    let split = action.split(" ");
-    let command: string = split.shift() || "";
-    let args = split.join(" ");
+    let split = action.split(" "),
+      command: string = split.shift() || "",
+      args = split.join(" ");
 
     if (command in this.actions) {
       this.actions[command](args);

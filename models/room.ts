@@ -1,13 +1,13 @@
-import { 
-  Model, 
-  HasMany, 
-  HasManyAddAssociationMixin, 
-  HasManyAddAssociationsMixin, 
-  HasManyCreateAssociationMixin, 
-  HasManyGetAssociationsMixin, 
-  HasManyRemoveAssociationMixin, 
-  HasManyRemoveAssociationsMixin, 
-  HasManySetAssociationsMixin, 
+import {
+  Model,
+  HasMany,
+  HasManyAddAssociationMixin,
+  HasManyAddAssociationsMixin,
+  HasManyCreateAssociationMixin,
+  HasManyGetAssociationsMixin,
+  HasManyRemoveAssociationMixin,
+  HasManyRemoveAssociationsMixin,
+  HasManySetAssociationsMixin,
   STRING,
   TEXT,
   BelongsToMany,
@@ -23,6 +23,13 @@ import {
 import sequelize from './connection';
 import { GuildChannel, TextChannel } from 'discord.js';
 
+/**
+ * Database model corresponding to a Room
+ * messages {Message[]}: list of all the messages sent in this room
+ * sources {Link[]}: list of all the Links with this room as the origin
+ * targets {Link[]}: list of all the Links with this room as the target
+ * visitors: {User[]}: list of all the users that have visited this room
+ */
 export class Room extends Model {
   static associations: {
     messages: HasMany;
@@ -31,9 +38,12 @@ export class Room extends Model {
     visitors: BelongsToMany;
   }
 
+  /** the name of the corresponding Channel on Discord */
   public discordName: string;
+  /** the id of the corresponding Channel on Discord */
   public id: string;
-  public name: string; 
+  /** the initial name of this Room */
+  public name: string;
   public createdAt: Date;
   public updatedAt: Date;
 
@@ -74,12 +84,16 @@ export class Room extends Model {
   public removeVisitors: BelongsToManyRemoveAssociationsMixin<User, string>;
   public setVisitors: BelongsToManySetAssociationsMixin<User, string>;
 
+  /**
+   * Creates a Room model from a Discord channel
+   * @param {GuildChannel} channel the discord channel corresponding to this room
+   */
   static async createFromChannel(channel: GuildChannel) {
     if (channel instanceof TextChannel) {
-      Room.findOrCreate({
+      await Room.findOrCreate({
         defaults: {
           name: channel.name
-        }, 
+        },
         where: {
           id: channel.id
         }
