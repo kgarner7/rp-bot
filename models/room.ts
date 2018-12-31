@@ -1,5 +1,5 @@
+import { GuildChannel, TextChannel } from "discord.js";
 import {
-  Model,
   HasMany,
   HasManyAddAssociationMixin,
   HasManyAddAssociationsMixin,
@@ -8,35 +8,25 @@ import {
   HasManyRemoveAssociationMixin,
   HasManyRemoveAssociationsMixin,
   HasManySetAssociationsMixin,
+  Model,
   STRING,
-  TEXT,
-  BelongsToMany,
-  BelongsToManyAddAssociationMixin,
-  BelongsToManyAddAssociationsMixin,
-  BelongsToManyCreateAssociationMixin,
-  BelongsToManyCountAssociationsMixin,
-  BelongsToManyGetAssociationsMixin,
-  BelongsToManyRemoveAssociationMixin,
-  BelongsToManyRemoveAssociationsMixin,
-  BelongsToManySetAssociationsMixin
-} from 'sequelize';
-import sequelize from './connection';
-import { GuildChannel, TextChannel } from 'discord.js';
+  TEXT
+} from "sequelize";
+
+import sequelize from "./connection";
 
 /**
  * Database model corresponding to a Room
  * messages {Message[]}: list of all the messages sent in this room
  * sources {Link[]}: list of all the Links with this room as the origin
  * targets {Link[]}: list of all the Links with this room as the target
- * visitors: {User[]}: list of all the users that have visited this room
  */
 export class Room extends Model {
   static associations: {
     messages: HasMany;
     sources: HasMany;
     targets: HasMany;
-    visitors: BelongsToMany;
-  }
+  };
 
   /** the name of the corresponding Channel on Discord */
   public discordName: string;
@@ -74,21 +64,11 @@ export class Room extends Model {
   public removeTargets: HasManyRemoveAssociationsMixin<Link, string>;
   public setTargets: HasManySetAssociationsMixin<Link, string>;
 
-  public visitors: User[];
-  public addVisitor: BelongsToManyAddAssociationMixin<User, string>;
-  public addVisitors: BelongsToManyAddAssociationsMixin<User, string>;
-  public countVisitors: BelongsToManyCountAssociationsMixin;
-  public createVisitor: BelongsToManyCreateAssociationMixin<User>;
-  public getVisitors: BelongsToManyGetAssociationsMixin<User>;
-  public removeVisitor: BelongsToManyRemoveAssociationMixin<User, string>;
-  public removeVisitors: BelongsToManyRemoveAssociationsMixin<User, string>;
-  public setVisitors: BelongsToManySetAssociationsMixin<User, string>;
-
   /**
    * Creates a Room model from a Discord channel
-   * @param {GuildChannel} channel the discord channel corresponding to this room
+   * @param channel the discord channel corresponding to this room
    */
-  static async createFromChannel(channel: GuildChannel) {
+  static async createFromChannel(channel: GuildChannel): Promise<void> {
     if (channel instanceof TextChannel) {
       await Room.findOrCreate({
         defaults: {
@@ -115,9 +95,9 @@ Room.init({
   }
 }, { sequelize });
 
-import { Message } from './message';
-import { Link } from './link';
-import { User } from './user';
+// tslint:disable-next-line:ordered-imports
+import { Link } from "./link";
+import { Message } from "./message";
 
 Room.hasMany(Message);
 
@@ -127,9 +107,4 @@ Room.hasMany(Link, {
 
 Room.hasMany(Link, {
   as: "targets"
-});
-
-Room.belongsToMany(User, {
-  as: "visitors",
-  through: "Visitation"
 });

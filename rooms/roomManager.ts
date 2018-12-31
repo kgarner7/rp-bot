@@ -1,35 +1,120 @@
-import * as glob from 'glob';
-import * as path from 'path';
-import { Link, Room as RoomModel } from '../models/models';
-import { Neighbor, Room, RoomAttributes } from './room';
-import { everyoneRole, mainGuild } from '../helper';
-import { 
-  CategoryChannel, 
-  PermissionObject, 
-  Role, 
+import {
+  CategoryChannel,
+  PermissionObject,
+  Role,
   TextChannel
-} from 'discord.js';
-import { Op } from 'sequelize';
+} from "discord.js";
+// tslint:disable-next-line:no-implicit-dependencies
+import * as glob from "glob";
+import * as path from "path";
+import { Op } from "sequelize";
+
+import { everyoneRole, mainGuild } from "../helper";
+import { Link, Room as RoomModel, User } from "../models/models";
+
+import { Neighbor, Room, RoomAttributes } from "./room";
 
 export class RoomManager {
   public links: Map<string, Map<string, Neighbor>> = new Map();
   public roles: Set<string> = new Set();
-  public rooms: { [name: string]: Room } = {};
+  public rooms: Map<string, Room> = new Map();
 
   public constructor(rooms: Room[], force: boolean = false) {
-    rooms.forEach((room: Room) => {
-      this.rooms[room.name as string] = room;
-    });
+    for (const room of rooms) this.rooms.set(room.name, room);
 
     this.initialize(force);
   }
 
-  private async initialize(force: boolean) {
-    let roomIds: string[] = [];
+  public findPath(start: string, end: string): string[] | null {
+    const pathMapping: Map<string, string> = new Map(),
+      searched: Set<string> = new Set();
+    let nextSearch: Set<string> = new Set(),
+      searching: Set<string> = new Set([start]);
 
-    for (let key in this.rooms) {
-      let room = this.rooms[key];
+    while(searching.size > 0) {
+      const item: string = searching.keys()
+        .next().value;
+      searching.delete(item);
 
+      if (item === end) break;
+
+      searched.add(item);
+      const neighbors = this.links.get(item);
+
+      if (neighbors === undefined) continue;
+
+      for (const [target, neighbor] of neighbors.entries()) {
+        if (neighbor.locked === false && !searched.has(target)) {
+          if (!pathMapping.has(target)) pathMapping.set(target, item);
+
+          nextSearch.add(target);
+        }
+      }
+
+      if (searching.size === 0) {
+        searching = nextSearch;
+        nextSearch = new Set();
+      }
+    }
+
+    let location = pathMapping.get(end);
+
+    if (location !== undefined) {
+      const route: string[] = [start];
+
+      while (location !== start) {
+        route.splice(1, 0, location as string);
+        location = pathMapping.get(location as string);
+      }
+
+      return route.concat([end]);
+    }
+
+    return null;
+  }
+
+  public neighbors(id: string, start: string): Set<string> {
+    let nextSearch: Set<string> = new Set(),
+      searching: Set<string> = new Set([start]);
+    const searched: Set<string> = new Set();
+
+    while (searching.size > 0) {
+      const item = searching.keys()
+          .next().value,
+        neighbors = this.links.get(item);
+      let skip = false;
+
+      searching.delete(item);
+
+      if (searched.has(item)) skip = true;
+
+      searched.add(item);
+
+      if (skip === false && neighbors !== undefined) {
+        for (const [, neighbor] of neighbors.entries()) {
+          if (neighbor.locked === true) continue;
+
+          if (neighbor.visitors.has(id) === false) continue;
+
+          nextSearch.add(neighbor.to);
+        }
+      }
+
+      if (searching.size === 0) {
+        searching = nextSearch;
+        nextSearch = new Set();
+      }
+    }
+
+    searched.delete(start);
+
+    return searched;
+  }
+
+  private async initialize(force: boolean): Promise<void> {
+    const roomIds: string[] = [];
+
+    for (const [,room] of this.rooms.entries()) {
       await room.init(this, force);
       await this.roles.add((room.role as Role).id);
       roomIds.push((room.channel as TextChannel).id);
@@ -43,46 +128,47 @@ export class RoomManager {
       }
     });
 
-    let ids: number[] = [];
+    const ids: number[] = [];
 
-    for (let key in this.rooms) {
-      let source = this.rooms[key];
+    for (const [,source] of this.rooms) {
+      for (const [target, neighbor] of source.neighborMap) {
+        const targetRoom = this.rooms.get(target);
 
-      if (source.neighbors) {
-        for (let neighbor of source.neighbors) {
-          let target = this.rooms[neighbor.to];
-
-          if (target) {
-            let existing = this.links.get(source.name);
-            
-            let [link] = await Link.findOrCreate({
-              defaults: {
-                locked: neighbor.locked
-              },
-              where: {
-                sourceId: (source.channel as TextChannel).id,
-                targetId: (target.channel as TextChannel).id
-              }
-            });
-
-            ids.push(link.id);
-
-            let connection: Neighbor = {
-              locked: link.locked,
-              name: neighbor.name,
-              to: neighbor.to
-            }
-
-            if (existing) {
-              existing.set(neighbor.to, connection);
-            } else {
-              this.links.set(source.name, new Map([[neighbor.to, connection]]));
-            }
-            
-          }
+        if (targetRoom === undefined) {
+          continue;
         }
-        source.neighbors = undefined; 
-      }      
+
+        const [link] = await Link.findOrCreate({
+          defaults: {
+            locked: neighbor.locked
+          },
+          where: {
+            sourceId: (source.channel as TextChannel).id,
+            targetId: (targetRoom.channel as TextChannel).id
+          }
+        });
+
+        ids.push(link.id);
+
+        const visitors: User[] = await link.getVisitors({
+          attributes: ["name"]
+        }),
+          connection: Neighbor = {
+            locked: link.locked,
+            name: neighbor.name,
+            to: target,
+            visitors: new Set(visitors.map((u: User) => u.name))
+          },
+          existing = this.links.get(source.name);
+
+        if (existing !== undefined) {
+          existing.set(target, connection);
+        } else {
+          this.links.set(source.name, new Map([[target, connection]]));
+        }
+      }
+
+      source.neighborMap.clear();
     }
 
     await Link.destroy({
@@ -96,147 +182,62 @@ export class RoomManager {
     console.log(this.links);
   }
 
-  public findPath(start: string, end: string): string[] | null {
-    let path: Map<string, string> = new Map();
-    let nextSearch: Set<string> = new Set();
-    let searched: Set<string> = new Set();
-    let searching: Set<string> = new Set([start]);
-    
-    while(searching.size > 0) {
-      let item = searching.keys().next().value;
-      searching.delete(item);
+  public static async create(directory: string, force: boolean = false):
+                             Promise<RoomManager> {
 
-      if (item === end) break;
+    const categories: Map<string, Room[]> = new Map(),
+      everyone = everyoneRole().id,
+      rooms: Room[] = [],
+      status: Map<string, boolean> = new Map();
 
-      searched.add(item);
-      let neighbors = this.links.get(item);
+    for (const file of glob.sync(`${directory}/*.*s`, { absolute: true })) {
+      const localPath = `./${path.relative(__dirname, file)}`,
+        mod = await import(localPath),
+        room: Room = mod.default,
+        existing = categories.get(room.parent);
 
-      if (neighbors === undefined) continue;
-
-      for (let [target, neighbor] of neighbors.entries()) {
-        
-        if (neighbor.locked === false && !searched.has(target)) {
-          if (!path.has(target)) path.set(target, item);
-          nextSearch.add(target);
-        }
-      }
-
-      if (searching.size === 0) {
-        searching = nextSearch;
-        nextSearch = new Set();
-      }
-    }
-
-    let location = path.get(end);
-
-    if (location) {
-      let route: string[] = [start];
-
-      while (location !== start) {
-        route.splice(1, 0, location as string);
-        location = path.get(location as string);
-      }
-      
-      return route.concat([end]);
-    }
-
-    return null;
-  }
-
-  public neighbors(id: string, start: string) {
-    let nextSearch: Set<string> = new Set();
-    let searched: Set<string> = new Set();
-    let searching: Set<string> = new Set([start]);
-
-    while (searching.size > 0) {
-      let item = searching.keys().next().value,
-        neighbors = this.links.get(item),
-        skip = false;
-      searching.delete(item);
-
-      if (searched.has(item)) skip = true;
-
-      searched.add(item);
-
-      if (skip === false && neighbors !== undefined) {
-        for (let [, neighbor] of neighbors.entries()) {
-          if (neighbor.locked === true) continue;
-  
-          let target = this.rooms[neighbor.to];
-          
-          if (target.visitors.has(id) === false) continue;
-  
-          nextSearch.add(neighbor.to);
-        }
-      }
-      
-      if (searching.size === 0) {
-        searching = nextSearch;
-        nextSearch = new Set();
-      }
-    }
-
-    searched.delete(start);
-
-    return searched;
-  }
-
-  public static async create(directory: string, force: boolean = false) {
-    let rooms: Room[] = [];
-    let categories: Map<string, Room[]> = new Map<string, Room[]>();
-    let status: Map<string, boolean> = new Map<string, boolean>();
-
-    let everyone = everyoneRole().id;
-
-    for (let file of glob.sync(`${directory}/*.*s`, { absolute: true })) {
-      let localPath = `./${path.relative(__dirname, file)}`;
-      let mod = await import(localPath);
-      let room: Room = mod.default;
       rooms.push(room);
-
-      let existing = categories.get(room.parent);
 
       if (existing === undefined) {
         categories.set(room.parent, [room]);
         status.set(room.parent, room.isPrivate);
       } else {
         existing.push(room);
-        status.set(room.parent, 
-          (status.get(room.parent) === true) && room.isPrivate);
+        status.set(room.parent, (status.get(room.parent) === true) && room.isPrivate);
       }
     }
 
-    for (let file of glob.sync(`${directory}/*.json`, { absolute: true })) {
-      let localPath = `./${path.relative(__dirname, file)}`;
-      let json = await import(localPath);
-      let room = new Room(json.default as RoomAttributes);
-      rooms.push(room);
+    for (const file of glob.sync(`${directory}/*.json`, { absolute: true })) {
+      const localPath = `./${path.relative(__dirname, file)}`,
+        json = await import(localPath),
+        room = new Room(json.default as RoomAttributes),
+        existing = categories.get(room.parent);
 
-      let existing = categories.get(room.parent);
+      rooms.push(room);
 
       if (existing === undefined) {
         categories.set(room.parent, [room]);
         status.set(room.parent, room.isPrivate);
       } else {
         existing.push(room);
-        status.set(room.parent, 
+        status.set(room.parent,
           (status.get(room.parent) === true) && room.isPrivate);
       }
     }
 
-    let guild = mainGuild();
+    const guild = mainGuild();
 
-    for (let category of categories.keys()) {
+    for (const category of categories.keys()) {
       let existing: CategoryChannel | null = guild.channels
-        .find(c => c.name === category && c.type === 'category') as CategoryChannel;
+        .find(c => c.name === category && c.type === "category") as CategoryChannel;
 
       if (existing !== null && force === true) {
         existing.delete();
         existing = null;
-      } 
+      }
 
       if (existing === null) {
-        existing = await guild.createChannel(category, 'category', [{
+        existing = await guild.createChannel(category, "category", [{
           id: everyone,
           deny: (status.get(category) === true ? ["READ_MESSAGES", "VIEW_CHANNEL"]: [])
         }]) as CategoryChannel;
@@ -247,13 +248,13 @@ export class RoomManager {
           overwrites = {
             READ_MESSAGES: false,
             VIEW_CHANNEL: false
-          }
+          };
         }
 
         existing.overwritePermissions(everyone, overwrites);
       }
 
-      for (let room of categories.get(category) as Room[]) {
+      for (const room of categories.get(category) as Room[]) {
         room.parentChannel = existing;
       }
     }

@@ -1,13 +1,14 @@
-import { FunctionResolvable, toFunction } from '../helper';
-import { Room } from './room';
+import { FunctionResolvable, toFunction } from "../helper";
 
-export type ItemAttributes = {
-  actions?: { [key: string]: FunctionResolvable }, 
-  children?: ItemAttributes[], 
-  description: string, 
-  name: string
+import { Room } from "./room";
+
+export interface ItemAttributes {
+  actions?: { [key: string]: FunctionResolvable };
+  children?: ItemAttributes[];
+  description: string;
+  name: string;
   quantity?: number;
-};
+}
 
 export type ItemResolvable = ItemAttributes | Item;
 
@@ -19,19 +20,19 @@ export class Item {
   public quantity: number;
   public room: Room;
   protected state: object = {};
-  
-  public constructor({actions = {}, children = [], description, name, 
-    quantity = 1}: ItemAttributes) {
-      
+
+  public constructor({actions = {}, children = [], description, name,
+                      quantity = 1}: ItemAttributes) {
+
     this.description = description;
     this.name = name;
     this.quantity = quantity;
 
-    for (let action of Object.keys(actions)) {
+    for (const action of Object.keys(actions)) {
       this.actions[action] = toFunction(actions[action], this);
     }
 
-    for (let child of children) {
+    for (const child of children) {
       if (child instanceof Item) {
         this.children.push(child);
       } else {
@@ -40,8 +41,8 @@ export class Item {
     }
   }
 
-  public interact(action: string) {
-    let split = action.split(" "),
+  public interact(action: string): void {
+    const split = action.split(" "),
       command: string = split.shift() || "",
       args = split.join(" ");
 

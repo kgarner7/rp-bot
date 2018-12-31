@@ -1,23 +1,25 @@
-import { getMembers } from '../helper';
-import sequelize from './connection';
-import { Message as DiscordMessage } from 'discord.js';
+import { Message as DiscordMessage } from "discord.js";
 import {
-  Model,
-  STRING,
-  TEXT,
   BelongsTo,
-  BelongsToMany,
-  BelongsToGetAssociationMixin,
-  BelongsToSetAssociationMixin,
   BelongsToCreateAssociationMixin,
-  BelongsToManyAddAssociationsMixin,
+  BelongsToGetAssociationMixin,
+  BelongsToMany,
   BelongsToManyAddAssociationMixin,
+  BelongsToManyAddAssociationsMixin,
   BelongsToManyCreateAssociationMixin,
   BelongsToManyGetAssociationsMixin,
   BelongsToManyRemoveAssociationMixin,
   BelongsToManyRemoveAssociationsMixin,
-  BelongsToManySetAssociationsMixin
-} from 'sequelize';
+  BelongsToManySetAssociationsMixin,
+  BelongsToSetAssociationMixin,
+  Model,
+  STRING,
+  TEXT
+} from "sequelize";
+
+import { getMembers } from "../helper";
+
+import sequelize from "./connection";
 
 /**
  * Database model representing a Discord message
@@ -27,10 +29,10 @@ import {
  */
 export class Message extends Model {
   static associations: {
-    room: BelongsTo
-    sender: BelongsTo
-    users: BelongsToMany
-  }
+    room: BelongsTo;
+    sender: BelongsTo;
+    users: BelongsToMany;
+  };
 
   /** the message id; corresponds to the ID on Discord */
   public id: string;
@@ -62,23 +64,23 @@ export class Message extends Model {
 
   /**
    * Creates a Message record from a Discord Message
-   * @param {DiscordMessage} msg the discord message source
+   * @param msg the discord message source
    */
-  static async createFromMsg(msg: DiscordMessage) {
-    let transaction = await sequelize.transaction();
-    let users = getMembers(msg);
+  static async createFromMsg(msg: DiscordMessage): Promise<void> {
+    const transaction = await sequelize.transaction(),
+      users = getMembers(msg);
 
     try {
-      let message: Message = await Message.create({
-        RoomId: msg.channel.id,
+      const message: Message = await Message.create({
         id: msg.id,
         message: msg.content,
+        RoomId: msg.channel.id,
         SenderId: msg.author.id
       }, {
-        transaction: transaction
+        transaction
       });
 
-      await message.addUsers(users, { transaction: transaction });
+      await message.addUsers(users, { transaction });
       await transaction.commit();
     } catch(err) {
       await transaction.rollback();
@@ -87,10 +89,10 @@ export class Message extends Model {
 
   /**
    * Updates the Message table from a Discord Message
-   * @param {DiscordMessage} msg the message that was updated
+   * @param msg the message that was updated
    */
-  static async updateFromMsg(msg: DiscordMessage) {
-    let message: Message | null = await Message.findOne({
+  static async updateFromMsg(msg: DiscordMessage): Promise<void> {
+    const message = await Message.findOne({
       where: {
         id: msg.id
       }
@@ -100,17 +102,17 @@ export class Message extends Model {
       return;
     }
 
-    let transaction = await sequelize.transaction();
+    const transaction = await sequelize.transaction();
 
     try {
       await message.setUsers(getMembers(msg), {
-        transaction: transaction
+        transaction
       });
 
       await message.update({
         message: msg.content
       }, {
-        transaction: transaction
+        transaction
       });
 
       await transaction.commit();
@@ -133,11 +135,12 @@ Message.init({
     type: TEXT
   }
 }, {
-  sequelize,
+  sequelize
 });
 
-import { User } from './user';
-import { Room } from './room';
+// tslint:disable-next-line:ordered-imports
+import { Room } from "./room";
+import { User } from "./user";
 
 Message.belongsTo(User, {
   as: "Sender"

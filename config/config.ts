@@ -3,6 +3,7 @@ import { Dict } from "../helper";
 /**
  * Database configurations
  */
+// tslint:disable-next-line:no-any
 export let database: Dict<any> = {
   development: {
     username: "discordo",
@@ -10,7 +11,7 @@ export let database: Dict<any> = {
     options: {
       dialect: "postgres",
       operatorsAliases: false
-    },
+    }
   },
   test: {
     username: "discordo_testing",
@@ -18,7 +19,7 @@ export let database: Dict<any> = {
     options: {
       dialect: "postgres",
       operatorsAliases: false
-    },
+    }
   },
   production: {
     username: process.env.DB_USERNAME,
@@ -26,9 +27,9 @@ export let database: Dict<any> = {
     options: {
       dialect: "postgres",
       operatorsAliases: false
-    },
+    }
   }
-}
+};
 
 /**
  * General environment configurations
@@ -37,4 +38,4 @@ export let config: Dict<string> = {
   botToken: process.env.BOT_TOKEN || "",
   guildName: process.env.GUILD_NAME || "",
   prefix: "!"
-}
+};
