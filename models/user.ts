@@ -22,7 +22,7 @@ import {
   TEXT
 } from "sequelize";
 
-import sequelize from "./connection";
+import { sequelize } from "./connection";
 
 /**
  * Database model corresponding to a Discord user
@@ -31,7 +31,7 @@ import sequelize from "./connection";
  * visitedLinks {Link[]}: a list of all the links this user has visited
  */
 export class User extends Model {
-  static associations: {
+  public static associations: {
     messages: BelongsToMany;
     sentMessages: HasMany;
     vistedLinks: BelongsToMany;
@@ -76,8 +76,10 @@ export class User extends Model {
    * Creates a User model from a Discord GuildMember
    * @param member the guild member corresponding to this User
    */
-  static async createFromMember(member: GuildMember): Promise<[User, boolean] | null> {
-    if (member.user.bot !== true) {
+  public static async createFromMember(member: GuildMember):
+                                       Promise<[User, boolean] | null> {
+
+    if (!member.user.bot) {
       return User.findOrCreate({
         defaults: {
           name: member.displayName

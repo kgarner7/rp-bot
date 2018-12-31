@@ -1,8 +1,5 @@
 {
   "defaultSeverity": "warn",
-  "extends": [
-      "tslint:recommended"
-  ],
   "jsRules": {},
   "rules": {
     "adjacent-overload-signatures": true,
@@ -15,7 +12,7 @@
     "array-type": [true, "array-simple"],
     "arrow-parens": [true, "ban-single-arg-parens"],
     "arrow-return-shorthand": [true, "multiline"],
-    "await-promise": true,
+    "await-promise": [true, "Bluebird"],
     "ban": false,
     "ban-comma-operator": true,
     "ban-types": false,
@@ -23,7 +20,6 @@
     "callable-types": true,
     "class-name": true,
     "comment-format": [true, "check-space", "check-lowercase"],
-    "completed-docs": true,
     "curly": [true, "ignore-same-line"],
     "cyclomatic-complexity": [true, 20],
     "deprecation": true,
@@ -46,7 +42,6 @@
     "max-line-length": [true, 90],
     "member-access": [
       true,
-      "no-public",
       "check-constructor",
       "check-parameter-property"
     ],
@@ -73,10 +68,10 @@
     "no-boolean-literal-compare": true,
     "no-conditional-assignment": true,
     "no-consecutive-blank-lines": true,
-    "no-console": false,
+    "no-console": [true, "log"],
     "no-construct": true,
-    "no-debugger": false,
-    "no-default-export": false,
+    "no-debugger": true,
+    "no-default-export": true,
     "no-duplicate-imports": true,
     "no-duplicate-super": true,
     "no-duplicate-switch-case": true,
@@ -85,7 +80,7 @@
     "no-empty": [true, "allow-empty-catch"],
     "no-empty-interface": true,
     "no-eval": true,
-    "no-floating-promises": true,
+    "no-floating-promises": false,
     "no-for-in-array": true,
     "no-implicit-dependencies": true,
     "no-import-side-effect": true,
@@ -126,7 +121,6 @@
     "no-unsafe-any": true,
     "no-unsafe-finally": true,
     "no-unused-expression": true,
-    "no-unused-variable": [true, "check-parameters"],
     "no-use-before-declare": true,
     "no-var-keyword": true,
     "no-var-requires": true,
@@ -136,8 +130,7 @@
     "object-literal-shorthand": true,
     "object-literal-sort-keys": [
       true,
-      "ignore-case",
-      "match-declaration-order"
+      "ignore-case"
     ],
     "one-line": [
       true,
@@ -180,15 +173,9 @@
       "method": "never"
     }],
     "space-within-parens": true,
-    "strict-boolean-expressions": [
-      true,
-      "allow-null-union",
-      "allow-undefined-union"
-    ],
-    "strict-type-predicates": true,
+    "strict-boolean-expressions": false,
     "switch-default": true,
     "switch-final-break": [true, "always"],
-    "typeof-compare": true,
     "trailing-comma": [true, {
       "multiline": "never",
       "singleline": "never"

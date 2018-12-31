@@ -13,7 +13,7 @@ import {
   TEXT
 } from "sequelize";
 
-import sequelize from "./connection";
+import { sequelize } from "./connection";
 
 /**
  * Database model corresponding to a Room
@@ -22,7 +22,7 @@ import sequelize from "./connection";
  * targets {Link[]}: list of all the Links with this room as the target
  */
 export class Room extends Model {
-  static associations: {
+  public static associations: {
     messages: HasMany;
     sources: HasMany;
     targets: HasMany;
@@ -68,7 +68,7 @@ export class Room extends Model {
    * Creates a Room model from a Discord channel
    * @param channel the discord channel corresponding to this room
    */
-  static async createFromChannel(channel: GuildChannel): Promise<void> {
+  public static async createFromChannel(channel: GuildChannel): Promise<void> {
     if (channel instanceof TextChannel) {
       await Room.findOrCreate({
         defaults: {

@@ -4,7 +4,6 @@ import {
   Role,
   TextChannel
 } from "discord.js";
-// tslint:disable-next-line:no-implicit-dependencies
 import * as glob from "glob";
 import * as path from "path";
 import { Op } from "sequelize";
@@ -44,7 +43,7 @@ export class RoomManager {
       if (neighbors === undefined) continue;
 
       for (const [target, neighbor] of neighbors.entries()) {
-        if (neighbor.locked === false && !searched.has(target)) {
+        if (!neighbor.locked && !searched.has(target)) {
           if (!pathMapping.has(target)) pathMapping.set(target, item);
 
           nextSearch.add(target);
@@ -90,11 +89,11 @@ export class RoomManager {
 
       searched.add(item);
 
-      if (skip === false && neighbors !== undefined) {
+      if (!skip && neighbors !== undefined) {
         for (const [, neighbor] of neighbors.entries()) {
-          if (neighbor.locked === true) continue;
+          if (neighbor.locked) continue;
 
-          if (neighbor.visitors.has(id) === false) continue;
+          if (!neighbor.visitors.has(id)) continue;
 
           nextSearch.add(neighbor.to);
         }
@@ -116,7 +115,7 @@ export class RoomManager {
 
     for (const [,room] of this.rooms.entries()) {
       await room.init(this, force);
-      await this.roles.add((room.role as Role).id);
+      this.roles.add((room.role as Role).id);
       roomIds.push((room.channel as TextChannel).id);
     }
 
@@ -178,8 +177,6 @@ export class RoomManager {
         }
       }
     });
-
-    console.log(this.links);
   }
 
   public static async create(directory: string, force: boolean = false):
@@ -193,6 +190,7 @@ export class RoomManager {
     for (const file of glob.sync(`${directory}/*.*s`, { absolute: true })) {
       const localPath = `./${path.relative(__dirname, file)}`,
         mod = await import(localPath),
+        // tslint:disable-next-line:no-unsafe-any
         room: Room = mod.default,
         existing = categories.get(room.parent);
 
@@ -210,6 +208,7 @@ export class RoomManager {
     for (const file of glob.sync(`${directory}/*.json`, { absolute: true })) {
       const localPath = `./${path.relative(__dirname, file)}`,
         json = await import(localPath),
+        // tslint:disable-next-line:no-unsafe-any
         room = new Room(json.default as RoomAttributes),
         existing = categories.get(room.parent);
 
@@ -231,15 +230,15 @@ export class RoomManager {
       let existing: CategoryChannel | null = guild.channels
         .find(c => c.name === category && c.type === "category") as CategoryChannel;
 
-      if (existing !== null && force === true) {
+      if (existing !== null && force) {
         existing.delete();
         existing = null;
       }
 
       if (existing === null) {
         existing = await guild.createChannel(category, "category", [{
-          id: everyone,
-          deny: (status.get(category) === true ? ["READ_MESSAGES", "VIEW_CHANNEL"]: [])
+          deny: (status.get(category) === true ? ["READ_MESSAGES", "VIEW_CHANNEL"]: []),
+          id: everyone
         }]) as CategoryChannel;
       } else {
         let overwrites: PermissionObject = {};

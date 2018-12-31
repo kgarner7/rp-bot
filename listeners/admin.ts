@@ -1,7 +1,5 @@
 import {
-  Channel,
   Guild,
-  GuildChannel,
   GuildMember,
   Message as DiscordMessage,
   Role,
@@ -27,7 +25,7 @@ import { RoomManager } from "../rooms/roomManager";
  */
 interface Command {
   /** a mapping of keywords to their parameters */
-  args: Dict<string[]>;
+  args: Map<string, string[]>;
   /** a list of the default parameter(s) */
   params: string[];
 }
@@ -46,7 +44,7 @@ export function parseFunction(msg: string,
     split: string[] = msg.split(" ");
 
   const keywords: Set<string> = new Set(words),
-    command: Command = { args: {}, params: [] };
+    command: Command = { args: new Map(), params: [] };
 
   if (split[0].startsWith("!")) split = split.splice(1);
 
@@ -60,7 +58,7 @@ export function parseFunction(msg: string,
       if (argName === "") {
         command.params = params;
       } else {
-        command.args[argName] = params;
+        command.args.set(argName, params);
       }
 
       argName = part;
@@ -89,7 +87,7 @@ export function parseFunction(msg: string,
   if (argName === "") {
     command.params = params;
   } else {
-    command.args[argName] = params;
+    command.args.set(argName, params);
   }
 
   return command;
@@ -124,7 +122,7 @@ function currentRoom(member: GuildMember): string | null {
 function roomName(msg: DiscordMessage, override: boolean = false): RoomName {
   const command: Command = parseFunction(msg.content);
 
-  if (command.args.in === undefined || override === true) {
+  if (!command.args.has("in") || override) {
     if (msg.channel instanceof TextChannel) {
       return {
         name: msg.channel.name,
@@ -141,7 +139,7 @@ function roomName(msg: DiscordMessage, override: boolean = false): RoomName {
     }
   } else {
     return {
-      name: command.args.in.join() as string,
+      name: command.args.get("in")!.join(),
       user: true
     };
   }
@@ -182,22 +180,21 @@ async function getRoom(msg: DiscordMessage,
 
   roomModel = await getRoomModel(channel.name);
 
-  if (roomModel === null && channel.user === false) {
+  if (roomModel === null && !channel.user) {
     channel = roomName(msg, true);
-    if (channel) {
+    if (channel !== null) {
       roomModel = await getRoomModel(channel.name);
 
       msg.author.send(`Could not find room "${channel.name}", trying current room`);
     }
   }
 
-  if (roomModel === null) { return null; }
+  if (roomModel === null) return null;
 
   const member = guild.members.find(m => m.id === msg.author.id);
 
-  if (requirePresence === true &&
-    member.roles.find(r => r.name === roomModel!.name) === null &&
-    msg.author.id !== guild.ownerID) {
+  if (requirePresence && member.roles.find(r => r.name === roomModel!.name) === null
+    && msg.author.id !== guild.ownerID) {
 
     msg.author.send("You are not currently in that room");
 
@@ -214,6 +211,8 @@ async function getRoom(msg: DiscordMessage,
  * @param msg the message we are handling
  */
 async function showLogs(msg: DiscordMessage): Promise<void> {
+  const sender: DiscordUser = msg.author;
+
   /**
    * A helper function for getting a room and all messages by date
    * @param nameOrDiscordName the name of the room
@@ -243,7 +242,6 @@ async function showLogs(msg: DiscordMessage): Promise<void> {
     });
   }
 
-  const sender: DiscordUser = msg.author;
   let channelName: RoomName = roomName(msg),
     name: string,
     warning: string | null = null;
@@ -256,34 +254,28 @@ async function showLogs(msg: DiscordMessage): Promise<void> {
 
   let room = await getChannel(name);
 
-  if (room === null && channelName.user === true) {
+  if (room === null && channelName.user) {
     warning = `Could not find user requested room ${name}`;
     channelName = roomName(msg, true);
 
-    if (channelName === null) {
-      throw new NoLogError(msg);
-    }
+    if (channelName === null) throw new NoLogError(msg);
 
     name = channelName.name;
     room = await getChannel(name);
   }
 
-  if (warning) {
-    msg.author.send(warning);
-  }
+  if (warning) msg.author.send(warning);
 
   if (room === null) {
     throw new NoLogError(msg);
   } else {
     tmp.file((err, path, _fd, callback) => {
-      if (err || room === null) { return; }
+      if (err || room === null) return;
 
       writeFileSync(path, room.Messages.map(message => {
         let senderName: string = message.Sender.name;
 
-        if (message.Sender.id === sender.id) {
-          senderName = "You";
-        }
+        if (message.Sender.id === sender.id) senderName = "You";
 
         const timeString: string =
           moment(message.createdAt)
@@ -351,21 +343,17 @@ export async function createRoom(msg: DiscordMessage): Promise<void> {
 export async function deleteRoom(msg: DiscordMessage): Promise<void> {
   requireAdmin(msg);
 
-  const guild: Guild = mainGuild(),
-    room: RoomModel | null = await getRoom(msg);
+  const guild = mainGuild(),
+    room = await getRoom(msg);
 
   if (room !== null) {
-    const channel = guild.channels.find(c => c.id === room!.id),
+    const channel = guild.channels.find(c => c.id === room.id),
       role: Role = guild.roles.find(r => r.name === name);
 
     if (channel !== null || role !== null) {
-      if (channel !== null) {
-        await channel.delete();
-      }
+      if (channel !== null) await channel.delete();
 
-      if (role !== null) {
-        await role.delete();
-      }
+      if (role !== null) await role.delete();
 
       msg.author.send(`Deleted room ${name}`);
     } else {
@@ -387,7 +375,7 @@ async function members(msg: DiscordMessage): Promise<void> {
       .send("Either you do not have access to this room, or that room does not exist");
   } else {
     let memberString = "";
-    const memberList = guild.roles.find(r => r.name === room!.name).members;
+    const memberList = guild.roles.find(r => r.name === room.name).members;
 
     if (memberList.size === 0) {
       msg.channel.send(`There is no one in the ${room.name}`);
@@ -396,9 +384,9 @@ async function members(msg: DiscordMessage): Promise<void> {
     }
 
     for (const [,member] of memberList.sort()) {
-      if (member.user.bot === true || member.id === guild.ownerID) continue;
+      if (member.user.bot || member.id === guild.ownerID) continue;
 
-      memberString += member + ", ";
+      memberString += `${member}, `;
     }
 
     memberString = memberString.substring(0, memberString.length - 2);
@@ -438,8 +426,9 @@ async function inspect(msg: DiscordMessage): Promise<void> {
         .get(roomModel.name)!;
 
     for (const item of itemsList.params) {
-      if (item in room.items) {
-        descriptions.push(`**${item}**: ${room.items[item].description}`);
+      const roomItem = room.items.get(item);
+      if (roomItem !== undefined) {
+        descriptions.push(`**${item}**: ${roomItem.description}`);
       }
     }
 
@@ -449,6 +438,9 @@ async function inspect(msg: DiscordMessage): Promise<void> {
 
 async function moveMember(member: GuildMember, target: string, source: string = ""):
                           Promise<void> {
+
+  const manager: RoomManager = roomManager(),
+    roles: string[] = [];
 
   async function linkHelper(from: string, to: string): Promise<void> {
     const link = await Link.findOne({
@@ -475,14 +467,10 @@ async function moveMember(member: GuildMember, target: string, source: string = 
     }
   }
 
-  const manager: RoomManager = roomManager(),
-    roles: string[] = [];
-
   for (const [, role] of member.roles) {
-    if (!manager.roles.has(role.id)) {
-      roles.push(role.id);
-    }
+    if (!manager.roles.has(role.id)) roles.push(role.id);
   }
+
   const newRole: Role = mainGuild().roles
     .find(r => r.name === target);
   roles.push(newRole.id);
@@ -500,7 +488,7 @@ async function move(msg: DiscordMessage): Promise<void> {
 
   const command = parseFunction(msg.content, ["to"]),
     guild = mainGuild(),
-    targetName = (command.args.to || []).join("\n"),
+    targetName = (command.args.get("to") || []).join("\n"),
     targetRoom = await getRoomModel(targetName);
 
   if (targetRoom === null) {
@@ -514,9 +502,9 @@ async function move(msg: DiscordMessage): Promise<void> {
       m.displayName === name || m.toString() === name);
 
     if (member !== null) {
-      await moveMember(member, (targetRoom as RoomModel).name);
+      await moveMember(member, targetRoom.name);
 
-      if (member.user.bot === false) member.send(`You were moved to ${targetName}`);
+      if (!member.user.bot) member.send(`You were moved to ${targetName}`);
 
       msg.author.send(`Successfully moved ${member.displayName} to ${targetName}`);
     }
@@ -524,10 +512,10 @@ async function move(msg: DiscordMessage): Promise<void> {
 }
 
 async function findRoomByCommand(command: Command, target: string): Promise<RoomModel> {
-  const arr = command.args[target];
+  const arr = command.args.get(target);
   let name: string;
 
-  if (arr) {
+  if (arr !== undefined) {
     name = arr.join();
   } else {
     throw new ChannelNotFoundError(`${target} channel`);
@@ -544,20 +532,23 @@ function handleLock(locked: boolean): (msg: DiscordMessage) => Promise<void> {
   return async function changeLock(msg: DiscordMessage): Promise<void> {
     requireAdmin(msg);
 
-    const args: Dict<string> = {},
+    const args: {
+      sourceId?: string;
+      targetId?: string;
+    } & Dict<string> = {},
       command = parseFunction(msg.content, ["from", "to"]),
       manager = roomManager();
 
-    if (command.args.from === undefined && command.args.to === undefined) {
+    if (!command.args.has("from") && !command.args.has("to")) {
       throw new Error("You must provide a source and/or target room");
     }
 
-    if (command.args.from !== undefined) {
+    if (command.args.has("from")) {
       const fromModel = await findRoomByCommand(command, "from");
       args.sourceId = fromModel.id;
     }
 
-    if (command.args.to !== undefined) {
+    if (command.args.has("to")) {
       const toModel = await findRoomByCommand(command, "to");
       args.targetId = toModel.id;
     }
@@ -616,23 +607,27 @@ function handleLock(locked: boolean): (msg: DiscordMessage) => Promise<void> {
 async function links(msg: DiscordMessage): Promise<void> {
   requireAdmin(msg);
 
-  const args: Dict<string | boolean> = {},
+  const args: {
+    locked?: boolean;
+    sourceId?: string;
+    targetId?: string;
+  } & Dict<string | boolean> = {},
     command = parseFunction(msg.content, ["locked", "unlocked", "from", "to"]),
     manager = roomManager();
 
-  if (command.args.from) {
+  if (command.args.has("from")) {
     const source = await findRoomByCommand(command, "from");
     args.sourceId = source.id;
   }
 
-  if (command.args.to) {
+  if (command.args.has("to")) {
     const target = await findRoomByCommand(command, "to");
     args.targetId = target.id;
   }
 
-  if (command.args.locked) {
+  if (command.args.has("locked")) {
     args.locked = true;
-  } else if (command.args.unlocked) {
+  } else if (command.args.has("unlocked")) {
     args.locked = false;
   }
 
@@ -676,7 +671,10 @@ async function users(msg: DiscordMessage): Promise<void> {
   let message = "";
 
   const memberList = await User.findAll({
+    attributes: ["id", "name"],
     include: [{
+      as: "visitedLinks",
+      attributes: ["locked"],
       include: [{
         as: "source",
         attributes: ["name"],
@@ -686,11 +684,8 @@ async function users(msg: DiscordMessage): Promise<void> {
         attributes: ["name"],
         model: RoomModel
       }],
-      as: "visitedLinks",
-      attributes: ["locked"],
       model: Link
     }],
-    attributes: ["id", "name"],
     order: [
       ["name", "ASC"]
     ]
@@ -702,11 +697,11 @@ async function users(msg: DiscordMessage): Promise<void> {
     }
 
     const guildMember = guild.members
-      .find((gm: GuildMember) => gm.id === member.id);
+      .find(gm => gm.id === member.id);
 
     const room = currentRoom(guildMember),
       visitedRooms: Set<string> = new Set(room === null ? [] : [room]);
-    let visitedString = room + ", " || "";
+    let visitedString = room === null ? "": room + ", ";
 
     const roomString: string = room === undefined ?
       "Not in any room" : `Currently in: ${room}`;
@@ -770,8 +765,10 @@ async function userMove(msg: DiscordMessage): Promise<void> {
 
   if (roomModel === null) throw new ChannelNotFoundError(name);
 
-  if (command.args.through) {
-    const door: string = command.args.through.join(),
+  const through = command.args.get("through");
+
+  if (through !== undefined) {
+    const door: string = through.join(),
       linkList = manager.links.get(roomModel.name);
 
     if (linkList !== undefined) {
@@ -830,9 +827,7 @@ async function doors(msg: DiscordMessage): Promise<void> {
         messageString += " => unknown";
       }
 
-      if (neighbor.locked === true) {
-        messageString += ": locked";
-      }
+      if (neighbor.locked) messageString += ": locked";
 
       messageString += "\n";
     }
@@ -846,7 +841,7 @@ async function doors(msg: DiscordMessage): Promise<void> {
 /**
  * A mapping of administrative actions to functions
  */
-const actions: Dict<Function> = {
+export const actions: Dict<Function> = {
   "create-room": createRoom,
   "delete-room": deleteRoom,
   "doors": doors,
@@ -859,8 +854,6 @@ const actions: Dict<Function> = {
   "mv": move,
   "rooms": getAvailableRooms,
   "unlock": handleLock(false),
-  "who": members,
-  "users": users
+  "users": users,
+  "who": members
 };
-
-export default actions;

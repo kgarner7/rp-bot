@@ -43,13 +43,13 @@ export class Item {
 
   public interact(action: string): void {
     const split = action.split(" "),
-      command: string = split.shift() || "",
+      command = split.shift(),
       args = split.join(" ");
 
-    if (command in this.actions) {
+    if (command !== undefined && command in this.actions) {
       this.actions[command](args);
     } else {
-      console.log("Not a valid command");
+      // console.log("Not a valid command");
     }
   }
 }

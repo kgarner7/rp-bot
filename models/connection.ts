@@ -3,7 +3,8 @@ import Sequelize from "sequelize";
 
 import { config as settings, database } from "../config/config";
 
-const env: string = process.env.NODE_ENV || "development",
+const nodeEnvironment: string | undefined = process.env.NODE_ENV,
+  env = nodeEnvironment === undefined ? "development": nodeEnvironment,
   config = database[env],
   dbName = `discordo-${settings.guildName.replace(/\ /g, "-")}`;
 
@@ -11,7 +12,7 @@ const env: string = process.env.NODE_ENV || "development",
  * The base database instance
  * Should only be used after calling initDB
  */
-export default new Sequelize.
+export const sequelize = new Sequelize.
   Sequelize(dbName, config.username, config.password, config.options);
 export const Op = Sequelize.Op;
 
@@ -20,11 +21,13 @@ export const Op = Sequelize.Op;
  * If there is a duplicate, silently ignores the error
  */
 export async function initDB(): Promise<void> {
+  // tslint:disable:no-unsafe-any
   const conn = new Client({
     database: "postgres",
     password: config.password,
     user: config.username
   });
+  // tslint:enable:no-unsafe-any
 
   await conn.connect();
   try {

@@ -46,13 +46,13 @@ export interface RoomAttributes {
 export type RoomResolvable = RoomAttributes | Room;
 
 export class Room {
-  public actions: Dict<Function> = {};
+  public actions: Map<string, Function> = new Map();
   public channel?: TextChannel;
   public color: string | number;
   public description: string;
   public name: string;
   public isPrivate: boolean = false;
-  public items: Dict<Item> = {};
+  public items: Map<string, Item> = new Map();
   public neighborMap: Map<string, Neighbor> = new Map();
   public parent: string;
   public parentChannel?: CategoryChannel;
@@ -81,24 +81,23 @@ export class Room {
     }
 
     for (const key of Object.keys(actions)) {
-      this.actions[key] = toFunction(actions[key], this);
+      this.actions.set(key, toFunction(actions[key], this));
     }
 
     for (const i of itemsList) {
       const item: Item = i instanceof Item ? i : new Item(i);
       item.room = this;
-      this.items[item.name] = item;
+      this.items.set(item.name, item);
     }
   }
 
   public interact(action: string): void {
     const split = action.split(" "),
-      command: string = split.shift() || "",
-      args = split.join(" ");
+      shifted: string = split.shift() || "",
+      args = split.join(" "),
+      fn = this.actions.get(shifted);
 
-    if (command in this.actions) {
-      this.actions[command](args);
-    }
+    if (fn !== undefined) fn(args);
   }
 
   public async init(manager: RoomManager, force: boolean = false): Promise<void> {
@@ -119,6 +118,7 @@ export class Room {
 
     const existingChannel = await RoomModel.findOne({
       include: [{
+        as: "sources",
         include: [{
           as: "target",
           attributes: ["name"],
@@ -128,7 +128,6 @@ export class Room {
           attributes: ["name"],
           model: User
         }],
-        as: "sources",
         model: Link
       }],
       where: {
@@ -139,18 +138,18 @@ export class Room {
 
     if (existingChannel) {
       let channel = guild.channels
-        .find(c => c.name === (existingChannel as RoomModel).discordName) as TextChannel,
+        .find(c => c.name === existingChannel.discordName) as TextChannel,
         role: Role = guild.roles.find(r => r.name === this.name);
 
       if (force) {
-        if (channel) { await channel.delete(); }
-        if (role) { await role.delete(); }
+        if (channel !== null) { await channel.delete(); }
+        if (role !== null) { await role.delete(); }
         await existingChannel.destroy();
       } else {
         if (role === null) {
           role = await guild.createRole({
-            name: this.name,
-            color: this.color
+            color: this.color,
+            name: this.name
           });
         } else {
           role.setColor(this.color);
@@ -176,20 +175,20 @@ export class Room {
     try {
       const role = guild.roles.find(r => r.name === this.name);
 
-      if (role) {
+      if (role !== null) {
         this.role = role;
         role.setColor(this.color);
       } else {
         this.role = await guild.createRole({
-          name: this.name,
-          color: this.color
+          color: this.color,
+          name: this.name
         });
       }
 
       const channel = guild.channels
         .find(c => c.name === Room.discordChannelName(this.name));
 
-      this.channel = channel && channel instanceof TextChannel ? channel:
+      this.channel = channel !== null && channel instanceof TextChannel ? channel:
         await guild.createChannel(this.name, "text") as TextChannel;
 
       this.initChannel(allow, deny);
@@ -245,7 +244,7 @@ export class Room {
       throw new ChannelNotFoundError(name);
     }
 
-    const role: Role = guild.roles
+    const role = guild.roles
       .find(c => c.id === channel.permissionOverwrites
       .find(p => p.deny === 0).id);
 

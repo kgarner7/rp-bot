@@ -17,7 +17,7 @@ import {
   Model
 } from "sequelize";
 
-import sequelize from "./connection";
+import { sequelize } from "./connection";
 
 /**
  * Database model representing a one-way connection between two rooms
@@ -27,7 +27,7 @@ import sequelize from "./connection";
  * @extends Model
  */
 export class Link extends Model {
-  static associations: {
+  public static associations: {
     source: BelongsTo;
     target: BelongsTo;
     visitors: BelongsToMany;

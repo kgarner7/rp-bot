@@ -19,7 +19,7 @@ import {
 
 import { getMembers } from "../helper";
 
-import sequelize from "./connection";
+import { sequelize } from "./connection";
 
 /**
  * Database model representing a Discord message
@@ -28,7 +28,7 @@ import sequelize from "./connection";
  * users {User[]}: list of all the users currently in the room when this message was sent
  */
 export class Message extends Model {
-  static associations: {
+  public static associations: {
     room: BelongsTo;
     sender: BelongsTo;
     users: BelongsToMany;
@@ -66,7 +66,7 @@ export class Message extends Model {
    * Creates a Message record from a Discord Message
    * @param msg the discord message source
    */
-  static async createFromMsg(msg: DiscordMessage): Promise<void> {
+  public static async createFromMsg(msg: DiscordMessage): Promise<void> {
     const transaction = await sequelize.transaction(),
       users = getMembers(msg);
 
@@ -91,7 +91,7 @@ export class Message extends Model {
    * Updates the Message table from a Discord Message
    * @param msg the message that was updated
    */
-  static async updateFromMsg(msg: DiscordMessage): Promise<void> {
+  public static async updateFromMsg(msg: DiscordMessage): Promise<void> {
     const message = await Message.findOne({
       where: {
         id: msg.id

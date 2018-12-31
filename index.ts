@@ -11,8 +11,8 @@ import { Op } from "sequelize";
 import { config } from "./config/config";
 import { InvalidCommandError } from "./config/errors";
 import { initGuild, initRooms } from "./helper";
-import AdminActions from "./listeners/admin";
-import sequelize, { initDB, Message, User } from "./models/models";
+import { actions } from "./listeners/admin";
+import { initDB, Message, sequelize, User } from "./models/models";
 import { Room } from "./rooms/room";
 import { RoomManager } from "./rooms/roomManager";
 
@@ -21,8 +21,7 @@ let guild: Guild,
   manager: RoomManager;
 
 function invalid(msg: DiscordMessage): boolean {
-  return client.user.id === msg.author.id ||
-    (msg.guild !== guild && msg.guild !== null);
+  return client.user.id === msg.author.id || (msg.guild !== guild && msg.guild !== null);
 }
 
 client.on("ready", async () => {
@@ -52,9 +51,7 @@ client.on("ready", async () => {
 });
 
 client.on("messageDelete", (msg: DiscordMessage) => {
-  if (invalid(msg)) {
-    return;
-  }
+  if (invalid(msg)) return;
 
   Message.destroy({
     where: {
@@ -64,17 +61,13 @@ client.on("messageDelete", (msg: DiscordMessage) => {
 });
 
 client.on("messageUpdate", async (_old: DiscordMessage, msg: DiscordMessage) => {
-  if (invalid(msg)) {
-    return;
-  }
+  if (invalid(msg)) return;
 
   return Message.updateFromMsg(msg);
 });
 
 client.on("message", async (msg: DiscordMessage) => {
-  if (invalid(msg)) {
-    return;
-  }
+  if (invalid(msg)) return;
 
   const content: string = msg.content;
 
@@ -89,16 +82,16 @@ client.on("message", async (msg: DiscordMessage) => {
     }
 
     try {
-      if (command in AdminActions) {
-        await AdminActions[command](msg);
+      if (command in actions) {
+        // tslint:disable-next-line:no-unsafe-any
+        await actions[command](msg);
       } else {
         throw new InvalidCommandError(command);
       }
     } catch(err) {
-      msg.author.send(err.message);
+      msg.author.send((err as Error).message);
       console.error((err as Error).stack);
     }
-
   } else if (msg.channel instanceof TextChannel) {
     await Message.createFromMsg(msg);
   }
@@ -133,7 +126,7 @@ client.on("guildMemberUpdate",
 initDB()
   .then(async () => {
   try {
-    await sequelize.sync({ force: true });
+    sequelize.sync();
     await client.login(config.botToken);
   } catch(err) {
     console.error((err as Error).stack);

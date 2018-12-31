@@ -10,7 +10,7 @@ import { NodeVM, VMScript } from "vm2";
 import { AccessError } from "./config/errors";
 import { RoomManager } from "./rooms/roomManager";
 
-let everyone: Role,
+let everyone: Role | undefined,
   guild: Guild,
   manager: RoomManager;
 
@@ -59,9 +59,7 @@ export function getMembers(msg: Message): string[] {
 
   if (msg.channel instanceof TextChannel) {
     msg.channel.members.forEach((member: GuildMember) => {
-      if (member.user.bot !== true) {
-        users.push(member.id);
-      }
+      if (!member.user.bot) users.push(member.id);
     });
   }
 
@@ -85,11 +83,11 @@ export type FunctionResolvable = Function | string | string[];
  * @param fn the function or string to resolve
  * @param env the environment of the function to be evaluated
  */
-// tslint:disable-next-line:no-any
+// tslint:disable:no-any no-unsafe-any
 export function toFunction(fn: FunctionResolvable, env: any): Function {
   if (fn instanceof Function) return fn.bind(env);
 
-  const fnString = fn instanceof Array ? fn.join("\n"): fn,
+  const fnString: string = fn instanceof Array ? fn.join("\n"): fn,
     script = new VMScript(fnString),
     vm = new NodeVM({
       console: "inherit",
@@ -101,3 +99,4 @@ export function toFunction(fn: FunctionResolvable, env: any): Function {
   // safely binds the function to an environment
   return (): void => vm.run(script);
 }
+// tslint:enable:no-any no-unsafe-any
