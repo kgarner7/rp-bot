@@ -32,7 +32,8 @@
     "restart": "pm2 restart index.config.js --watch",
     "start": "pm2 startOrReload index.config.js --watch",
     "stop": "pm2 stop index.config.js",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "watch": "tsc --watch"
   },
   "author": "Kendall Garner",
   "license": "MIT",

@@ -22,7 +22,6 @@
     "strictFunctionTypes": true,
     "strictPropertyInitialization": false, 
     "strictNullChecks": true,
-    "target": "es2017",
-    "watch": true
+    "target": "es2017"
   }
 }
