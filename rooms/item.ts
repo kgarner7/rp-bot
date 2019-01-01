@@ -1,4 +1,4 @@
-import { FunctionResolvable, toFunction } from "../helper";
+import { FunctionResolvable, toFunction } from "../helpers/base";
 
 import { Room } from "./room";
 
@@ -13,16 +13,16 @@ export interface ItemAttributes {
 export type ItemResolvable = ItemAttributes | Item;
 
 export class Item {
-  public actions: { [key: string]: Function } = {};
+  public actions: { [key: string]: Function } = { };
   public children: ItemResolvable[] = [];
   public description: string;
   public name: string;
   public quantity: number;
   public room: Room;
-  protected state: object = {};
+  protected state: object = { };
 
-  public constructor({actions = {}, children = [], description, name,
-                      quantity = 1}: ItemAttributes) {
+  public constructor({ actions = { }, children = [], description, name,
+                       quantity = 1}: ItemAttributes) {
 
     this.description = description;
     this.name = name;

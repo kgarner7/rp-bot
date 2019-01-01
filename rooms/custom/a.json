@@ -1,4 +1,7 @@
 {
+  "actions": {
+    "state": "self.state.pasta = 5; console.log(self.state.pasta)"
+  },
   "description": "room a: test",
   "isPrivate": true,
   "name": "room a",

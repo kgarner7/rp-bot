@@ -1,6 +1,6 @@
 import { Options } from "sequelize";
 
-import { Dict } from "../helper";
+import { Dict } from "../helpers/base";
 
 /**
  * Database configurations
@@ -45,7 +45,7 @@ export let config: {
   guildName: string;
   prefix: string;
 } = {
-  botToken: process.env.BOT_TOKEN === undefined ? "": process.env.BOT_TOKEN,
-  guildName: process.env.GUILD_NAME === undefined ? "": process.env.GUILD_NAME,
+  botToken: process.env.BOT_TOKEN === undefined ? "" : process.env.BOT_TOKEN,
+  guildName: process.env.GUILD_NAME === undefined ? "" : process.env.GUILD_NAME,
   prefix: "!"
 };

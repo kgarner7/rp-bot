@@ -4,7 +4,7 @@ import Sequelize from "sequelize";
 import { config as settings, database } from "../config/config";
 
 const nodeEnvironment: string | undefined = process.env.NODE_ENV,
-  env = nodeEnvironment === undefined ? "development": nodeEnvironment,
+  env = nodeEnvironment === undefined ? "development" : nodeEnvironment,
   config = database[env],
   dbName = `discordo-${settings.guildName.replace(/\ /g, "-")}`;
 
@@ -21,18 +21,16 @@ export const Op = Sequelize.Op;
  * If there is a duplicate, silently ignores the error
  */
 export async function initDB(): Promise<void> {
-  // tslint:disable:no-unsafe-any
   const conn = new Client({
     database: "postgres",
     password: config.password,
     user: config.username
   });
-  // tslint:enable:no-unsafe-any
 
   await conn.connect();
   try {
     await conn.query(`CREATE DATABASE "${dbName}";`);
-  } catch(err) {
+  } catch (err) {
     console.error((err as Error).stack);
   } finally {
     await conn.end();

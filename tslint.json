@@ -19,7 +19,7 @@
     "binary-expression-operand-order": true,
     "callable-types": true,
     "class-name": true,
-    "comment-format": [true, "check-space", "check-lowercase"],
+    "comment-format": [true, "check-space"],
     "curly": [true, "ignore-same-line"],
     "cyclomatic-complexity": [true, 20],
     "deprecation": true,
@@ -213,11 +213,25 @@
     "use-isnan": true,
     "variable-name": [
       true,
-      "check-format",
       "allow-leading-underscore", 
-      "allow-pascal-case"
+      "allow-pascal-case",
+      "ban-keywords",
+      "check-format"
     ],
-    "whitespace": true
+    "whitespace": [
+      true,
+      "check-branch",
+      "check-decl",
+      "check-module",
+      "check-postbrace",
+      "check-preblock",
+      "check-operator",
+      "check-rest-spread",
+      "check-separator",
+      "check-type",
+      "check-typecast",
+      "check-type-operator"
+    ]
   },
   "rulesDirectory": []
 }

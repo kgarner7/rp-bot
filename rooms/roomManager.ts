@@ -8,10 +8,11 @@ import * as glob from "glob";
 import * as path from "path";
 import { Op } from "sequelize";
 
-import { everyoneRole, mainGuild } from "../helper";
+import { everyoneRole, mainGuild } from "../helpers/base";
+import { isRoomAttribute } from "../helpers/types";
 import { Link, Room as RoomModel, User } from "../models/models";
 
-import { Neighbor, Room, RoomAttributes } from "./room";
+import { Neighbor, Room } from "./room";
 
 export class RoomManager {
   public links: Map<string, Map<string, Neighbor>> = new Map();
@@ -30,7 +31,7 @@ export class RoomManager {
     let nextSearch: Set<string> = new Set(),
       searching: Set<string> = new Set([start]);
 
-    while(searching.size > 0) {
+    while (searching.size > 0) {
       const item: string = searching.keys()
         .next().value;
       searching.delete(item);
@@ -113,13 +114,13 @@ export class RoomManager {
   private async initialize(force: boolean): Promise<void> {
     const roomIds: string[] = [];
 
-    for (const [,room] of this.rooms.entries()) {
+    for (const [, room] of this.rooms.entries()) {
       await room.init(this, force);
       this.roles.add((room.role as Role).id);
       roomIds.push((room.channel as TextChannel).id);
     }
 
-    RoomModel.destroy({
+    await RoomModel.destroy({
       where: {
         id: {
           [Op.not]: roomIds
@@ -129,7 +130,7 @@ export class RoomManager {
 
     const ids: number[] = [];
 
-    for (const [,source] of this.rooms) {
+    for (const [, source] of this.rooms) {
       for (const [target, neighbor] of source.neighborMap) {
         const targetRoom = this.rooms.get(target);
 
@@ -189,10 +190,16 @@ export class RoomManager {
 
     for (const file of glob.sync(`${directory}/*.*s`, { absolute: true })) {
       const localPath = `./${path.relative(__dirname, file)}`,
-        mod = await import(localPath),
-        // tslint:disable-next-line:no-unsafe-any
-        room: Room = mod.default,
-        existing = categories.get(room.parent);
+        mod = await import(localPath);
+      let room: Room;
+
+      if (mod.default instanceof Room) {
+        room = mod.default;
+      } else {
+        continue;
+      }
+
+      const existing = categories.get(room.parent);
 
       rooms.push(room);
 
@@ -207,10 +214,16 @@ export class RoomManager {
 
     for (const file of glob.sync(`${directory}/*.json`, { absolute: true })) {
       const localPath = `./${path.relative(__dirname, file)}`,
-        json = await import(localPath),
-        // tslint:disable-next-line:no-unsafe-any
-        room = new Room(json.default as RoomAttributes),
-        existing = categories.get(room.parent);
+        json = await import(localPath);
+
+      let room: Room;
+      if (isRoomAttribute(json.default)) {
+        room = new Room(json.default);
+      } else {
+        continue;
+      }
+
+      const existing = categories.get(room.parent);
 
       rooms.push(room);
 
@@ -237,11 +250,11 @@ export class RoomManager {
 
       if (existing === null) {
         existing = await guild.createChannel(category, "category", [{
-          deny: (status.get(category) === true ? ["READ_MESSAGES", "VIEW_CHANNEL"]: []),
+          deny: (status.get(category) === true ? ["READ_MESSAGES", "VIEW_CHANNEL"] : []),
           id: everyone
         }]) as CategoryChannel;
       } else {
-        let overwrites: PermissionObject = {};
+        let overwrites: PermissionObject = { };
 
         if (status.get(category) === true) {
           overwrites = {

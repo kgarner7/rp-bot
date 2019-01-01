@@ -9,7 +9,7 @@ import { config } from "./config";
 export class AccessError extends Error {
   public constructor(message: string) {
     const split = message.split(" "),
-      command: string = (split.length === 0 ? "": split[0])
+      command: string = (split.length === 0 ? "" : split[0])
       .substring(config.prefix.length);
 
     super(`You do not have permissions to run the command ${command}`);

@@ -13,7 +13,7 @@ import {
   FunctionResolvable,
   mainGuild,
   toFunction
-} from "../helper";
+} from "../helpers/base";
 import { Link, Room as RoomModel, User } from "../models/models";
 
 import { Item, ItemResolvable } from "./item";
@@ -57,10 +57,10 @@ export class Room {
   public parent: string;
   public parentChannel?: CategoryChannel;
   public role?: Role;
-  protected state: object = {};
+  protected state: object = { };
   protected manager: RoomManager;
 
-  public constructor({ actions = {}, color = "RANDOM", description,
+  public constructor({ actions = { }, color = "RANDOM", description,
                        isPrivate = false, itemsList = [], name, neighbors = [],
                        parent}: RoomAttributes) {
 
@@ -72,11 +72,11 @@ export class Room {
 
     for (const neighbor of neighbors) {
       this.neighborMap.set(neighbor.to, {
-        ... {
+        ...{
           locked: false,
           visitors: new Set()
         },
-        ... neighbor
+        ...neighbor
       });
     }
 
@@ -106,13 +106,9 @@ export class Room {
       deny: PermissionResolvable[] =
       ["READ_MESSAGE_HISTORY", "SEND_MESSAGES"];
 
-    if (this.isPrivate) {
-      deny.push("READ_MESSAGES");
-    }
+    if (this.isPrivate) deny.push("READ_MESSAGES");
 
-    if (this.parentChannel === null) {
-      return;
-    }
+    if (this.parentChannel === null) return;
 
     this.manager = manager;
 
@@ -136,14 +132,14 @@ export class Room {
     }),
       guild = mainGuild();
 
-    if (existingChannel) {
+    if (existingChannel !== null) {
       let channel = guild.channels
         .find(c => c.name === existingChannel.discordName) as TextChannel,
         role: Role = guild.roles.find(r => r.name === this.name);
 
       if (force) {
-        if (channel !== null) { await channel.delete(); }
-        if (role !== null) { await role.delete(); }
+        if (channel !== null) await channel.delete();
+        if (role !== null) await role.delete();
         await existingChannel.destroy();
       } else {
         if (role === null) {
@@ -188,7 +184,7 @@ export class Room {
       const channel = guild.channels
         .find(c => c.name === Room.discordChannelName(this.name));
 
-      this.channel = channel !== null && channel instanceof TextChannel ? channel:
+      this.channel = channel !== null && channel instanceof TextChannel ? channel :
         await guild.createChannel(this.name, "text") as TextChannel;
 
       this.initChannel(allow, deny);

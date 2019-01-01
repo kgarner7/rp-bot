@@ -3,14 +3,13 @@ import {
   Guild,
   GuildMember,
   Message as DiscordMessage,
-  Role,
   TextChannel
 } from "discord.js";
 import { Op } from "sequelize";
 
 import { config } from "./config/config";
 import { InvalidCommandError } from "./config/errors";
-import { initGuild, initRooms } from "./helper";
+import { initGuild, initRooms } from "./helpers/base";
 import { actions } from "./listeners/admin";
 import { initDB, Message, sequelize, User } from "./models/models";
 import { Room } from "./rooms/room";
@@ -29,7 +28,7 @@ client.on("ready", async () => {
   initGuild(guild);
 
   const userIds: string[] = [];
-  for (const [,member] of guild.members) {
+  for (const [, member] of guild.members) {
     const user = await User.createFromMember(member);
 
     if (user) {
@@ -45,7 +44,7 @@ client.on("ready", async () => {
     }
   });
 
-  const begin = __filename.endsWith(".js") ? "dist/": "";
+  const begin = __filename.endsWith(".js") ? "dist/" : "";
   manager = await RoomManager.create(`./${begin}rooms/custom`);
   initRooms(manager);
 });
@@ -77,18 +76,15 @@ client.on("message", async (msg: DiscordMessage) => {
 
     const command = msg.content.substring(1, endIndex);
 
-    if (msg.deletable) {
-      await msg.delete();
-    }
+    if (msg.deletable) await msg.delete();
 
     try {
       if (command in actions) {
-        // tslint:disable-next-line:no-unsafe-any
         await actions[command](msg);
       } else {
         throw new InvalidCommandError(command);
       }
-    } catch(err) {
+    } catch (err) {
       msg.author.send((err as Error).message);
       console.error((err as Error).stack);
     }
@@ -100,35 +96,33 @@ client.on("message", async (msg: DiscordMessage) => {
 client.on("guildMemberUpdate",
   async (oldMember: GuildMember, newMember: GuildMember) => {
 
-  if (oldMember.roles === newMember.roles) {
-    return;
-  }
+  if (oldMember.roles === newMember.roles) return;
 
   const roomIds: string[] = [],
     roleNames: string[] = [];
 
-  newMember.roles.forEach((r: Role) => {
-    if (!manager.rooms.has(r.name)) {
+  for (const [, role] of newMember.roles) {
+    if (!manager.rooms.has(role.name)) {
       return;
     }
 
-    if (!oldMember.roles.has(r.id)) {
-      const channel = (manager.rooms.get(r.name) as Room).channel;
+    if (!oldMember.roles.has(role.id)) {
+      const channel = (manager.rooms.get(role.name) as Room).channel;
 
       if (channel !== undefined) {
         roomIds.push(channel.id);
-        roleNames.push(r.name);
+        roleNames.push(role.name);
       }
     }
-  });
+  }
 });
 
 initDB()
   .then(async () => {
   try {
-    sequelize.sync();
+    await sequelize.sync();
     await client.login(config.botToken);
-  } catch(err) {
+  } catch (err) {
     console.error((err as Error).stack);
   }
 });

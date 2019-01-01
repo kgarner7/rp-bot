@@ -15,7 +15,7 @@ import {
   ExistingChannelError,
   NoLogError
 } from "../config/errors";
-import { Dict, mainGuild, requireAdmin, roomManager } from "../helper";
+import { Dict, mainGuild, requireAdmin, roomManager } from "../helpers/base";
 import { Link, Message, Op, Room as RoomModel, User } from "../models/models";
 import { Neighbor, Room } from "../rooms/room";
 import { RoomManager } from "../rooms/roomManager";
@@ -110,7 +110,7 @@ function currentRoom(member: GuildMember): string | null {
   const manager: RoomManager = roomManager(),
     role: Role = member.roles.find(r => manager.roles.has(r.id));
 
-  return role === null ? null: role.name;
+  return role === null ? null : role.name;
 }
 
 /**
@@ -132,7 +132,7 @@ function roomName(msg: DiscordMessage, override: boolean = false): RoomName {
       const name = currentRoom(mainGuild().members
         .find(m => m.id === msg.author.id));
 
-      return name === null ? null: {
+      return name === null ? null : {
         name,
         user: false
       };
@@ -383,7 +383,7 @@ async function members(msg: DiscordMessage): Promise<void> {
       return;
     }
 
-    for (const [,member] of memberList.sort()) {
+    for (const [, member] of memberList.sort()) {
       if (member.user.bot || member.id === guild.ownerID) continue;
 
       memberString += `${member}, `;
@@ -461,7 +461,7 @@ async function moveMember(member: GuildMember, target: string, source: string = 
       try {
         await link.addVisitor(member.id);
         manager.links.get(from)!.get(to)!.visitors.add(member.id);
-      } catch(err) {
+      } catch (err) {
         console.error((err as Error).stack);
       }
     }
@@ -497,7 +497,7 @@ async function move(msg: DiscordMessage): Promise<void> {
     return;
   }
 
-  command.params.forEach(async name => {
+  for (const name of command.params) {
     const member = guild.members.find(m =>
       m.displayName === name || m.toString() === name);
 
@@ -508,7 +508,7 @@ async function move(msg: DiscordMessage): Promise<void> {
 
       msg.author.send(`Successfully moved ${member.displayName} to ${targetName}`);
     }
-  });
+  }
 }
 
 async function findRoomByCommand(command: Command, target: string): Promise<RoomModel> {
@@ -535,7 +535,7 @@ function handleLock(locked: boolean): (msg: DiscordMessage) => Promise<void> {
     const args: {
       sourceId?: string;
       targetId?: string;
-    } & Dict<string> = {},
+    } & Dict<string> = { },
       command = parseFunction(msg.content, ["from", "to"]),
       manager = roomManager();
 
@@ -591,7 +591,7 @@ function handleLock(locked: boolean): (msg: DiscordMessage) => Promise<void> {
 
         if (neighbor !== undefined) {
           neighbor.locked = link.locked;
-          const start = `${link.locked ? "L": "Un"}ocked`;
+          const start = `${link.locked ? "L" : "Un"}ocked`;
           messageArray.push(`${start} ${sourceName} => ${targetName} (${neighbor.name})`);
         }
       }
@@ -599,7 +599,7 @@ function handleLock(locked: boolean): (msg: DiscordMessage) => Promise<void> {
 
     msg.author.send(messageArray.length > 0 ?
       messageArray.sort()
-        .join("\n"):
+        .join("\n") :
         "No links changed");
   };
 }
@@ -611,7 +611,7 @@ async function links(msg: DiscordMessage): Promise<void> {
     locked?: boolean;
     sourceId?: string;
     targetId?: string;
-  } & Dict<string | boolean> = {},
+  } & Dict<string | boolean> = { },
     command = parseFunction(msg.content, ["locked", "unlocked", "from", "to"]),
     manager = roomManager();
 
@@ -648,7 +648,7 @@ async function links(msg: DiscordMessage): Promise<void> {
     where: args
   });
 
-  const string = linksList.map((link: Link) => {
+  const linkString = linksList.map((link: Link) => {
     const map = manager.links.get(link.source.name)!,
       neighbor = map.get(link.target.name)!,
       endString = link.locked ? ": locked" : "";
@@ -657,10 +657,10 @@ async function links(msg: DiscordMessage): Promise<void> {
   })
   .join("\n");
 
-  if (string === "") {
+  if (linkString === "") {
     msg.author.send("No links found with those parameters");
   } else {
-    msg.author.send(string);
+    msg.author.send(linkString);
   }
 }
 
@@ -701,7 +701,7 @@ async function users(msg: DiscordMessage): Promise<void> {
 
     const room = currentRoom(guildMember),
       visitedRooms: Set<string> = new Set(room === null ? [] : [room]);
-    let visitedString = room === null ? "": room + ", ";
+    let visitedString = room === null ? "" : room + ", ";
 
     const roomString: string = room === undefined ?
       "Not in any room" : `Currently in: ${room}`;
@@ -841,7 +841,7 @@ async function doors(msg: DiscordMessage): Promise<void> {
 /**
  * A mapping of administrative actions to functions
  */
-export const actions: Dict<Function> = {
+export const actions: Dict<(msg: DiscordMessage) => Promise<void> | void> = {
   "create-room": createRoom,
   "delete-room": deleteRoom,
   "doors": doors,

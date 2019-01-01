@@ -1,14 +1,13 @@
 import {
   Guild,
-  GuildMember,
   Message,
   Role,
   TextChannel
 } from "discord.js";
 import { NodeVM, VMScript } from "vm2";
 
-import { AccessError } from "./config/errors";
-import { RoomManager } from "./rooms/roomManager";
+import { AccessError } from "../config/errors";
+import { RoomManager } from "../rooms/roomManager";
 
 let everyone: Role | undefined,
   guild: Guild,
@@ -58,9 +57,9 @@ export function getMembers(msg: Message): string[] {
   const users: string[] = [];
 
   if (msg.channel instanceof TextChannel) {
-    msg.channel.members.forEach((member: GuildMember) => {
+    for (const [, member] of msg.channel.members) {
       if (!member.user.bot) users.push(member.id);
-    });
+    }
   }
 
   return users;
@@ -87,7 +86,7 @@ export type FunctionResolvable = Function | string | string[];
 export function toFunction(fn: FunctionResolvable, env: any): Function {
   if (fn instanceof Function) return fn.bind(env);
 
-  const fnString: string = fn instanceof Array ? fn.join("\n"): fn,
+  const fnString: string = fn instanceof Array ? fn.join("\n") : fn,
     script = new VMScript(fnString),
     vm = new NodeVM({
       console: "inherit",

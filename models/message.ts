@@ -17,7 +17,7 @@ import {
   TEXT
 } from "sequelize";
 
-import { getMembers } from "../helper";
+import { getMembers } from "../helpers/base";
 
 import { sequelize } from "./connection";
 
@@ -82,7 +82,7 @@ export class Message extends Model {
 
       await message.addUsers(users, { transaction });
       await transaction.commit();
-    } catch(err) {
+    } catch (err) {
       await transaction.rollback();
     }
   }
