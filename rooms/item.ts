@@ -1,4 +1,5 @@
 import { FunctionResolvable, toFunction } from "../helpers/base";
+import { Serializable } from "../helpers/classes";
 
 import { Room } from "./room";
 
@@ -6,24 +7,35 @@ export interface ItemAttributes {
   actions?: { [key: string]: FunctionResolvable };
   children?: ItemAttributes[];
   description: string;
+  locked?: boolean;
   name: string;
   quantity?: number;
 }
 
 export type ItemResolvable = ItemAttributes | Item;
 
-export class Item {
+export interface ItemModel {
+  children: ItemModel[];
+  description: string;
+  locked: boolean;
+  name: string;
+  quantity: number;
+}
+
+export class Item implements Serializable<ItemModel> {
   public actions: { [key: string]: Function } = { };
-  public children: ItemResolvable[] = [];
+  public children: Item[] = [];
   public description: string;
+  public locked: boolean;
   public name: string;
   public quantity: number;
   public room: Room;
   protected state: object = { };
 
-  public constructor({ actions = { }, children = [], description, name,
+  public constructor({ actions = { }, children = [], description, locked = false, name,
                        quantity = 1}: ItemAttributes) {
 
+    this.locked = locked;
     this.description = description;
     this.name = name;
     this.quantity = quantity;
@@ -51,5 +63,15 @@ export class Item {
     } else {
       // console.log("Not a valid command");
     }
+  }
+
+  public serialize(): ItemModel {
+    return {
+      children: this.children.map(c => c.serialize()),
+      description: this.description,
+      locked: this.locked,
+      name: this.name,
+      quantity: this.quantity
+    };
   }
 }

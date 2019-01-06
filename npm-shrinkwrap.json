@@ -132,6 +132,12 @@
         }
       }
     },
+    "@types/async": {
+      "version": "2.0.50",
+      "resolved": "https://registry.npmjs.org/@types/async/-/async-2.0.50.tgz",
+      "integrity": "sha512-VMhZMMQgV1zsR+lX/0IBfAk+8Eb7dPVMWiQGFAt3qjo5x7Ml6b77jUo0e1C3ToD+XRDXqtrfw+6AB0uUsPEr3Q==",
+      "dev": true
+    },
     "@types/bluebird": {
       "version": "3.5.25",
       "resolved": "https://registry.npmjs.org/@types/bluebird/-/bluebird-3.5.25.tgz",
@@ -4254,9 +4260,9 @@
       }
     },
     "vm2": {
-      "version": "3.6.5",
-      "resolved": "https://registry.npmjs.org/vm2/-/vm2-3.6.5.tgz",
-      "integrity": "sha512-aO7qdYWcAwS4mmn5AnDVS5+979HfZ3ncWlEeyy+cQicH/dooTg6l4shZ+A83PhVtNWkxIglLQ8d6UvXssyxCCg=="
+      "version": "3.6.6",
+      "resolved": "https://registry.npmjs.org/vm2/-/vm2-3.6.6.tgz",
+      "integrity": "sha512-SXC941SEoL0c8+qe+N/PVYsck6vN6fzdkObISlF+YlCHeMCHhHsFD4yuydr1azEYqE8qgxHHkGPOd+iiV9sUyA=="
     },
     "vxx": {
       "version": "1.2.2",

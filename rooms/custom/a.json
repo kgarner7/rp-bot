@@ -4,6 +4,13 @@
   },
   "description": "room a: test",
   "isPrivate": true,
+  "itemsList": [
+    {
+      "description": "an item",
+      "name": "item 1",
+      "quantity": 5
+    }
+  ],
   "name": "room a",
   "neighbors": [
     {

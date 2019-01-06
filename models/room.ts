@@ -8,10 +8,14 @@ import {
   HasManyRemoveAssociationMixin,
   HasManyRemoveAssociationsMixin,
   HasManySetAssociationsMixin,
+  JSON,
   Model,
   STRING,
   TEXT
 } from "sequelize";
+
+import { Dict } from "../helpers/base";
+import { ItemModel } from "../rooms/item";
 
 import { sequelize } from "./connection";
 
@@ -32,6 +36,7 @@ export class Room extends Model {
   public discordName: string;
   /** the id of the corresponding Channel on Discord */
   public id: string;
+  public inventory: Dict<ItemModel>;
   /** the initial name of this Room */
   public name: string;
   public createdAt: Date;
@@ -89,6 +94,10 @@ Room.init({
   id: {
     primaryKey: true,
     type: STRING
+  },
+  inventory: {
+    defaultValue: { },
+    type: JSON
   },
   name: {
     type: TEXT

@@ -57,7 +57,7 @@ export function getMembers(msg: Message): string[] {
   const users: string[] = [];
 
   if (msg.channel instanceof TextChannel) {
-    for (const [, member] of msg.channel.members) {
+    for (const member of msg.channel.members.values()) {
       if (!member.user.bot) users.push(member.id);
     }
   }
@@ -74,7 +74,9 @@ export function requireAdmin(msg: Message): void {
   if (msg.author.id !== mainGuild().ownerID) throw new AccessError(msg.content);
 }
 
-export interface Dict<T> { [k: string]: T; }
+export interface Dict<T> {
+  [k: string]: T;
+}
 export type FunctionResolvable = Function | string | string[];
 
 /**

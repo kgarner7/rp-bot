@@ -9,7 +9,7 @@ import * as path from "path";
 import { Op } from "sequelize";
 
 import { everyoneRole, mainGuild } from "../helpers/base";
-import { isRoomAttribute } from "../helpers/types";
+import { isRoomAttribute, exists } from "../helpers/types";
 import { Link, Room as RoomModel, User } from "../models/models";
 
 import { Neighbor, Room } from "./room";
@@ -194,7 +194,7 @@ export class RoomManager {
       let room: Room;
 
       if (mod.default instanceof Room) {
-        room = mod.default;
+        room = mod.default as Room;
       } else {
         continue;
       }

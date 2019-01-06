@@ -10,7 +10,8 @@ import { Op } from "sequelize";
 import { config } from "./config/config";
 import { InvalidCommandError } from "./config/errors";
 import { initGuild, initRooms } from "./helpers/base";
-import { actions } from "./listeners/admin";
+import { actions } from "./listeners/actions";
+import { sendMessage } from "./listeners/baseHelpers";
 import { initDB, Message, sequelize, User } from "./models/models";
 import { Room } from "./rooms/room";
 import { RoomManager } from "./rooms/roomManager";
@@ -31,9 +32,7 @@ client.on("ready", async () => {
   for (const [, member] of guild.members) {
     const user = await User.createFromMember(member);
 
-    if (user) {
-      userIds.push(user[0].id);
-    }
+    if (user) userIds.push(user[0].id);
   }
 
   User.destroy({
@@ -85,7 +84,7 @@ client.on("message", async (msg: DiscordMessage) => {
         throw new InvalidCommandError(command);
       }
     } catch (err) {
-      msg.author.send((err as Error).message);
+      sendMessage(msg, (err as Error).message, true);
       console.error((err as Error).stack);
     }
   } else if (msg.channel instanceof TextChannel) {
@@ -120,7 +119,7 @@ client.on("guildMemberUpdate",
 initDB()
   .then(async () => {
   try {
-    await sequelize.sync();
+    await sequelize.sync({ force: true });
     await client.login(config.botToken);
   } catch (err) {
     console.error((err as Error).stack);

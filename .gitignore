@@ -1,4 +1,4 @@
-node_modules
 dist/*
-!.gitkeep
+node_modules
 testing.ts
+!.gitkeep

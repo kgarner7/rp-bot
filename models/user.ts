@@ -17,10 +17,14 @@ import {
   HasManyRemoveAssociationMixin,
   HasManyRemoveAssociationsMixin,
   HasManySetAssociationsMixin,
+  JSON,
   Model,
   STRING,
   TEXT
 } from "sequelize";
+
+import { Dict } from "../helpers/base";
+import { Item, ItemModel } from "../rooms/item";
 
 import { sequelize } from "./connection";
 
@@ -39,6 +43,7 @@ export class User extends Model {
 
   /** the Discord id of the corresponding user */
   public id: string;
+  public inventory: Dict<ItemModel>;
   /** the display name of the corresponding Discord user */
   public name: string;
   public createdAt?: Date;
@@ -98,6 +103,10 @@ User.init({
   id: {
     primaryKey: true,
     type: STRING
+  },
+  inventory: {
+    defaultValue: { },
+    type: JSON
   },
   name: {
     allowNull: false,

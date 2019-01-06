@@ -14,9 +14,10 @@ import {
   mainGuild,
   toFunction
 } from "../helpers/base";
+import { SerializedMap } from "../helpers/classes";
 import { Link, Room as RoomModel, User } from "../models/models";
 
-import { Item, ItemResolvable } from "./item";
+import { Item, ItemModel, ItemResolvable } from "./item";
 import { RoomManager } from "./roomManager";
 
 export interface Neighbor {
@@ -52,7 +53,7 @@ export class Room {
   public description: string;
   public name: string;
   public isPrivate: boolean = false;
-  public items: Map<string, Item> = new Map();
+  public items: SerializedMap<Item, ItemModel> = new SerializedMap();
   public neighborMap: Map<string, Neighbor> = new Map();
   public parent: string;
   public parentChannel?: CategoryChannel;
@@ -133,8 +134,7 @@ export class Room {
       guild = mainGuild();
 
     if (existingChannel !== null) {
-      let channel = guild.channels
-        .find(c => c.name === existingChannel.discordName) as TextChannel,
+      let channel = guild.channels.get(existingChannel.id) as TextChannel,
         role: Role = guild.roles.find(r => r.name === this.name);
 
       if (force) {
@@ -142,6 +142,12 @@ export class Room {
         if (role !== null) await role.delete();
         await existingChannel.destroy();
       } else {
+        this.items.clear();
+
+        for (const [name, item] of Object.entries(existingChannel.inventory)) {
+          this.items.set(name, new Item(item));
+        }
+
         if (role === null) {
           role = await guild.createRole({
             color: this.color,
@@ -192,6 +198,7 @@ export class Room {
       await RoomModel.create({
         discordName: this.channel.name,
         id: this.channel.id,
+        inventory: this.items.serialize(),
         name: this.name
       });
     } catch (err) {
@@ -241,10 +248,10 @@ export class Room {
     }
 
     const role = guild.roles
-      .find(c => c.id === channel.permissionOverwrites
+      .get(channel.permissionOverwrites
       .find(p => p.deny === 0).id);
 
-    if (role === null) throw new ChannelNotFoundError(name);
+    if (role === undefined) throw new ChannelNotFoundError(name);
 
     try {
       await channel.delete();
