@@ -24,7 +24,7 @@ import {
 } from "sequelize";
 
 import { Dict } from "../helpers/base";
-import { Item, ItemModel } from "../rooms/item";
+import { ItemModel } from "../rooms/item";
 
 import { sequelize } from "./connection";
 
@@ -38,7 +38,7 @@ export class User extends Model {
   public static associations: {
     messages: BelongsToMany;
     sentMessages: HasMany;
-    vistedLinks: BelongsToMany;
+    visitedLinks: BelongsToMany;
   };
 
   /** the Discord id of the corresponding user */

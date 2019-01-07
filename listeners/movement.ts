@@ -64,7 +64,7 @@ async function moveMember(member: GuildMember, target: string, source: string = 
 export async function move(msg: DiscordMessage): Promise<void> {
   requireAdmin(msg);
 
-  const command = parseCommand(msg.content, ["to"]),
+  const command = parseCommand(msg, ["to"]),
     guild = mainGuild(),
     targetName = (command.args.get("to") || []).join("\n"),
     targetRoom = await getRoomModel(targetName);
@@ -92,7 +92,7 @@ export async function move(msg: DiscordMessage): Promise<void> {
 }
 
 export async function userMove(msg: DiscordMessage): Promise<void> {
-  const command = parseCommand(msg.content, ["through"]),
+  const command = parseCommand(msg, ["through"]),
     guild = mainGuild(),
     manager = roomManager(),
     member = guild.members.get(msg.author.id)!,

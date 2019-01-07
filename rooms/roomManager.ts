@@ -4,12 +4,12 @@ import {
   Role,
   TextChannel
 } from "discord.js";
-import * as glob from "glob";
-import * as path from "path";
+import { sync } from "glob";
+import { relative } from "path";
 import { Op } from "sequelize";
 
 import { everyoneRole, mainGuild } from "../helpers/base";
-import { isRoomAttribute, exists } from "../helpers/types";
+import { isRoomAttribute } from "../helpers/types";
 import { Link, Room as RoomModel, User } from "../models/models";
 
 import { Neighbor, Room } from "./room";
@@ -188,16 +188,18 @@ export class RoomManager {
       rooms: Room[] = [],
       status: Map<string, boolean> = new Map();
 
-    for (const file of glob.sync(`${directory}/*.*s`, { absolute: true })) {
-      const localPath = `./${path.relative(__dirname, file)}`,
+    for (const file of sync(`${directory}/*.*s`, { absolute: true })) {
+      const localPath = `./${relative(__dirname, file)}`,
         mod = await import(localPath);
       let room: Room;
 
+      // tslint:disable:no-unsafe-any
       if (mod.default instanceof Room) {
         room = mod.default as Room;
       } else {
         continue;
       }
+      // tslind:enable:no-unsafe-any
 
       const existing = categories.get(room.parent);
 
@@ -212,16 +214,19 @@ export class RoomManager {
       }
     }
 
-    for (const file of glob.sync(`${directory}/*.json`, { absolute: true })) {
-      const localPath = `./${path.relative(__dirname, file)}`,
+    for (const file of sync(`${directory}/*.json`, { absolute: true })) {
+      const localPath = `./${relative(__dirname, file)}`,
         json = await import(localPath);
 
       let room: Room;
+
+      // tslint:disable:no-unsafe-any
       if (isRoomAttribute(json.default)) {
         room = new Room(json.default);
       } else {
         continue;
       }
+      // tslint:enable:no-unsafe-any
 
       const existing = categories.get(room.parent);
 

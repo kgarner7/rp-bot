@@ -14,7 +14,7 @@ export async function createRoom(msg: DiscordMessage): Promise<void> {
   requireAdmin(msg);
 
   const guild: Guild = mainGuild(),
-    name: string = parseCommand(msg.content).params
+    name: string = parseCommand(msg).params
       .join("");
 
   if (name === "" || guild.channels.find(c => c.name === name) !== null) {

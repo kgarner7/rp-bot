@@ -2,7 +2,7 @@ import { Message as DiscordMessage } from "discord.js";
 
 import { Dict } from "../helpers/base";
 
-import { inspect, inventory, items, takeItem } from "./items";
+import { giveItem, inspect, inventory, items, takeItem } from "./items";
 import { doors, handleLock, links } from "./links";
 import { move, userMove } from "./movement";
 import { createRoom, deleteRoom, getAvailableRooms } from "./rooms";
@@ -15,6 +15,7 @@ export const actions: Dict<(msg: DiscordMessage) => Promise<void>> = {
   "create-room": createRoom,
   "delete-room": deleteRoom,
   "doors": doors,
+  "give": giveItem,
   "inspect": inspect,
   "inventory": inventory,
   "items": items,

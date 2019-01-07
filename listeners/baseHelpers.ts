@@ -40,11 +40,12 @@ export interface Command {
  * @param msg the string to evaluate
  * @param words the keywords to be evaluated
  */
-export function parseCommand(msg: string, words: Iterable<string> = ["in"]): Command {
+export function parseCommand(msg: DiscordMessage,
+                             words: Iterable<string> = ["in"]): Command {
   let argName = "",
     built = "",
     params: string[] = [],
-    split: string[] = msg.split(" ");
+    split: string[] = msg.content.split(" ");
 
   const keywords: Set<string> = new Set(words),
     command: Command = { args: new Map(), params: [] };
@@ -123,7 +124,7 @@ export function currentRoom(member: GuildMember): string | null {
  * @returns the room name, or null
  */
 export function getRoomName(msg: DiscordMessage, override: boolean = false): RoomName {
-  const command: Command = parseCommand(msg.content);
+  const command: Command = parseCommand(msg);
 
   if (!command.args.has("in") || override) {
     if (msg.channel instanceof TextChannel) {
@@ -213,10 +214,7 @@ export function sendMessage(msg: DiscordMessage, message: string,
                             isPrivate: boolean = false): void {
 
   if (!isPrivate && msg.channel instanceof TextChannel) {
-    msg.channel.send(message)
-      .catch((err: Error) => {
-        console.error(err);
-      });
+    msg.channel.send(message);
   } else {
     msg.author.send(message);
  }

@@ -1,4 +1,4 @@
-// tslint:disable:no-any
+// tslint:disable:no-any no-unsafe-any
 import { Room } from "../models/room";
 import { Item, ItemAttributes, ItemResolvable } from "../rooms/item";
 import {
@@ -152,7 +152,7 @@ export function isRoomAttribute(arg: any): arg is RoomAttributes {
 
   if (exists(arg.itemsList)) {
     if (arg.itemsList instanceof Array) {
-      for (const item of arg.itemsList) {
+      for (const item of arg.itemsList as any[]) {
         if (!isItemResolvable(item)) return false;
       }
     } else {

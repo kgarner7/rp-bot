@@ -34,7 +34,7 @@ export function handleLock(locked: boolean): (msg: DiscordMessage) => Promise<vo
       sourceId?: string;
       targetId?: string;
     } & Dict<string> = { },
-      command = parseCommand(msg.content, ["from", "to"]),
+      command = parseCommand(msg, ["from", "to"]),
       manager = roomManager();
 
     if (!command.args.has("from") && !command.args.has("to")) {
@@ -111,7 +111,7 @@ export async function links(msg: DiscordMessage): Promise<void> {
     sourceId?: string;
     targetId?: string;
   } & Dict<string | boolean> = { },
-    command = parseCommand(msg.content, ["locked", "unlocked", "from", "to"]),
+    command = parseCommand(msg, ["locked", "unlocked", "from", "to"]),
     manager = roomManager();
 
   if (command.args.has("from")) {
