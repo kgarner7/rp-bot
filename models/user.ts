@@ -86,7 +86,7 @@ export class User extends Model {
                                        Promise<[User, boolean] | null> {
 
     if (!member.user.bot) {
-      return User.findOrCreate({
+      const [user, created] = await User.findOrCreate({
         defaults: {
           discordName: member.user.username,
           name: member.displayName
@@ -95,6 +95,14 @@ export class User extends Model {
           id: member.id
         }
       });
+
+      if (user.discordName !== member.displayName) {
+        await user.update({
+          discordName: member.displayName
+        });
+      }
+
+      return [user, created];
     } else {
       return null;
     }

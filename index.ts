@@ -92,8 +92,22 @@ client.on("message", async (msg: DiscordMessage) => {
   }
 });
 
+client.on("guildMemberAdd", async (member: GuildMember) => {
+  await User.createFromMember(member);
+});
+
 client.on("guildMemberUpdate",
   async (oldMember: GuildMember, newMember: GuildMember) => {
+
+  if (oldMember.displayName !== newMember.displayName) {
+    await User.update({
+      discordName: newMember.displayName
+    }, {
+      where: {
+        id: newMember.id
+      }
+    });
+  }
 
   if (oldMember.roles === newMember.roles) return;
 
