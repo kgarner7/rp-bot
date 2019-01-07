@@ -119,6 +119,8 @@ export async function userMove(msg: DiscordMessage): Promise<void> {
 
       if (targetNeighbor === undefined) {
         throw new Error("There is no door of that name");
+      } else if (targetNeighbor.locked) {
+        throw new Error(`Door ${targetNeighbor.name} is locked`);
       } else {
         await moveMember(member, targetNeighbor.to, roomModel.name);
 
