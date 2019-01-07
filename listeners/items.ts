@@ -1,13 +1,83 @@
-import async, { series } from "async";
+import async from "async";
 import { Message as DiscordMessage, TextChannel } from "discord.js";
 
 import { Dict, mainGuild, roomManager } from "../helpers/base";
 import { SortableArray } from "../helpers/classes";
 import { exists } from "../helpers/types";
-import { Op, sequelize, User } from "../models/models";
+import { Op, Room, sequelize, User } from "../models/models";
 import { Item, ItemModel } from "../rooms/item";
 
+import { Action } from "./actions";
 import { getRoom, parseCommand, sendMessage } from "./baseHelpers";
+
+export const usage: Action = {
+  give: {
+    description: "Gives item(s) to another player",
+    uses: [
+      {
+        example: "!give item 1 to user a",
+        explanation: "Gives one stack of an item to a user",
+        use: "!give **item** to **user**"
+      }, {
+        example: "!give 3 of item 1 to user a",
+        explanation: "Gives multiple stacks of an item you own to someone else",
+        use: "!give **number** of **item** to **user**"
+      }
+    ]
+  },
+  inspect: {
+    description: "Inspects an item in a room",
+    uses: [
+      {
+        example: "!inspect item 1",
+        use: "!inspect **item**"
+      }, {
+        admin: true,
+        example: "!inspect item 1 in room a",
+        use: "!inspect **item** in **room**"
+      }
+    ]
+  },
+  inventory: {
+    description: "View your inventory",
+    uses: [ { use: "!inventory" } ]
+  },
+  items: {
+    description: "View all items in a room",
+    uses: [
+      { use: "!items" },
+      {
+        admin: true,
+        example: "!items in room a",
+        use: "!items in **room**"
+      }
+    ]
+  },
+  take: {
+    description: "Take an item and add it to your inventory",
+    uses: [
+      {
+        example: "take item 1",
+        explanation: "Takes (1) of an item",
+        use: "!take **item**"
+      },
+      {
+        example: "take item 1 in room a",
+        use: "!take **item** in **room**"
+      },
+      {
+        example: "take 2 of item 1",
+        explanation: "Takes (n > 0) of an item, up to its quantity",
+        use: "!take **number** of **item**"
+      },
+      {
+        admin: true,
+        example: "take 2 of item 1 in room a",
+        use: "!take **number** of **item** in **room**"
+      }
+    ]
+  }
+};
 
 const roomLock: Set<string> = new Set(),
   userLock: Set<string> = new Set();
@@ -92,6 +162,7 @@ async function lock({ release, room, user }:
 // tslint:disable-next-line:cyclomatic-complexity
 export async function giveItem(msg: DiscordMessage): Promise<void> {
   const command = parseCommand(msg, ["of", "to"]),
+    guild = mainGuild(),
     targetName = command.args.get("to");
 
   if (targetName === undefined) throw new Error("Missing target user");
@@ -99,11 +170,16 @@ export async function giveItem(msg: DiscordMessage): Promise<void> {
   const targetJoined = targetName.join();
 
   let users = await User.findAll({
-    attributes: ["id", "name"],
+    attributes: ["discordName", "id", "name"],
     where: {
       [Op.or]: [
         { id: msg.author.id },
-        { name: targetName }
+        {
+          [Op.or]: [
+            { discordName: targetName },
+            { name: targetName }
+          ]
+        }
       ]
     }
   });
@@ -112,14 +188,40 @@ export async function giveItem(msg: DiscordMessage): Promise<void> {
     target: User | undefined;
 
   for (const user of users) {
-    if (user.name === targetJoined) target = user;
-    else if (user.id === msg.author.id) sender = user;
+    if (user.name === targetJoined || user.discordName === targetJoined) {
+      target = user;
+    } else if (user.id === msg.author.id) sender = user;
   }
 
   if (sender === undefined) throw new Error("You do not exist as a sender");
 
   if (target === undefined) {
     throw new Error(`Could not find user "${targetJoined}"`);
+  }
+
+  const senderUser = guild.members.get(sender.id)!,
+    targetUser = guild.members.get(target.id)!;
+
+  const senderSet: Set<string> = new Set(senderUser.roles
+      .map(r => r.name)),
+    unionSet: Set<string> = new Set();
+
+  for (const role of targetUser.roles.values()) {
+    if (senderSet.has(role.name)) {
+      unionSet.add(role.name);
+    }
+  }
+
+  const rooms = await Room.findAll({
+    where: {
+      name: {
+        [Op.or]: Array.from(unionSet)
+      }
+    }
+  });
+
+  if (rooms.length === 0) {
+    throw new Error("Must be in the same room to trade");
   }
 
   const ofArg = command.args.get("of");
@@ -227,7 +329,7 @@ export async function giveItem(msg: DiscordMessage): Promise<void> {
  * @param msg the message to be evaluated
  */
 export async function items(msg: DiscordMessage): Promise<void> {
-  const roomModel = await getRoom(msg);
+  const roomModel = await getRoom(msg, true);
 
   if (roomModel !== null) {
     await lock({ release: false, room: roomModel.id });
@@ -322,7 +424,7 @@ export async function inventory(msg: DiscordMessage): Promise<void> {
 
 export async function takeItem(msg: DiscordMessage): Promise<void> {
   const command = parseCommand(msg, ["of", "in"]),
-    roomModel = await getRoom(msg),
+    roomModel = await getRoom(msg, true),
     user = await User.findOne({
       attributes: ["id"],
       where: {

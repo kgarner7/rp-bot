@@ -42,6 +42,7 @@ export class User extends Model {
   };
 
   /** the Discord id of the corresponding user */
+  public discordName: string;
   public id: string;
   public inventory: Dict<ItemModel>;
   /** the display name of the corresponding Discord user */
@@ -87,6 +88,7 @@ export class User extends Model {
     if (!member.user.bot) {
       return User.findOrCreate({
         defaults: {
+          discordName: member.user.username,
           name: member.displayName
         },
         where: {
@@ -100,6 +102,9 @@ export class User extends Model {
 }
 
 User.init({
+  discordName: {
+    type: STRING
+  },
   id: {
     primaryKey: true,
     type: STRING

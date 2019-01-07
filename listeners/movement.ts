@@ -6,6 +6,7 @@ import { Link, Room as RoomModel } from "../models/models";
 import { Neighbor } from "../rooms/room";
 import { RoomManager } from "../rooms/roomManager";
 
+import { Action } from "./actions";
 import {
   adjacentRooms,
   getRoom,
@@ -13,6 +14,34 @@ import {
   parseCommand,
   sendMessage
 } from "./baseHelpers";
+
+export const usage: Action = {
+  move: {
+    description: "Move through an unlocked door or any available room",
+    uses: [
+      {
+        example: "!move room a",
+        explanation: "Moves to any room that you have visited that is available",
+        use: "!move **room a**"
+      },
+      {
+        example: "!move through Door 1",
+        explanation: "Moves through an unlocked door. Will be marked as visited",
+        use: "!move through **door**"
+      }
+    ]
+  },
+  mv: {
+    adminOnly: true,
+    description: "Forceably moves a user to another room",
+    uses: [
+      {
+        example: "!move user 1 to room a",
+        use: "!move **user** to **room**"
+      }
+    ]
+  }
+};
 
 async function moveMember(member: GuildMember, target: string, source: string = ""):
                           Promise<void> {
@@ -77,7 +106,7 @@ export async function move(msg: DiscordMessage): Promise<void> {
 
   for (const name of command.params) {
     const member = guild.members.find(m =>
-      m.displayName === name || m.toString() === name);
+      m.displayName === name || m.toString() === name || m.user.username === name);
 
     if (member !== null) {
       await moveMember(member, targetRoom.name);

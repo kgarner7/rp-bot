@@ -5,7 +5,75 @@ import { ChannelNotFoundError } from "../config/errors";
 import { Dict, mainGuild, requireAdmin, roomManager } from "../helpers/base";
 import { Link, Room as RoomModel } from "../models/models";
 
+import { Action } from "./actions";
 import { Command, getRoom, getRoomModel, parseCommand, sendMessage } from "./baseHelpers";
+
+export const usage: Action = {
+  doors: {
+    description: "See all doors in a room",
+    uses: [
+      { use: "!doors" },
+      { admin: true, use: "!doors in **room**" }
+    ]
+  },
+  links: {
+    adminOnly: true,
+    description: "See links between rooms. Each case shows a single optional parameter",
+    uses: [
+      {
+        explanation: "see all links",
+        use: "!links"
+      },
+      {
+        example: "!links from room a",
+        explanation: "see all links from start room",
+        use: "!links from **room**"
+      },
+      {
+        example: "!links to room a",
+        explanation: "see all links to target room",
+        use: "!links to **room**"
+      },
+      {
+        example: "!links locked",
+        explanation: "See all links that are locked or unlocked",
+        use: "!links **locked | unlocked**"
+      }
+    ]
+  },
+  lock: {
+    adminOnly: true,
+    description: "Locks all links matching the query parameters",
+    uses: [
+      {
+        example: "!lock from room a",
+        explanation: "Locks all links with source **room**",
+        use: "!lock from **room**"
+      },
+      {
+        example: "!lock to room a",
+        explanation: "Locks all links with target **room**",
+        use: "!lock to **room**"
+      }
+    ]
+  },
+  unlock: {
+    adminOnly: true,
+    description: "Unocks all links matching the query parameters",
+    uses: [
+      {
+        example: "!unlock from room a",
+        explanation: "Unlocks all links with source **room**",
+        use: "!unlock from **room**"
+      },
+      {
+        example: "!lock to room a",
+        explanation: "Unlocks all links with target **room**",
+        use: "!unlock to **room**"
+      }
+    ]
+  }
+};
 
 async function findRoomByCommand(command: Command, target: string):
   Promise<RoomModel> {

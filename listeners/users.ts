@@ -11,11 +11,43 @@ import {  NoLogError } from "../config/errors";
 import { mainGuild, requireAdmin } from "../helpers/base";
 import { Link, Message as MessageModel, Room as RoomModel, User } from "../models/models";
 
+import { Action } from "./actions";
 import {
   currentRoom,
   getRoom,
   getRoomName
 } from "./baseHelpers";
+
+export const usage: Action = {
+  log: {
+    description: "View a transcript of the chats in a room",
+    uses: [
+      { explanation: "gets the log in your current room", use: "!log" },
+      {
+        example: "!log in room a",
+        explanation: "gets the log for a specific room",
+        use: "!log in **room**"
+      }
+    ]
+  },
+  users: {
+    adminOnly: true,
+    description: "gets information on all users",
+    uses: [
+      { use: "!users" }
+    ]
+  },
+  who: {
+    description: "Gets all users in a room",
+    uses: [
+      { use: "!who" },
+      {
+        admin: true,
+        use: "!who in **room**"
+      }
+    ]
+  }
+};
 
 /**
  * Gets all the current individuals in a room
@@ -23,7 +55,7 @@ import {
  */
 export async function members(msg: DiscordMessage): Promise<void> {
   const guild = mainGuild(),
-    room = await getRoom(msg);
+    room = await getRoom(msg, true);
 
   if (room === null) {
     msg.author
@@ -154,7 +186,7 @@ export async function users(msg: DiscordMessage): Promise<void> {
   let message = "";
 
   const memberList = await User.findAll({
-    attributes: ["id", "name"],
+    attributes: ["id", "inventory", "name"],
     include: [{
       as: "visitedLinks",
       attributes: ["locked"],
@@ -207,7 +239,15 @@ export async function users(msg: DiscordMessage): Promise<void> {
 
     if (visitedString.length === 0) visitedString = "No rooms visited";
 
-    message += `${guildMember}\n${roomString}\n${visitedString}\n`;
+    let itemString = "Inventory:";
+
+    for (const item of Object.values(member.inventory)) {
+      itemString += `\n**${item.name}**: ${item.description} (${item.quantity})`;
+    }
+
+    if (itemString === "Inventory:") itemString = "Inventory: none";
+
+    message += `${guildMember}\n${roomString}\n${visitedString}\n${itemString}\n`;
   }
 
   msg.author.send(message);
