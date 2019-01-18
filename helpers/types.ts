@@ -10,8 +10,32 @@ import {
 
 import { Dict, FunctionResolvable } from "./base";
 
+/**
+ * A wrapper for undefined | null
+ */
+export type none = undefined | null;
+
+/**
+ * A wrapper for T | none
+ */
+export type None<T> = T | none;
+
+/**
+ * A wrapper for T | null
+ */
+export type Null<T> = T | null;
+
+/**
+ * a wrapper for T | undefined
+ */
+export type Undefined<T> = T | undefined;
+
+export function isNone(arg: any): arg is none {
+  return arg === undefined || arg === null;
+}
+
 export function exists(arg: any): boolean {
-  return arg !== undefined && arg !== null;
+  return !isNone(arg);
 }
 
 // START FUNCTION RESOLVABLE

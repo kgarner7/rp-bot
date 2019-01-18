@@ -1,9 +1,9 @@
-import { Message as DiscordMessage } from "discord.js";
-
 import { Dict, mainGuild } from "../helpers/base";
+import { CustomMessage } from "../helpers/classes";
 
 import { parseCommand, sendMessage } from "./baseHelpers";
 import {
+  dropItem,
   giveItem,
   inspect,
   inventory,
@@ -54,7 +54,7 @@ for (const [command, usage] of Object.entries(usages)) {
   };
 }
 
-async function help(msg: DiscordMessage): Promise<void> {
+async function help(msg: CustomMessage): Promise<void> {
   const command = parseCommand(msg),
     commandName = command.params.join(""),
     isAdmin = msg.author.id === mainGuild().ownerID;
@@ -98,10 +98,11 @@ async function help(msg: DiscordMessage): Promise<void> {
 /**
  * A mapping of administrative actions to functions
  */
-export const actions: Dict<(msg: DiscordMessage) => Promise<void>> = {
+export const actions: Dict<(msg: CustomMessage) => Promise<void>> = {
   "create-room": createRoom,
   "delete-room": deleteRoom,
   "doors": doors,
+  "drop": dropItem,
   "give": giveItem,
   "help": help,
   "inspect": inspect,

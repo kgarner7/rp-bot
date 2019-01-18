@@ -1,6 +1,8 @@
 // tslint:disable:max-classes-per-file
+import { Message as DiscordMessage, User } from "discord.js";
+
 import { Dict } from "./base";
-import { exists } from "./types";
+import { isNone } from "./types";
 
 enum Result {
   LessThan = -1,
@@ -19,14 +21,14 @@ type Comparator<T> = (a: T, b: T) => Result;
 function compare<T>(a: T, b: T, comparator?: Comparator<T>): Result {
   if (comparator !== undefined) return comparator(a, b);
 
-  const aExists = exists(a),
-    bExists = exists(b);
+  const aNone = isNone(a),
+    bNone = isNone(b);
 
-  if (!aExists && !bExists || a === b) return Result.Equal;
+  if ((aNone && bNone) || a === b) return Result.Equal;
 
-  if (!aExists) return Result.LessThan;
+  if (aNone) return Result.LessThan;
 
-  if (!bExists) return Result.GreaterThan;
+  if (bNone) return Result.GreaterThan;
 
   if (typeof(a) === "string" && typeof(b) === "string") {
     return a.localeCompare(b, "standard", { sensitivity: "case" });
@@ -156,4 +158,8 @@ export class SerializedMap<T extends Serializable<S>, S>
 
     return json;
   }
+}
+
+export class CustomMessage extends DiscordMessage {
+  public overridenSender?: User;
 }

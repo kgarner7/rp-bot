@@ -24,6 +24,7 @@ import {
 } from "sequelize";
 
 import { Dict } from "../helpers/base";
+import { Null } from "../helpers/types";
 import { ItemModel } from "../rooms/item";
 
 import { sequelize } from "./connection";
@@ -83,13 +84,13 @@ export class User extends Model {
    * @param member the guild member corresponding to this User
    */
   public static async createFromMember(member: GuildMember):
-                                       Promise<[User, boolean] | null> {
+                                       Promise<Null<[User, boolean]>> {
 
     if (!member.user.bot) {
       const [user, created] = await User.findOrCreate({
         defaults: {
-          discordName: member.user.username,
-          name: member.displayName
+          discordName: member.displayName,
+          name: member.user.username
         },
         where: {
           id: member.id

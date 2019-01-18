@@ -1,14 +1,16 @@
-import { GuildMember, Message as DiscordMessage, Role, TextChannel } from "discord.js";
+import { GuildMember, Role, TextChannel } from "discord.js";
 import { Op } from "sequelize";
 
 import { mainGuild, roomManager } from "../helpers/base";
+import { CustomMessage } from "../helpers/classes";
+import { Null } from "../helpers/types";
 import { Room as RoomModel } from "../models/models";
 import { RoomManager } from "../rooms/roomManager";
 
 /**
  * Gets the rooms adjacent to the target room
  */
-export function adjacentRooms(msg: DiscordMessage): string[] {
+export function adjacentRooms(msg: CustomMessage): string[] {
   const manager = roomManager(),
     roomList: string[] = [];
 
@@ -28,11 +30,11 @@ export function adjacentRooms(msg: DiscordMessage): string[] {
 /**
  * Represents the result of tokenizing a message
  */
-export interface Command {
+export class Command {
   /** a mapping of keywords to their parameters */
-  args: Map<string, string[]>;
+  public args: Map<string, string[]> = new Map();
   /** a list of the default parameter(s) */
-  params: string[];
+  public params: string[] = [];
 }
 
 /**
@@ -40,7 +42,7 @@ export interface Command {
  * @param msg the string to evaluate
  * @param words the keywords to be evaluated
  */
-export function parseCommand(msg: DiscordMessage,
+export function parseCommand(msg: CustomMessage,
                              words: Iterable<string> = ["in"]): Command {
   let argName = "",
     built = "",
@@ -48,7 +50,7 @@ export function parseCommand(msg: DiscordMessage,
     split: string[] = msg.content.split(" ");
 
   const keywords: Set<string> = new Set(words),
-    command: Command = { args: new Map(), params: [] };
+    command = new Command();
 
   if (split[0].startsWith("!")) split = split.splice(1);
 
@@ -98,19 +100,19 @@ export function parseCommand(msg: DiscordMessage,
 }
 
 /** Represents the name of a room and whether it was user-defined */
-export type RoomName = {
+export type RoomName = Null<{
   /** the name of the room */
   name: string;
   /** whether this room was by found by user-defined name or not */
   user: boolean;
-} | null;
+}>;
 
 /**
  * Gets the current room of the message's author
  * @param msg the message we are evaluating
  * @returns the current room of the author, or null
  */
-export function currentRoom(member: GuildMember): string | null {
+export function currentRoom(member: GuildMember): Null<string> {
   const manager: RoomManager = roomManager(),
     role: Role = member.roles.find(r => manager.roles.has(r.id));
 
@@ -123,7 +125,7 @@ export function currentRoom(member: GuildMember): string | null {
  * @param override whether to ignore user input
  * @returns the room name, or null
  */
-export function getRoomName(msg: DiscordMessage, override: boolean = false): RoomName {
+export function getRoomName(msg: CustomMessage, override: boolean = false): RoomName {
   const command: Command = parseCommand(msg);
 
   if (!command.args.has("in") || override) {
@@ -155,7 +157,7 @@ export function getRoomName(msg: DiscordMessage, override: boolean = false): Roo
  * we wish to find
  * @returns the room ()
  */
-export async function getRoomModel(name: string): Promise<RoomModel | null> {
+export async function getRoomModel(name: string): Promise<Null<RoomModel>> {
   return RoomModel.findOne({
     where: {
       [Op.or]: [
@@ -171,12 +173,12 @@ export async function getRoomModel(name: string): Promise<RoomModel | null> {
  * @param msg the message to be evaluated
  * @param requirePresence whether the author must have a role to see that room
  */
-export async function getRoom(msg: DiscordMessage,
+export async function getRoom(msg: CustomMessage,
                               requirePresence: boolean = true):
-                              Promise<RoomModel | null> {
+                              Promise<Null<RoomModel>> {
 
   let channel = getRoomName(msg),
-    roomModel: RoomModel | null = null;
+    roomModel: Null<RoomModel> = null;
 
   const guild = mainGuild();
 
@@ -210,10 +212,12 @@ export async function getRoom(msg: DiscordMessage,
   return roomModel;
 }
 
-export function sendMessage(msg: DiscordMessage, message: string,
+export function sendMessage(msg: CustomMessage, message: string,
                             isPrivate: boolean = false): void {
 
-  if (!isPrivate && msg.channel instanceof TextChannel) {
+  if (msg.overridenSender !== undefined) {
+    msg.overridenSender.send(message);
+  } else if (!isPrivate && msg.channel instanceof TextChannel) {
     msg.channel.send(message);
   } else {
     msg.author.send(message);

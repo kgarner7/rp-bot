@@ -1,7 +1,4 @@
-import {
-  Message as DiscordMessage,
-  User as DiscordUser
-} from "discord.js";
+import { User as DiscordUser } from "discord.js";
 import { writeFileSync } from "fs";
 import moment from "moment";
 import { Op } from "sequelize";
@@ -9,6 +6,8 @@ import tmp from "tmp";
 
 import {  NoLogError } from "../config/errors";
 import { mainGuild, requireAdmin } from "../helpers/base";
+import { CustomMessage } from "../helpers/classes";
+import { Null } from "../helpers/types";
 import { Link, Message as MessageModel, Room as RoomModel, User } from "../models/models";
 
 import { Action } from "./actions";
@@ -53,7 +52,7 @@ export const usage: Action = {
  * Gets all the current individuals in a room
  * @param msg the message to be evaluated
  */
-export async function members(msg: DiscordMessage): Promise<void> {
+export async function members(msg: CustomMessage): Promise<void> {
   const guild = mainGuild(),
     room = await getRoom(msg, true);
 
@@ -88,14 +87,14 @@ export async function members(msg: DiscordMessage): Promise<void> {
  * If called in a DM, sends the logs of a particular channel
  * @param msg the message we are handling
  */
-export async function showLogs(msg: DiscordMessage): Promise<void> {
+export async function showLogs(msg: CustomMessage): Promise<void> {
   const sender: DiscordUser = msg.author;
 
   /**
    * A helper function for getting a room and all messages by date
    * @param nameOrDiscordName the name of the room
    */
-  async function getChannel(nameOrDiscordName: string): Promise<RoomModel | null> {
+  async function getChannel(nameOrDiscordName: string): Promise<Null<RoomModel>> {
     return RoomModel.findOne({
       include: [{
         attributes: ["createdAt", "message"],
@@ -122,7 +121,7 @@ export async function showLogs(msg: DiscordMessage): Promise<void> {
 
   let channelName = getRoomName(msg),
     name: string,
-    warning: string | null = null;
+    warning: Null<string> = null;
 
   if (channelName === null) {
     throw new NoLogError(msg);
@@ -179,7 +178,7 @@ export async function showLogs(msg: DiscordMessage): Promise<void> {
   }
 }
 
-export async function users(msg: DiscordMessage): Promise<void> {
+export async function users(msg: CustomMessage): Promise<void> {
   requireAdmin(msg);
 
   const guild = mainGuild();

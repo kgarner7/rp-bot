@@ -1,9 +1,9 @@
 import async from "async";
-import { Message as DiscordMessage, TextChannel } from "discord.js";
+import { TextChannel } from "discord.js";
 
-import { Dict, mainGuild, roomManager } from "../helpers/base";
-import { SortableArray } from "../helpers/classes";
-import { exists } from "../helpers/types";
+import { Dict, mainGuild, requireAdmin, roomManager } from "../helpers/base";
+import { CustomMessage, SortableArray } from "../helpers/classes";
+import { isNone, None, Undefined } from "../helpers/types";
 import { Op, Room, sequelize, User } from "../models/models";
 import { Item, ItemModel } from "../rooms/item";
 
@@ -84,7 +84,7 @@ const roomLock: Set<string> = new Set(),
 
 const lockQueue = async.queue(
   ({ release, room, user }: { release: boolean; room?: string; user?: string | string[] },
-   callback: (err: Error | undefined | null) => void) => {
+   callback: (err: None<Error>) => void) => {
 
   async.until(() => {
     if (release) return true;
@@ -107,8 +107,8 @@ const lockQueue = async.queue(
   },
     () => {
       // do nothing
-     }, (err: Error | null | undefined) => {
-      if (exists(err)) {
+     }, (err: None<Error>) => {
+      if (!isNone(err)) {
         callback(err);
 
         return;
@@ -136,7 +136,7 @@ const lockQueue = async.queue(
   });
 }, 1);
 
-function senderName(msg: DiscordMessage): string {
+function senderName(msg: CustomMessage): string {
   return (msg.channel instanceof TextChannel) ? msg.author.toString() : "You";
 }
 
@@ -147,11 +147,11 @@ function senderName(msg: DiscordMessage): string {
 async function lock({ release, room, user }:
   { release: boolean; room?: string; user?: string | string[] }): Promise<void> {
   return new Promise((resolve: () => void): void => {
-    lockQueue.push({ release, room, user },  (err: Error | undefined | null): void => {
-      if (exists(err)) {
+    lockQueue.push({ release, room, user },  (err: None<Error>): void => {
+      if (!isNone(err)) {
         console.error(err);
 
-        throw err as Error;
+        throw err;
       }
 
       resolve();
@@ -159,8 +159,117 @@ async function lock({ release, room, user }:
   });
 }
 
+function exclude<T>(arg: Dict<T>, excluded: string): Dict<T> {
+  const newDict: Dict<T> = { };
+
+  for (const [key, value] of Object.entries(arg)) {
+    if (key === excluded) continue;
+
+    newDict[key] = value;
+  }
+
+  return newDict;
+}
+
+function getInt(value: string): number {
+  const numOrNaN = parseInt(value, 10);
+
+  if (isNaN(numOrNaN)) {
+    throw new Error(`${value} is not a number`);
+  }
+
+  return numOrNaN;
+}
+
+export async function dropItem(msg: CustomMessage): Promise<void> {
+  const roomModel = await getRoom(msg, true);
+
+  if (roomModel === null) {
+    throw new Error("Could not find a room");
+  }
+
+  const room = roomManager().rooms
+    .get(roomModel.name)!,
+    user = await User.findOne({
+    attributes: ["id"],
+    where: {
+      id: (msg.overridenSender ? msg.overridenSender : msg.author).id
+    }
+  });
+
+  if (user === null) {
+    throw new Error("Could not find a user for you");
+  }
+
+  await lock({ release: false, room: roomModel.id, user: user.id });
+
+  try {
+    const command = parseCommand(msg, ["of", "in"]);
+    let itemName: string = command.params.join(),
+      quantity = 1;
+
+    if (command.args.has("of")) {
+      quantity = getInt(itemName);
+      itemName = command.args.get("of")!.join();
+    }
+
+    await roomModel.reload({ attributes: ["inventory"] });
+    await user.reload({ attributes: ["inventory"] });
+
+    const item: Undefined<ItemModel> = user.inventory[itemName];
+
+    if (item === undefined) {
+      throw new Error(`You do not have ${item}`);
+    }
+
+    item.quantity -= quantity;
+
+    if (item.quantity < 0) {
+      quantity += item.quantity;
+      user.inventory = exclude(user.inventory, itemName);
+    }
+
+    let roomItem = room.items.get(itemName);
+
+    if (roomItem === undefined) {
+      roomItem = new Item({ ...item, quantity});
+      room.items.set(itemName, roomItem);
+    } else {
+      roomItem.quantity += quantity;
+    }
+
+    const transaction = await sequelize.transaction();
+
+    try {
+      await roomModel.update({
+        inventory: roomModel.inventory
+      }, { transaction });
+
+      await user.update({
+        inventory: user.inventory
+      }, { transaction });
+
+      transaction.commit();
+    } catch (err) {
+      roomItem.quantity -= quantity;
+
+      if (roomItem.quantity === 0) room.items.delete(itemName);
+
+      transaction.rollback();
+      throw err;
+    }
+
+    sendMessage(msg,
+      `${senderName(msg)} dropped ${quantity} of ${itemName} in ${roomModel.name}`);
+  } catch (err) {
+    throw err;
+  } finally {
+    await lock({ release: true, room: roomModel.id, user: user.id });
+  }
+}
+
 // tslint:disable-next-line:cyclomatic-complexity
-export async function giveItem(msg: DiscordMessage): Promise<void> {
+export async function giveItem(msg: CustomMessage): Promise<void> {
   const command = parseCommand(msg, ["of", "to"]),
     guild = mainGuild(),
     targetName = command.args.get("to");
@@ -184,13 +293,15 @@ export async function giveItem(msg: DiscordMessage): Promise<void> {
     }
   });
 
-  let sender: User | undefined,
-    target: User | undefined;
+  let sender: Undefined<User>,
+    target: Undefined<User>;
 
   for (const user of users) {
-    if (user.name === targetJoined || user.discordName === targetJoined) {
+    if (user.id === msg.author.id) {
+      sender = user;
+    } else if (user.name === targetJoined || user.discordName === targetJoined) {
       target = user;
-    } else if (user.id === msg.author.id) sender = user;
+    }
   }
 
   if (sender === undefined) throw new Error("You do not exist as a sender");
@@ -229,14 +340,8 @@ export async function giveItem(msg: DiscordMessage): Promise<void> {
     quantity = 1;
 
   if (ofArg !== undefined) {
-    const paramAsNumber = parseInt(itemName, 10);
-
-    if (isNaN(paramAsNumber)) {
-      throw new Error(`"${itemName} is not an integer`);
-    }
-
+    quantity = getInt(itemName);
     itemName = ofArg.join();
-    quantity = paramAsNumber;
   }
 
   await lock({ release: false, user: [sender.id, target.id]});
@@ -256,7 +361,7 @@ export async function giveItem(msg: DiscordMessage): Promise<void> {
       else if (user.id === target.id) target = user;
     }
 
-    const item: ItemModel | undefined = sender.inventory[itemName];
+    const item: Undefined<ItemModel> = sender.inventory[itemName];
 
     if (item === undefined) {
       throw new Error(`You do not have "${itemName}"`);
@@ -266,16 +371,7 @@ export async function giveItem(msg: DiscordMessage): Promise<void> {
 
     if (item.quantity <= 0)  {
       quantity += item.quantity;
-
-      const newInventory: Dict<ItemModel> = { };
-
-      for (const [name, oldItem] of Object.entries(sender.inventory)) {
-        if (oldItem !== item) {
-          newInventory[name] = oldItem;
-        }
-      }
-
-      sender.inventory = newInventory;
+      sender.inventory = exclude(sender.inventory, item.name);
     }
 
     const transaction = await sequelize.transaction();
@@ -328,7 +424,7 @@ export async function giveItem(msg: DiscordMessage): Promise<void> {
  * Shows all the items in a room
  * @param msg the message to be evaluated
  */
-export async function items(msg: DiscordMessage): Promise<void> {
+export async function items(msg: CustomMessage): Promise<void> {
   const roomModel = await getRoom(msg, true);
 
   if (roomModel !== null) {
@@ -359,7 +455,7 @@ export async function items(msg: DiscordMessage): Promise<void> {
   }
 }
 
-export async function inspect(msg: DiscordMessage): Promise<void> {
+export async function inspect(msg: CustomMessage): Promise<void> {
   const roomModel = await getRoom(msg, true),
     itemsList = parseCommand(msg);
 
@@ -389,7 +485,7 @@ export async function inspect(msg: DiscordMessage): Promise<void> {
   }
 }
 
-export async function inventory(msg: DiscordMessage): Promise<void> {
+export async function inventory(msg: CustomMessage): Promise<void> {
   const user = await User.findOne({
     attributes: ["id"],
     where: {
@@ -422,7 +518,7 @@ export async function inventory(msg: DiscordMessage): Promise<void> {
   }
 }
 
-export async function takeItem(msg: DiscordMessage): Promise<void> {
+export async function takeItem(msg: CustomMessage): Promise<void> {
   const command = parseCommand(msg, ["of", "in"]),
     roomModel = await getRoom(msg, true),
     user = await User.findOne({
@@ -446,14 +542,8 @@ export async function takeItem(msg: DiscordMessage): Promise<void> {
     itemName = joined;
     quantity = 1;
   } else {
-    const value = parseInt(joined, 10);
-
-    if (isNaN(value)) {
-      throw new Error(`${joined} is not numeric`);
-    }
-
+    quantity = getInt(joined);
     itemName = item.join();
-    quantity = value;
   }
 
   await lock({ release: false, room: roomModel.id, user: user.id });
@@ -494,8 +584,7 @@ export async function takeItem(msg: DiscordMessage): Promise<void> {
       if (itemName in user.inventory) {
         user.inventory[itemName].quantity += quantity;
       } else {
-        user.inventory[itemName] = new Item(existing);
-        user.inventory[itemName].quantity = quantity;
+        user.inventory[itemName] = new Item({ ...existing, quantity});
       }
 
       await user.update({

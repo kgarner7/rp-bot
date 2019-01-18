@@ -1,7 +1,9 @@
-import { GuildMember, Message as DiscordMessage, Role } from "discord.js";
+import { GuildMember, Role } from "discord.js";
 
 import { ChannelNotFoundError } from "../config/errors";
 import { mainGuild, requireAdmin, roomManager } from "../helpers/base";
+import { CustomMessage } from "../helpers/classes";
+import { Undefined } from "../helpers/types";
 import { Link, Room as RoomModel } from "../models/models";
 import { Neighbor } from "../rooms/room";
 import { RoomManager } from "../rooms/roomManager";
@@ -90,7 +92,7 @@ async function moveMember(member: GuildMember, target: string, source: string = 
   await member.setRoles(roles);
 }
 
-export async function move(msg: DiscordMessage): Promise<void> {
+export async function move(msg: CustomMessage): Promise<void> {
   requireAdmin(msg);
 
   const command = parseCommand(msg, ["to"]),
@@ -120,7 +122,7 @@ export async function move(msg: DiscordMessage): Promise<void> {
   }
 }
 
-export async function userMove(msg: DiscordMessage): Promise<void> {
+export async function userMove(msg: CustomMessage): Promise<void> {
   const command = parseCommand(msg, ["through"]),
     guild = mainGuild(),
     manager = roomManager(),
@@ -137,7 +139,7 @@ export async function userMove(msg: DiscordMessage): Promise<void> {
       linkList = manager.links.get(roomModel.name);
 
     if (linkList !== undefined) {
-      let targetNeighbor: Neighbor | undefined;
+      let targetNeighbor: Undefined<Neighbor>;
 
       for (const [, neighbor] of linkList.entries()) {
         if (neighbor.name === door) {

@@ -1,7 +1,8 @@
-import { Guild, Message as DiscordMessage, Role } from "discord.js";
+import { Guild, Role } from "discord.js";
 
 import { ChannelNotFoundError, ExistingChannelError } from "../config/errors";
 import { mainGuild, requireAdmin } from "../helpers/base";
+import { CustomMessage } from "../helpers/classes";
 
 import { Action } from "./actions";
 import { adjacentRooms, getRoom, parseCommand, sendMessage } from "./baseHelpers";
@@ -36,7 +37,7 @@ export const usage: Action = {
  * Requires admin privileges
  * @param msg the message we are processing
  */
-export async function createRoom(msg: DiscordMessage): Promise<void> {
+export async function createRoom(msg: CustomMessage): Promise<void> {
   requireAdmin(msg);
 
   const guild: Guild = mainGuild(),
@@ -70,7 +71,7 @@ export async function createRoom(msg: DiscordMessage): Promise<void> {
  * Requires admin privileges
  * @param msg the message we are handling
  */
-export async function deleteRoom(msg: DiscordMessage): Promise<void> {
+export async function deleteRoom(msg: CustomMessage): Promise<void> {
   requireAdmin(msg);
 
   const guild = mainGuild(),
@@ -92,7 +93,7 @@ export async function deleteRoom(msg: DiscordMessage): Promise<void> {
   }
 }
 
-export async function getAvailableRooms(msg: DiscordMessage): Promise<void> {
+export async function getAvailableRooms(msg: CustomMessage): Promise<void> {
   return new Promise((resolve: () => void): void => {
     const roomList: string[] = adjacentRooms(msg)
     .sort();

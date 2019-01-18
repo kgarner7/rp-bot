@@ -1,8 +1,8 @@
-import { Message as DiscordMessage } from "discord.js";
 import { Op } from "sequelize";
 
 import { ChannelNotFoundError } from "../config/errors";
 import { Dict, mainGuild, requireAdmin, roomManager } from "../helpers/base";
+import { CustomMessage } from "../helpers/classes";
 import { Link, Room as RoomModel } from "../models/models";
 
 import { Action } from "./actions";
@@ -94,8 +94,8 @@ async function findRoomByCommand(command: Command, target: string):
   return model;
 }
 
-export function handleLock(locked: boolean): (msg: DiscordMessage) => Promise<void> {
-  return async function changeLock(msg: DiscordMessage): Promise<void> {
+export function handleLock(locked: boolean): (msg: CustomMessage) => Promise<void> {
+  return async function changeLock(msg: CustomMessage): Promise<void> {
     requireAdmin(msg);
 
     const args: {
@@ -171,7 +171,7 @@ export function handleLock(locked: boolean): (msg: DiscordMessage) => Promise<vo
   };
 }
 
-export async function links(msg: DiscordMessage): Promise<void> {
+export async function links(msg: CustomMessage): Promise<void> {
   requireAdmin(msg);
 
   const args: {
@@ -231,7 +231,7 @@ export async function links(msg: DiscordMessage): Promise<void> {
   sendMessage(msg, linkString, true);
 }
 
-export async function doors(msg: DiscordMessage): Promise<void> {
+export async function doors(msg: CustomMessage): Promise<void> {
   const manager = roomManager(),
     roomModel = await getRoom(msg, true);
 

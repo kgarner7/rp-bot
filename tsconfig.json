@@ -5,9 +5,9 @@
     "declaration": true,
     "esModuleInterop": true,
     "forceConsistentCasingInFileNames": true,
-    "lib": ["es5", "es6", "dom", "es2017"],  
+    "lib": ["es5", "es6", "dom", "es2017"],
     "listEmittedFiles": true,
-    "module": "commonjs", 
+    "module": "commonjs",
     "noEmitOnError": true,
     "noFallthroughCasesInSwitch": true,
     "noImplicitReturns": true,
@@ -20,7 +20,7 @@
     "strict": true,
     "strictBindCallApply": true,
     "strictFunctionTypes": true,
-    "strictPropertyInitialization": false, 
+    "strictPropertyInitialization": false,
     "strictNullChecks": true,
     "target": "es2017"
   }

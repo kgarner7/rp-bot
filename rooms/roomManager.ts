@@ -18,6 +18,7 @@ export class RoomManager {
   public links: Map<string, Map<string, Neighbor>> = new Map();
   public roles: Set<string> = new Set();
   public rooms: Map<string, Room> = new Map();
+  public visibility: Map<string, boolean> = new Map();
 
   public constructor(rooms: Room[], force: boolean = false) {
     for (const room of rooms) this.rooms.set(room.name, room);
@@ -114,10 +115,14 @@ export class RoomManager {
   private async initialize(force: boolean): Promise<void> {
     const roomIds: string[] = [];
 
-    for (const [, room] of this.rooms.entries()) {
+    for (const room of this.rooms.values()) {
       await room.init(this, force);
       this.roles.add((room.role as Role).id);
       roomIds.push((room.channel as TextChannel).id);
+    }
+
+    for (const room of this.rooms.values()) {
+      room.initChannel();
     }
 
     await RoomModel.destroy({
@@ -276,6 +281,9 @@ export class RoomManager {
       }
     }
 
-    return new RoomManager(rooms, force);
+    const manager = new RoomManager(rooms, force);
+    manager.visibility = status;
+
+    return manager;
   }
 }

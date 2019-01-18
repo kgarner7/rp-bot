@@ -27,6 +27,7 @@ import { sequelize } from "./connection";
  * sender {User}: the user who sent this message
  * users {User[]}: list of all the users currently in the room when this message was sent
  */
+
 export class Message extends Model {
   public static associations: {
     room: BelongsTo;

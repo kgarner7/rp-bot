@@ -10,6 +10,7 @@ import { Op } from "sequelize";
 import { config } from "./config/config";
 import { InvalidCommandError } from "./config/errors";
 import { initGuild, initRooms } from "./helpers/base";
+import { CustomMessage } from "./helpers/classes";
 import { actions } from "./listeners/actions";
 import { sendMessage } from "./listeners/baseHelpers";
 import { initDB, Message, sequelize, User } from "./models/models";
@@ -43,8 +44,7 @@ client.on("ready", async () => {
     }
   });
 
-  const begin = __filename.endsWith(".js") ? "dist/" : "";
-  manager = await RoomManager.create(`./${begin}rooms/custom`);
+  manager = await RoomManager.create("./rooms/custom");
   initRooms(manager);
 });
 
@@ -67,21 +67,63 @@ client.on("messageUpdate", async (_old: DiscordMessage, msg: DiscordMessage) => 
 client.on("message", async (msg: DiscordMessage) => {
   if (invalid(msg)) return;
 
+  const mesg = msg as CustomMessage;
+
   const content: string = msg.content;
 
   if (content.startsWith(config.prefix)) {
     let endIndex = content.indexOf(" ");
     if (endIndex === -1) endIndex = content.length;
 
-    const command = msg.content.substring(1, endIndex);
+    let message = msg.content.substring(1, endIndex),
+      username = "";
 
     if (msg.deletable) await msg.delete();
 
     try {
-      if (command in actions) {
-        await actions[command](msg);
+      if (message.startsWith("as")) {
+        const split = msg.content.split(" ")
+          .splice(1);
+
+        let index = 0;
+        for (const part of split) {
+          if (part.startsWith("!")) break;
+
+          username += ` ${part}`;
+          index++;
+        }
+
+        username = username.substr(1);
+
+        message = split[index].substr(1);
+        msg.content = split.splice(index)
+          .join(" ");
+      }
+
+      if (message in actions) {
+        if (username !== "" && msg.author.id === guild.ownerID) {
+
+          const user = await User.findOne({
+            where: {
+              [Op.or]: [
+                { discordName: username },
+                { name: username }
+              ]
+            }
+          });
+
+          if (user !== null) {
+            const overrideUser = guild.members.get(user.id)!;
+
+            mesg.overridenSender = msg.author;
+            mesg.author = overrideUser.user;
+            mesg.member = overrideUser;
+          }
+        }
+
+        await actions[message](mesg);
       } else {
-        throw new InvalidCommandError(command);
+        throw new InvalidCommandError(message);
       }
     } catch (err) {
       sendMessage(msg, (err as Error).message, true);
@@ -133,7 +175,7 @@ client.on("guildMemberUpdate",
 initDB()
   .then(async () => {
     try {
-      await sequelize.sync();
+      await sequelize.sync({ force: true });
       await client.login(config.botToken);
     } catch (err) {
       console.error((err as Error).stack);

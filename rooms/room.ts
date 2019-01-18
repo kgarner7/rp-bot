@@ -1,7 +1,7 @@
 import {
   CategoryChannel,
-  PermissionResolvable,
-  Permissions,
+  ChannelCreationOverwrites,
+  PermissionOverwrites,
   Role,
   TextChannel
 } from "discord.js";
@@ -12,6 +12,7 @@ import {
   everyoneRole,
   FunctionResolvable,
   mainGuild,
+  roomManager,
   toFunction
 } from "../helpers/base";
 import { SerializedMap } from "../helpers/classes";
@@ -102,13 +103,6 @@ export class Room {
   }
 
   public async init(manager: RoomManager, force: boolean = false): Promise<void> {
-    const allow: PermissionResolvable[] =
-      ["READ_MESSAGES", "SEND_MESSAGES"],
-      deny: PermissionResolvable[] =
-      ["READ_MESSAGE_HISTORY", "SEND_MESSAGES"];
-
-    if (this.isPrivate) deny.push("READ_MESSAGES");
-
     if (this.parentChannel === null) return;
 
     this.manager = manager;
@@ -168,7 +162,6 @@ export class Room {
 
         this.channel = channel;
         this.role = role;
-        this.initChannel(allow, deny);
 
         return;
       }
@@ -193,8 +186,6 @@ export class Room {
       this.channel = channel !== null && channel instanceof TextChannel ? channel :
         await guild.createChannel(this.name, "text") as TextChannel;
 
-      this.initChannel(allow, deny);
-
       await RoomModel.create({
         discordName: this.channel.name,
         id: this.channel.id,
@@ -216,23 +207,40 @@ export class Room {
     }
   }
 
-  private initChannel(allow: PermissionResolvable[],
-                      deny: PermissionResolvable[]): void {
-
-    const everyone: string = everyoneRole().id;
+  public initChannel(): void {
+    const everyone: string = everyoneRole().id,
+      manager = roomManager();
 
     if (this.channel === undefined ||
         this.role === undefined ||
         this.parentChannel === undefined) return;
 
+    const overwrites: Array<ChannelCreationOverwrites | PermissionOverwrites> = [{
+      allow: ["READ_MESSAGES", "SEND_MESSAGES"],
+      id: this.role.id
+    }, {
+      deny: ["READ_MESSAGES", "READ_MESSAGE_HISTORY", "SEND_MESSAGES"],
+      id: everyone
+    }];
+
+    if (manager.visibility.get(this.parent) !== true && !this.isPrivate) {
+      for (const [, channel] of this.parentChannel.children) {
+        if (channel.id === this.channel.id) continue;
+
+        for (const room of manager.rooms.values()) {
+
+          if (room.channel!.id === channel.id) {
+            overwrites.push({
+              allow: ["READ_MESSAGES"],
+              id: room.role!.id
+            });
+          }
+        }
+      }
+    }
+
     this.channel.replacePermissionOverwrites({
-      overwrites: [{
-        allow: allow as Permissions[],
-        id: this.role.id
-      }, {
-        deny: deny as Permissions[],
-        id: everyone
-      }]
+      overwrites
     });
 
     this.channel.setTopic(this.description);

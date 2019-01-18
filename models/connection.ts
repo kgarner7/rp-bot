@@ -2,8 +2,9 @@ import { Client } from "pg";
 import Sequelize from "sequelize";
 
 import { config as settings, database } from "../config/config";
+import { Undefined } from "../helpers/types";
 
-const nodeEnvironment: string | undefined = process.env.NODE_ENV,
+const nodeEnvironment: Undefined<string> = process.env.NODE_ENV,
   env = nodeEnvironment === undefined ? "development" : nodeEnvironment,
   config = database[env],
   dbName = `discordo-${settings.guildName.replace(/\ /g, "-")}`;

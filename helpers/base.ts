@@ -9,7 +9,9 @@ import { NodeVM, VMScript } from "vm2";
 import { AccessError } from "../config/errors";
 import { RoomManager } from "../rooms/roomManager";
 
-let everyone: Role | undefined,
+import { Undefined } from "./types";
+
+let everyone: Undefined<Role>,
   guild: Guild,
   manager: RoomManager;
 

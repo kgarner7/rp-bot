@@ -1,5 +1,5 @@
 /* tslint:disable:max-classes-per-file */
-import * as Discord from "discord.js";
+import { Message, TextChannel } from "discord.js";
 
 import { config } from "./config";
 
@@ -47,8 +47,8 @@ export class InvalidCommandError extends Error {
  * Thrown when requesting logs but no logs exist for that channel
  */
 export class NoLogError extends Error {
-  public constructor(msg: Discord.Message) {
-    if (msg.channel instanceof Discord.TextChannel) {
+  public constructor(msg: Message) {
+    if (msg.channel instanceof TextChannel) {
       super(`You have no logs for the room ${msg.channel.name}`);
     } else {
       super("There are no logs for DM channels");
