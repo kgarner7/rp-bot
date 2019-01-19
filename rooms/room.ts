@@ -2,6 +2,7 @@ import {
   CategoryChannel,
   ChannelCreationOverwrites,
   PermissionOverwrites,
+  PermissionResolvable,
   Role,
   TextChannel
 } from "discord.js";
@@ -39,6 +40,7 @@ export interface RoomAttributes {
   color?: string | number;
   description: string;
   isPrivate?: boolean;
+  isPublic?: boolean;
   itemsList?: ItemResolvable[];
   name: string;
   neighbors?: NeighborResolvable[];
@@ -54,6 +56,7 @@ export class Room {
   public description: string;
   public name: string;
   public isPrivate: boolean = false;
+  public isPublic: boolean = true;
   public items: SerializedMap<Item, ItemModel> = new SerializedMap();
   public neighborMap: Map<string, Neighbor> = new Map();
   public parent: string;
@@ -223,7 +226,12 @@ export class Room {
       id: everyone
     }];
 
-    if (manager.visibility.get(this.parent) !== true && !this.isPrivate) {
+    if (manager.visibility.get(this.parent) !== true &&
+      (!this.isPrivate || this.isPublic)) {
+      const allowed: PermissionResolvable = ["READ_MESSAGES"];
+
+      if (this.isPublic) allowed.push("SEND_MESSAGES");
+
       for (const [, channel] of this.parentChannel.children) {
         if (channel.id === this.channel.id) continue;
 
@@ -231,7 +239,7 @@ export class Room {
 
           if (room.channel!.id === channel.id) {
             overwrites.push({
-              allow: ["READ_MESSAGES"],
+              allow: allowed,
               id: room.role!.id
             });
           }

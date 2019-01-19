@@ -1,6 +1,6 @@
 {
   "description": "room c: test",
-  "isPrivate": true,
+  "isPublic": true,
   "name": "room c",
   "neighbors": [
     {

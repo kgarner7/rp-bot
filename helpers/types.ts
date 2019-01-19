@@ -156,15 +156,16 @@ export function isNeighborResolvable(arg: any): arg is NeighborResolvable {
  * Returns whether the argument fulfils RoomAttributes
  * @param arg the argument to evaluate
  */
+// tslint:disable-next-line:cyclomatic-complexity
 export function isRoomAttribute(arg: any): arg is RoomAttributes {
   const baseCheck = exists(arg) &&
     (exists(arg.color) ?
-      (typeof(arg.color) === "number" || typeof(arg.color) === "string") :
-      true) &&
+      (typeof(arg.color) === "number" || typeof(arg.color) === "string") : true) &&
     typeof(arg.description) === "string" &&
     (exists(arg.isPrivate) ?
-      typeof(arg.isPrivate) === "boolean" :
-      true) &&
+      typeof(arg.isPrivate) === "boolean" : true) &&
+    (exists(arg.isPublic) ?
+      typeof(arg.isPublic) === "boolean" : true) &&
     typeof(arg.name) === "string" &&
     typeof(arg.parent) === "string";
 
