@@ -55,8 +55,8 @@ export class Room {
   public color: string | number;
   public description: string;
   public name: string;
-  public isPrivate: boolean = false;
-  public isPublic: boolean = false;
+  public isPrivate: boolean;
+  public isPublic: boolean;
   public items: SerializedMap<Item, ItemModel> = new SerializedMap();
   public neighborMap: Map<string, Neighbor> = new Map();
   public parent: string;
@@ -65,13 +65,14 @@ export class Room {
   protected state: object = { };
   protected manager: RoomManager;
 
-  public constructor({ actions = { }, color = "RANDOM", description,
-                       isPrivate = false, itemsList = [], name, neighbors = [],
+  public constructor({ actions = { }, color = "RANDOM", description, isPrivate = false,
+                       isPublic = false, itemsList = [], name, neighbors = [],
                        parent}: RoomAttributes) {
 
     this.color = color;
     this.description = description;
     this.isPrivate = isPrivate;
+    this.isPublic = isPublic;
     this.name = name;
     this.parent = parent;
 
