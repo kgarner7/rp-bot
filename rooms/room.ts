@@ -56,7 +56,7 @@ export class Room {
   public description: string;
   public name: string;
   public isPrivate: boolean = false;
-  public isPublic: boolean = true;
+  public isPublic: boolean = false;
   public items: SerializedMap<Item, ItemModel> = new SerializedMap();
   public neighborMap: Map<string, Neighbor> = new Map();
   public parent: string;
