@@ -16,6 +16,22 @@ export const usage: Action = {
       { admin: true, use: "!doors in **room**" }
     ]
   },
+  hide: {
+    adminOnly: true,
+    description: "Hides links between rooms",
+    uses: [
+      {
+        example: "!hide from room a",
+        explanation: "Hides all links with source **room**",
+        use: "!hide from **room**"
+      },
+      {
+        example: "!hide to room a",
+        explanation: "Hides all links with target **room**",
+        use: "!hide to **room**"
+      }
+    ]
+  },
   links: {
     adminOnly: true,
     description: "See links between rooms. Each case shows a single optional parameter",
@@ -54,6 +70,22 @@ export const usage: Action = {
         example: "!lock to room a",
         explanation: "Locks all links with target **room**",
         use: "!lock to **room**"
+      }
+    ]
+  },
+  unhide: {
+    adminOnly: true,
+    description: "Reveals links between rooms",
+    uses: [
+      {
+        example: "!unhide from room a",
+        explanation: "Reveals all links with source **room**",
+        use: "!unhide from **room**"
+      },
+      {
+        example: "!unhide to room a",
+        explanation: "Reveals all links with target **room**",
+        use: "!unhide to **room**"
       }
     ]
   },
@@ -171,6 +203,83 @@ export function handleLock(locked: boolean): (msg: CustomMessage) => Promise<voi
   };
 }
 
+export function hide(hidden: boolean): (msg: CustomMessage) => Promise<void> {
+  return async function changeLock(msg: CustomMessage): Promise<void> {
+    requireAdmin(msg);
+
+    const args: {
+      sourceId?: string;
+      targetId?: string;
+    } & Dict<string> = { },
+      command = parseCommand(msg, ["from", "to"]),
+      manager = roomManager();
+
+    if (!command.args.has("from") && !command.args.has("to")) {
+      throw new Error("You must provide a source and/or target room");
+    }
+
+    if (command.args.has("from")) {
+      const fromModel = await findRoomByCommand(command, "from");
+      args.sourceId = fromModel.id;
+    }
+
+    if (command.args.has("to")) {
+      const toModel = await findRoomByCommand(command, "to");
+      args.targetId = toModel.id;
+    }
+
+    const updated = await Link.update({
+      hidden
+    }, {
+      returning: true,
+      where: args
+    });
+
+    const roomMap: Map<string, string> = new Map(),
+      roomSet: Set<string> = new Set();
+
+    for (const link of updated[1]) {
+      roomSet.add(link.sourceId);
+      roomSet.add(link.targetId);
+    }
+
+    const rooms = await RoomModel.findAll({
+      attributes: ["id", "name"],
+      where: {
+        id: {
+          [Op.or]: Array.from(roomSet)
+        }
+      }
+    });
+
+    for (const room of rooms) roomMap.set(room.id, room.name);
+
+    const messageArray: string[] = [];
+
+    for (const link of updated[1]) {
+      const sourceName: string = roomMap.get(link.sourceId) as string,
+        targetName: string = roomMap.get(link.targetId) as string,
+        map = manager.links.get(sourceName);
+
+      if (map !== undefined) {
+        const neighbor = map.get(targetName);
+
+        if (neighbor !== undefined) {
+          neighbor.hidden = link.hidden;
+          const start = `${link.hidden ? "H" : "Not h"}idden`;
+          messageArray.push(`${start} ${sourceName} => ${targetName} (${neighbor.name})`);
+        }
+      }
+    }
+
+    sendMessage(msg, (messageArray.length > 0 ?
+      messageArray.sort()
+        .join("\n") :
+        "No links changed"),
+      true);
+  };
+}
+
 export async function links(msg: CustomMessage): Promise<void> {
   requireAdmin(msg);
 
@@ -218,7 +327,7 @@ export async function links(msg: CustomMessage): Promise<void> {
   let linkString = linksList.map((link: Link) => {
     const map = manager.links.get(link.source.name)!,
       neighbor = map.get(link.target.name)!,
-      endString = link.locked ? ": locked" : "";
+      endString = (link.locked ? ": locked" : "") + (link.hidden ? ": hidden" : "");
 
     return `${link.source.name} => ${link.target.name}${endString} (${neighbor.name})`;
   })

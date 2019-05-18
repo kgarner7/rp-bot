@@ -12,8 +12,8 @@ export let database: Dict<{
   options?: Options;
 }> = {
   development: {
-    username: "discordo",
-    password: "discordo",
+    username: "postgres",
+    password: "postgres",
     options: {
       dialect: "postgres",
       operatorsAliases: false

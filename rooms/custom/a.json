@@ -14,6 +14,7 @@
   "name": "room a",
   "neighbors": [
     {
+      "hidden": true,
       "name": "Door 1",
       "to": "room c"
     },

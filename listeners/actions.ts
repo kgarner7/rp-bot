@@ -11,7 +11,7 @@ import {
   takeItem,
   usage as ItemUsage
 } from "./items";
-import { doors, handleLock, links, usage as LinkUsage } from "./links";
+import { doors, handleLock, hide, links, usage as LinkUsage } from "./links";
 import { move, usage as MovementUsage, userMove } from "./movement";
 import { createRoom, deleteRoom, getAvailableRooms, usage as RoomUsage } from "./rooms";
 import { members, showLogs, usage as UserUsage, users } from "./users";
@@ -105,6 +105,7 @@ export const actions: Dict<(msg: CustomMessage) => Promise<void>> = {
   "drop": dropItem,
   "give": giveItem,
   "help": help,
+  "hide": hide(true),
   "inspect": inspect,
   "inventory": inventory,
   "items": items,
@@ -115,6 +116,7 @@ export const actions: Dict<(msg: CustomMessage) => Promise<void>> = {
   "mv": move,
   "rooms": getAvailableRooms,
   "take": takeItem,
+  "unhide": hide(false),
   "unlock": handleLock(false),
   "users": users,
   "who": members
