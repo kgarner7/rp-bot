@@ -121,6 +121,7 @@ export function isItemResolvable(arg: any): arg is ItemResolvable {
  */
 export function isNeighbor(arg: any): arg is Neighbor {
   const baseCheck = exists(arg) &&
+    typeof(arg.hidden) === "boolean" &&
     typeof(arg.locked) === "boolean" &&
     typeof(arg.name) === "string" &&
     typeof(arg.to) === "string";
@@ -144,6 +145,8 @@ export function isNeighbor(arg: any): arg is Neighbor {
  */
 export function isNeighborResolvable(arg: any): arg is NeighborResolvable {
   return exists(arg) &&
+    (exists(arg.hidden) ?
+      typeof(arg.hidden) === "boolean" : true) &&
     (exists(arg.locked) ?
       typeof(arg.locked) === "boolean" : true) &&
     (exists(arg.name) && typeof(arg.name) === "string") &&

@@ -244,18 +244,20 @@ export async function doors(msg: CustomMessage): Promise<void> {
 
   if (linkList !== undefined) {
     for (const [, neighbor] of linkList.entries()) {
-      messageString += neighbor.name;
+      if (!neighbor.hidden) {
+        messageString += neighbor.name;
+        
+        if (neighbor.visitors.has(msg.author.id) ||
+          msg.author.id === mainGuild().ownerID) {
+          messageString += ` => ${neighbor.to}`;
+        } else {
+          messageString += " => unknown";
+        }
 
-      if (neighbor.visitors.has(msg.author.id) ||
-        msg.author.id === mainGuild().ownerID) {
-        messageString += ` => ${neighbor.to}`;
-      } else {
-        messageString += " => unknown";
+        if (neighbor.locked) messageString += ": locked";
+
+        messageString += "\n";
       }
-
-      if (neighbor.locked) messageString += ": locked";
-
-      messageString += "\n";
     }
   } else {
     messageString =  "There are no doors in this room";

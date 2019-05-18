@@ -23,6 +23,7 @@ import { Item, ItemModel, ItemResolvable } from "./item";
 import { RoomManager } from "./roomManager";
 
 export interface Neighbor {
+  hidden: boolean;
   locked: boolean;
   name: string;
   to: string;
@@ -30,6 +31,7 @@ export interface Neighbor {
 }
 
 export interface NeighborResolvable {
+  hidden?: boolean;
   locked?: boolean;
   name: string;
   to: string;
@@ -79,7 +81,8 @@ export class Room {
     for (const neighbor of neighbors) {
       this.neighborMap.set(neighbor.to, {
         ...{
-          locked: false,
+          hidden: neighbor.hidden || false,
+          locked: neighbor.locked || false,
           visitors: new Set()
         },
         ...neighbor
