@@ -145,6 +145,7 @@ export class RoomManager {
 
         const [link] = await Link.findOrCreate({
           defaults: {
+            hidden: neighbor.hidden,
             locked: neighbor.locked
           },
           where: {
@@ -159,6 +160,7 @@ export class RoomManager {
           attributes: ["name"]
         }),
           connection: Neighbor = {
+            hidden: link.hidden,
             locked: link.locked,
             name: neighbor.name,
             to: target,

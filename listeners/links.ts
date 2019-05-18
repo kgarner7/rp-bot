@@ -246,7 +246,7 @@ export async function doors(msg: CustomMessage): Promise<void> {
     for (const [, neighbor] of linkList.entries()) {
       if (!neighbor.hidden) {
         messageString += neighbor.name;
-        
+
         if (neighbor.visitors.has(msg.author.id) ||
           msg.author.id === mainGuild().ownerID) {
           messageString += ` => ${neighbor.to}`;
