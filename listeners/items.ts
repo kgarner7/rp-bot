@@ -1,9 +1,9 @@
-import async from "async";
 import { TextChannel } from "discord.js";
 
 import { Dict, mainGuild, requireAdmin, roomManager } from "../helpers/base";
 import { CustomMessage, SortableArray } from "../helpers/classes";
-import { isNone, None, Undefined } from "../helpers/types";
+import { lock } from "../helpers/locks";
+import { Undefined } from "../helpers/types";
 import { Op, Room, sequelize, User } from "../models/models";
 import { Item, ItemModel } from "../rooms/item";
 
@@ -11,6 +11,22 @@ import { Action } from "./actions";
 import { getRoom, parseCommand, sendMessage } from "./baseHelpers";
 
 export const usage: Action = {
+  drop: {
+    description: "Drops a number of items into the room",
+    uses: [
+      {
+        example: "!drop 5 of item 1",
+        explanation: "Drops 5 of itme 1 in the current room",
+        use: "!drop **number** of **item**"
+      },
+      {
+        admin: true,
+        example: "!drop 5 of item 1 in room a",
+        explanation: "Drops 5 of itme 1 in the specified room",
+        use: "!drop **number** of **item** in **room**"
+      }
+    ]
+  },
   give: {
     description: "Gives item(s) to another player",
     uses: [
@@ -79,84 +95,8 @@ export const usage: Action = {
   }
 };
 
-const roomLock: Set<string> = new Set(),
-  userLock: Set<string> = new Set();
-
-const lockQueue = async.queue(
-  ({ release, room, user }: { release: boolean; room?: string; user?: string | string[] },
-   callback: (err: None<Error>) => void) => {
-
-  async.until(() => {
-    if (release) return true;
-
-    let available = true;
-
-    if (room !== undefined) available = !roomLock.has(room);
-
-    if (user !== undefined) {
-      if (user instanceof Array) {
-        for (const requestedUser of user) {
-          available = available && !userLock.has(requestedUser);
-        }
-      } else {
-        available = available && !userLock.has(user);
-      }
-    }
-
-    return available;
-  },
-    () => {
-      // do nothing
-     }, (err: None<Error>) => {
-      if (!isNone(err)) {
-        callback(err);
-
-        return;
-      }
-
-      const method: "delete" | "add" = release ? "delete" : "add";
-
-      if (room !== undefined) roomLock[method](room);
-
-      if (user !== undefined) {
-        if (user instanceof Array) {
-          for (const requestedUser of user) {
-            userLock[method](requestedUser);
-          }
-        } else {
-          userLock[method](user);
-        }
-      }
-
-      // const message = `room: "${ room }", user: "${ user }"`;
-
-      // console.log(`${release ? "Released" : "Acquired"} ${message}`);
-
-      callback(undefined);
-  });
-}, 1);
-
 function senderName(msg: CustomMessage): string {
   return (msg.channel instanceof TextChannel) ? msg.author.toString() : "You";
-}
-
-/**
- * Requests to acquire or release a lock for a room and/or use
- * @param arg an object
- */
-async function lock({ release, room, user }:
-  { release: boolean; room?: string; user?: string | string[] }): Promise<void> {
-  return new Promise((resolve: () => void): void => {
-    lockQueue.push({ release, room, user },  (err: None<Error>): void => {
-      if (!isNone(err)) {
-        console.error(err);
-
-        throw err;
-      }
-
-      resolve();
-    });
-  });
 }
 
 function exclude<T>(arg: Dict<T>, excluded: string): Dict<T> {
@@ -201,25 +141,35 @@ export async function dropItem(msg: CustomMessage): Promise<void> {
     throw new Error("Could not find a user for you");
   }
 
+  const command = parseCommand(msg, ["of", "in"]);
+  let itemName: string = command.params.join(),
+    quantity = 1;
+
+  if (command.args.has("of")) {
+    quantity = getInt(itemName);
+    itemName = command.args.get("of")!.join();
+  }
+
+  if (quantity <= 0) {
+    throw new Error(`Cannot drop ${quantity} of ${itemName}`);
+  }
+
   await lock({ release: false, room: roomModel.id, user: user.id });
 
   try {
-    const command = parseCommand(msg, ["of", "in"]);
-    let itemName: string = command.params.join(),
-      quantity = 1;
-
-    if (command.args.has("of")) {
-      quantity = getInt(itemName);
-      itemName = command.args.get("of")!.join();
-    }
-
     await roomModel.reload({ attributes: ["inventory"] });
     await user.reload({ attributes: ["inventory"] });
 
     const item: Undefined<ItemModel> = user.inventory[itemName];
 
     if (item === undefined) {
-      throw new Error(`You do not have ${item}`);
+      throw new Error(`You do not have ${itemName}`);
+    }
+
+    if (quantity > item.quantity) {
+      const message = `Cannot drop **${quantity}** of **${itemName}**` +
+                      `\nYou have **${item.quantity}**`;
+      throw new Error(message);
     }
 
     item.quantity -= quantity;
@@ -344,6 +294,10 @@ export async function giveItem(msg: CustomMessage): Promise<void> {
     itemName = ofArg.join();
   }
 
+  if (quantity <= 0) {
+    throw new Error(`Cannot take ${quantity} items`);
+  }
+
   await lock({ release: false, user: [sender.id, target.id]});
 
   try {
@@ -365,6 +319,12 @@ export async function giveItem(msg: CustomMessage): Promise<void> {
 
     if (item === undefined) {
       throw new Error(`You do not have "${itemName}"`);
+    }
+
+    if (quantity > item.quantity) {
+      const message = `Cannot give **${quantity}** of **${itemName}**` +
+                      `\nYou have **${item.quantity}**`;
+      throw new Error(message);
     }
 
     item.quantity -= quantity;
@@ -546,6 +506,10 @@ export async function takeItem(msg: CustomMessage): Promise<void> {
     itemName = item.join();
   }
 
+  if (quantity <= 0) {
+    throw new Error(`Cannot take ${quantity} items`);
+  }
+
   await lock({ release: false, room: roomModel.id, user: user.id });
 
   try {
@@ -563,6 +527,12 @@ export async function takeItem(msg: CustomMessage): Promise<void> {
       throw new Error(`${itemName} does not exist in the room`);
     } else if (existing.locked) {
       throw new Error(`${itemName} cannot be removed`);
+    }
+
+    if (quantity > existing.quantity) {
+      const err = `Cannot take **${quantity}** of **${itemName}**` +
+                  `\nYou have **${existing.quantity}**`;
+      throw new Error(err);
     }
 
     const transaction = await sequelize.transaction();

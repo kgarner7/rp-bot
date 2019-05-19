@@ -16,6 +16,7 @@ import {
   parseCommand,
   sendMessage
 } from "./baseHelpers";
+import { lock } from "../helpers/locks";
 
 export const usage: Action = {
   move: {
@@ -90,86 +91,102 @@ async function moveMember(member: GuildMember, target: string, source: string = 
   }
 
   await member.setRoles(roles);
+
+  if (!member.user.bot) member.send(`You were moved to ${target}`);
 }
 
 export async function move(msg: CustomMessage): Promise<void> {
   requireAdmin(msg);
 
-  const command = parseCommand(msg, ["to"]),
+  await lock({ release: false, user: [msg.author.id ]});
+
+  try {
+    const command = parseCommand(msg, ["to"]),
     guild = mainGuild(),
     targetName = (command.args.get("to") || []).join("\n"),
     targetRoom = await getRoomModel(targetName);
 
-  if (targetRoom === null) {
-    sendMessage(msg, `Could not find room ${targetName}`, true);
+    if (targetRoom === null) {
+      sendMessage(msg, `Could not find room ${targetName}`, true);
 
-    return;
-  }
-
-  for (const name of command.params) {
-    const member = guild.members.find(m =>
-      m.displayName === name || m.toString() === name || m.user.username === name);
-
-    if (member !== null) {
-      await moveMember(member, targetRoom.name);
-
-      if (!member.user.bot) member.send(`You were moved to ${targetName}`);
-
-      sendMessage(msg,
-        `Successfully moved ${member.displayName} to ${targetName}`,
-        true);
+      return;
     }
+
+    for (const name of command.params) {
+      const member = guild.members.find(m =>
+        m.displayName === name || m.toString() === name || m.user.username === name);
+
+      if (member !== null) {
+        await moveMember(member, targetRoom.name);
+
+        sendMessage(msg,
+          `Successfully moved ${member.displayName} to ${targetName}`,
+          true);
+      }
+    }
+  } catch (err) {
+    throw err;
+  } finally {
+    await lock({ release: true, user: [msg.author.id ]});
   }
 }
 
 export async function userMove(msg: CustomMessage): Promise<void> {
-  const command = parseCommand(msg, ["through"]),
+  await lock({ release: false, user: [msg.author.id ]});
+
+  try {
+    const command = parseCommand(msg, ["through"]),
     guild = mainGuild(),
     manager = roomManager(),
     member = guild.members.get(msg.author.id)!,
     name = command.params.join(),
     roomModel = await getRoom(msg, true);
 
-  if (roomModel === null) throw new ChannelNotFoundError(name);
+    if (roomModel === null) throw new ChannelNotFoundError(name);
 
-  const through = command.args.get("through");
+    const through = command.args.get("through");
 
-  if (through !== undefined) {
-    const door: string = through.join(),
-      linkList = manager.links.get(roomModel.name);
+    if (through !== undefined) {
+      const door: string = through.join(),
+        linkList = manager.links.get(roomModel.name);
 
-    if (linkList !== undefined) {
-      let targetNeighbor: Undefined<Neighbor>;
+      if (linkList !== undefined) {
+        let targetNeighbor: Undefined<Neighbor>;
 
-      for (const [, neighbor] of linkList.entries()) {
-        if (neighbor.name === door) {
-          targetNeighbor = neighbor;
-          break;
+        for (const [, neighbor] of linkList.entries()) {
+          if (neighbor.name === door) {
+            targetNeighbor = neighbor;
+            break;
+          }
         }
-      }
 
-      if (targetNeighbor === undefined) {
-        throw new Error("There is no door of that name");
-      } else if (targetNeighbor.locked) {
-        throw new Error(`Door ${targetNeighbor.name} is locked`);
+        if (targetNeighbor === undefined) {
+          throw new Error("There is no door of that name");
+        } else if (targetNeighbor.locked) {
+          throw new Error(`Door ${targetNeighbor.name} is locked`);
+        } else {
+          await moveMember(member, targetNeighbor.to, roomModel.name);
+
+          return;
+        }
       } else {
-        await moveMember(member, targetNeighbor.to, roomModel.name);
-
-        return;
+        throw new Error("There are no available neighbors");
       }
-    } else {
-      throw new Error("There are no available neighbors");
     }
+
+    const neighbors: string[] = adjacentRooms(msg),
+      targetRoom = await getRoomModel(name);
+
+    if (targetRoom === null) {
+      throw new Error("That room does not exist");
+    } else if (neighbors.indexOf(targetRoom.name) === -1) {
+      throw new Error("You cannot access that room");
+    }
+
+    moveMember(member, targetRoom.name);
+  } catch (err) {
+    throw err;
+  } finally {
+    await lock({ release: true, user: [msg.author.id ]});
   }
-
-  const neighbors: string[] = adjacentRooms(msg),
-    targetRoom = await getRoomModel(name);
-
-  if (targetRoom === null) {
-    throw new Error("That room does not exist");
-  } else if (neighbors.indexOf(targetRoom.name) === -1) {
-    throw new Error("You cannot access that room");
-  }
-
-  moveMember(member, targetRoom.name);
 }

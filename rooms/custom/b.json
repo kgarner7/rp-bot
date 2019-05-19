@@ -1,6 +1,13 @@
 {
   "description": "room b: test",
   "isPrivate": false,
+  "itemsList": [
+    {
+      "description": "an item",
+      "name": "tareq",
+      "quantity": 100000
+    }
+  ],
   "name": "room b",
   "neighbors": [
     {
