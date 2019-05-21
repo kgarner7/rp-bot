@@ -9,17 +9,17 @@ import { Op } from "sequelize";
 
 import { config } from "./config/config";
 import { InvalidCommandError } from "./config/errors";
-import { initGuild, initRooms } from "./helpers/base";
+import { initGuild, initRooms, initUsers, roomManager } from "./helpers/base";
 import { CustomMessage } from "./helpers/classes";
 import { actions } from "./listeners/actions";
 import { sendMessage } from "./listeners/baseHelpers";
+import { handleSave } from "./listeners/state";
 import { initDB, Message, sequelize, User } from "./models/models";
 import { Room } from "./rooms/room";
 import { RoomManager } from "./rooms/roomManager";
 
 const client = new Client();
-let guild: Guild,
-  manager: RoomManager;
+let guild: Guild;
 
 function invalid(msg: DiscordMessage): boolean {
   return client.user.id === msg.author.id || (msg.guild !== guild && msg.guild !== null);
@@ -44,8 +44,9 @@ client.on("ready", async () => {
     }
   });
 
-  manager = await RoomManager.create("./rooms/custom");
+  const manager = await RoomManager.create("./data/rooms");
   initRooms(manager);
+  await initUsers("./data/users");
 });
 
 client.on("messageDelete", (msg: DiscordMessage) => {
@@ -141,6 +142,8 @@ client.on("guildMemberAdd", async (member: GuildMember) => {
 client.on("guildMemberUpdate",
   async (oldMember: GuildMember, newMember: GuildMember) => {
 
+  const manager = roomManager();
+
   if (oldMember.displayName !== newMember.displayName) {
     await User.update({
       discordName: newMember.displayName
@@ -184,3 +187,12 @@ initDB()
   .catch((err: Error) => {
     console.error(err);
   });
+
+async function handleExit(): Promise<void> {
+  await handleSave();
+}
+
+process.on("exit", handleExit);
+process.on("SIGINT", handleExit);
+process.on("SIGUSR1", handleExit);
+process.on("SIGUSR2", handleExit);

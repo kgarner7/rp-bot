@@ -1,5 +1,6 @@
 // tslint:disable:no-any no-unsafe-any
 import { Room } from "../models/room";
+import { UserResolvable } from "../models/user";
 import { Item, ItemAttributes, ItemResolvable } from "../rooms/item";
 import {
   Neighbor,
@@ -209,4 +210,19 @@ export function isRoomResolvable(arg: any): arg is RoomResolvable {
   return arg instanceof Room || isRoomAttribute(arg);
 }
 
-// END ROOM
+// END ROOM; BEGIN USER
+
+export function isUserResolvable(arg: any): arg is UserResolvable {
+  const baseCheck = exists(arg) &&
+    exists(arg.discordName) && typeof(arg.discordName) === "string" &&
+    exists(arg.id) && typeof(arg.id) === "string" &&
+    exists(arg.name) && typeof(arg.name) === "string";
+
+  if (!baseCheck) return false;
+
+  for (const item of arg.inventory) {
+    if (!isItemResolvable(item)) return false;
+  }
+
+  return true;
+}

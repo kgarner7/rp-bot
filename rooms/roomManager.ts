@@ -5,6 +5,7 @@ import {
   TextChannel
 } from "discord.js";
 import { sync } from "glob";
+import { readFile } from "jsonfile";
 import { relative } from "path";
 import { Op } from "sequelize";
 
@@ -195,41 +196,13 @@ export class RoomManager {
       rooms: Room[] = [],
       status: Map<string, boolean> = new Map();
 
-    for (const file of sync(`${directory}/*.*s`, { absolute: true })) {
-      const localPath = `./${relative(__dirname, file)}`,
-        mod = await import(localPath);
-      let room: Room;
-
-      // tslint:disable:no-unsafe-any
-      if (mod.default instanceof Room) {
-        room = mod.default as Room;
-      } else {
-        continue;
-      }
-      // tslind:enable:no-unsafe-any
-
-      const existing = categories.get(room.parent);
-
-      rooms.push(room);
-
-      if (existing === undefined) {
-        categories.set(room.parent, [room]);
-        status.set(room.parent, room.isPrivate);
-      } else {
-        existing.push(room);
-        status.set(room.parent, (status.get(room.parent) === true) && room.isPrivate);
-      }
-    }
-
     for (const file of sync(`${directory}/*.json`, { absolute: true })) {
-      const localPath = `./${relative(__dirname, file)}`,
-        json = await import(localPath);
-
+      const json = await readFile(file);
       let room: Room;
 
       // tslint:disable:no-unsafe-any
-      if (isRoomAttribute(json.default)) {
-        room = new Room(json.default);
+      if (isRoomAttribute(json)) {
+        room = new Room(json);
       } else {
         continue;
       }

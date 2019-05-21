@@ -143,12 +143,6 @@ export class Room {
         if (role !== null) await role.delete();
         await existingChannel.destroy();
       } else {
-        this.items.clear();
-
-        for (const [name, item] of Object.entries(existingChannel.inventory)) {
-          this.items.set(name, new Item(item));
-        }
-
         if (role === null) {
           role = await guild.createRole({
             color: this.color,
@@ -169,6 +163,16 @@ export class Room {
 
         this.channel = channel;
         this.role = role;
+
+        await RoomModel.update({
+          discord: this.channel.name,
+          inventory: this.items.serialize(),
+          name: this.name
+        }, {
+          where: {
+            id: this.channel.id
+          }
+        });
 
         return;
       }

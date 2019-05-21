@@ -4,12 +4,16 @@ import {
   Role,
   TextChannel
 } from "discord.js";
+import { sync } from "glob";
+import { readFile } from "jsonfile";
+import { relative } from "path";
 import { NodeVM, VMScript } from "vm2";
 
 import { AccessError } from "../config/errors";
+import { User, UserResolvable } from "../models/user";
 import { RoomManager } from "../rooms/roomManager";
 
-import { Undefined } from "./types";
+import { isUserResolvable, Undefined } from "./types";
 
 let everyone: Undefined<Role>,
   guild: Guild,
@@ -21,6 +25,33 @@ let everyone: Undefined<Role>,
  */
 export function initGuild(externalGuild: Guild): void {
   guild = externalGuild;
+}
+
+/**
+ * Updates users with items
+ * @param path the path to initialize users
+ */
+export async function initUsers(path: string): Promise<void> {
+  for (const file of sync(`${path}/*.json`, { absolute : true})) {
+    const module = await readFile(file);
+    let user: UserResolvable;
+
+    if (isUserResolvable(module)) {
+      user = module;
+    } else {
+      continue;
+    }
+
+    await User.update({
+      discordName: user.discordName,
+      inventory: user.inventory,
+      name: user.name
+    }, {
+      where: {
+        id: user.id
+      }
+    });
+  }
 }
 
 /**

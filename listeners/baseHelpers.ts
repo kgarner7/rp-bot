@@ -212,6 +212,13 @@ export async function getRoom(msg: CustomMessage,
   return roomModel;
 }
 
+/**
+ * Sends a messate to a user
+ * @param msg the message of the sender
+ * @param message the message to be sent
+ * @param isPrivate  whether the message should be sent to the senders channel
+ *  or privately
+ */
 export function sendMessage(msg: CustomMessage, message: string,
                             isPrivate: boolean = false): void {
 

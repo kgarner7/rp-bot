@@ -3,6 +3,7 @@ import { GuildMember, Role } from "discord.js";
 import { ChannelNotFoundError } from "../config/errors";
 import { mainGuild, requireAdmin, roomManager } from "../helpers/base";
 import { CustomMessage } from "../helpers/classes";
+import { lock } from "../helpers/locks";
 import { Undefined } from "../helpers/types";
 import { Link, Room as RoomModel } from "../models/models";
 import { Neighbor } from "../rooms/room";
@@ -16,7 +17,6 @@ import {
   parseCommand,
   sendMessage
 } from "./baseHelpers";
-import { lock } from "../helpers/locks";
 
 export const usage: Action = {
   move: {

@@ -1,6 +1,6 @@
 import { TextChannel } from "discord.js";
 
-import { Dict, mainGuild, requireAdmin, roomManager } from "../helpers/base";
+import { Dict, mainGuild, roomManager } from "../helpers/base";
 import { CustomMessage, SortableArray } from "../helpers/classes";
 import { lock } from "../helpers/locks";
 import { Undefined } from "../helpers/types";
@@ -164,6 +164,8 @@ export async function dropItem(msg: CustomMessage): Promise<void> {
 
     if (item === undefined) {
       throw new Error(`You do not have ${itemName}`);
+    } else if (item.locked) {
+      throw new Error(`You cannot drop ${itemName}: it is locked`);
     }
 
     if (quantity > item.quantity) {
@@ -174,7 +176,7 @@ export async function dropItem(msg: CustomMessage): Promise<void> {
 
     item.quantity -= quantity;
 
-    if (item.quantity < 0) {
+    if (item.quantity <= 0) {
       quantity += item.quantity;
       user.inventory = exclude(user.inventory, itemName);
     }
@@ -319,6 +321,8 @@ export async function giveItem(msg: CustomMessage): Promise<void> {
 
     if (item === undefined) {
       throw new Error(`You do not have "${itemName}"`);
+    } else if (item.locked) {
+      throw new Error(`You cannot give "${itemName}"`);
     }
 
     if (quantity > item.quantity) {
@@ -400,7 +404,8 @@ export async function items(msg: CustomMessage): Promise<void> {
         let itemString = "";
 
         for (const item of room.items.values()) {
-          itemString += `${item.name} (${item.quantity})\n`;
+          const ending = item.locked ? " locked" : "";
+          itemString += `${item.name} (${item.quantity})${ending}\n`;
         }
 
         itemString = itemString.substr(0, itemString.length - 1);

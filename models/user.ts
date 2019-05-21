@@ -25,9 +25,16 @@ import {
 
 import { Dict } from "../helpers/base";
 import { Null } from "../helpers/types";
-import { ItemModel } from "../rooms/item";
+import { ItemModel, ItemResolvable } from "../rooms/item";
 
 import { sequelize } from "./connection";
+
+export interface UserResolvable {
+  discordName: string;
+  id: string;
+  inventory: ItemResolvable[];
+  name: string;
+}
 
 /**
  * Database model corresponding to a Discord user
