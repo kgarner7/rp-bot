@@ -17,6 +17,7 @@ import {
   toFunction
 } from "../helpers/base";
 import { SerializedMap } from "../helpers/classes";
+import { isNone } from "../helpers/types";
 import { Link, Room as RoomModel, User } from "../models/models";
 
 import { Item, ItemModel, ItemResolvable } from "./item";
@@ -152,7 +153,7 @@ export class Room {
           role.setColor(this.color);
         }
 
-        if (channel === null) {
+        if (isNone(channel)) {
           channel = await guild.createChannel(this.name, "text") as TextChannel;
           existingChannel.update({
             id: channel.id

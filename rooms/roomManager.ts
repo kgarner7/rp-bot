@@ -6,12 +6,11 @@ import {
 } from "discord.js";
 import { sync } from "glob";
 import { readFile } from "jsonfile";
-import { relative } from "path";
 import { Op } from "sequelize";
 
 import { everyoneRole, mainGuild } from "../helpers/base";
-import { isRoomAttribute } from "../helpers/types";
-import { Link, Room as RoomModel, User } from "../models/models";
+import { isNone, isRoomAttribute } from "../helpers/types";
+import { Link, Room as RoomModel, sequelize, User } from "../models/models";
 
 import { Neighbor, Room } from "./room";
 
@@ -115,6 +114,7 @@ export class RoomManager {
 
   private async initialize(force: boolean): Promise<void> {
     const roomIds: string[] = [];
+    const guild = mainGuild();
 
     for (const room of this.rooms.values()) {
       await room.init(this, force);
@@ -126,13 +126,33 @@ export class RoomManager {
       room.initChannel();
     }
 
-    await RoomModel.destroy({
+    const transaction = await sequelize.transaction();
+
+    const models = await RoomModel.findAll({
+      transaction,
       where: {
         id: {
           [Op.not]: roomIds
         }
       }
     });
+
+    for (const model of models) {
+      await model.destroy({ transaction });
+      const channel = guild.channels.get(model.id);
+
+      if (!isNone(channel)) await channel.delete();
+    }
+
+    const categories = guild.channels
+      .filter(channel => channel instanceof CategoryChannel &&
+        channel.children.size === 0);
+
+    for (const [, category] of categories) {
+      await category.delete();
+    }
+
+    await transaction.commit();
 
     const ids: number[] = [];
 

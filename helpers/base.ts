@@ -6,7 +6,6 @@ import {
 } from "discord.js";
 import { sync } from "glob";
 import { readFile } from "jsonfile";
-import { relative } from "path";
 import { NodeVM, VMScript } from "vm2";
 
 import { AccessError } from "../config/errors";

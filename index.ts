@@ -178,7 +178,7 @@ client.on("guildMemberUpdate",
 initDB()
   .then(async () => {
     try {
-      await sequelize.sync({ force: true });
+      await sequelize.sync();
       await client.login(config.botToken);
     } catch (err) {
       console.error((err as Error).stack);

@@ -14,7 +14,8 @@ import { Action } from "./actions";
 import {
   currentRoom,
   getRoom,
-  getRoomName
+  getRoomName,
+  sendMessage
 } from "./baseHelpers";
 
 export const usage: Action = {
@@ -100,6 +101,7 @@ export async function showLogs(msg: CustomMessage): Promise<void> {
         attributes: ["createdAt", "message"],
         include: [{
           model: User,
+          required: false,
           where: {
             id: sender.id
           }
@@ -107,7 +109,8 @@ export async function showLogs(msg: CustomMessage): Promise<void> {
           as: "Sender",
           model: User
         }],
-        model: MessageModel
+        model: MessageModel,
+        required: false
       }],
       order: [[MessageModel, "createdAt", "ASC"]],
       where: {
@@ -146,35 +149,39 @@ export async function showLogs(msg: CustomMessage): Promise<void> {
   if (room === null) {
     throw new NoLogError(msg);
   } else {
-    tmp.file((err, path, _fd, callback) => {
-      if (err || room === null) return;
+    if (room.Messages.length === 0) {
+      sendMessage(msg, `You have no logs for the room ${name}`, true);
+    } else {
+      tmp.file((err, path, _fd, callback) => {
+        if (err || room === null) return;
 
-      writeFileSync(path, room.Messages.map(message => {
-        let senderName: string = message.Sender.name;
+        writeFileSync(path, room.Messages.map(message => {
+          let senderName: string = message.Sender.discordName;
 
-        if (message.Sender.id === sender.id) senderName = "You";
+          if (message.Sender.id === sender.id) senderName = "You";
 
-        const timeString: string =
-          moment(message.createdAt)
-          .format("M/DD/YY h:mm A");
+          const timeString: string =
+            moment(message.createdAt)
+            .format("M/DD/YY h:mm A");
 
-        return `${senderName} (${timeString}): ${message.message}`;
-      })
-      .join("\n"));
+          return `${senderName} (${timeString}): ${message.message}`;
+        })
+        .join("\n"));
 
-      sender.send({
-        files: [{
-          attachment: path,
-          name: `${name}-log.txt`
-        }]
-      })
-      .then(() => {
-        callback();
-      })
-      .catch(_err => {
-        callback();
+        sender.send({
+          files: [{
+            attachment: path,
+            name: `${name}-log.txt`
+          }]
+        })
+        .then(() => {
+          callback();
+        })
+        .catch(_err => {
+          callback();
+        });
       });
-    });
+    }
   }
 }
 
