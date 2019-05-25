@@ -148,7 +148,7 @@ export async function read(msg: CustomMessage): Promise<void> {
     });
 
   if (attachments.length === 0) {
-    const files = sync(`./data/${dir}/*.json`)
+    const files = sync(`./data/${dir}/**/*.json`)
       // tslint:disable-next-line:no-unnecessary-callback-wrapper
       .map(file => basename(file));
 
