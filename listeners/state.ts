@@ -226,7 +226,8 @@ export async function handleSave(): Promise<void> {
       parent: room.parent
     };
 
-    writeFile(`./data/rooms/${room.name}.json`, data, { spaces: 2 }, err => {
+    writeFile(`./data/rooms/${room.parent}/${room.name}.json`, 
+      data, { spaces: 2 }, err => {
       if (err) {
         console.error(err);
       }
@@ -285,7 +286,7 @@ export async function write(msg: CustomMessage): Promise<void> {
 
   if (isRoomAttribute(json)) {
     const room = json as RoomAttributes;
-    path += `rooms/${room.name}.json`;
+    path += `rooms/${room.parent}/${room.name}.json`;
 
   } else if (isUserResolvable(json)) {
     const user = json as UserResolvable;
