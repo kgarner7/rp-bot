@@ -101,7 +101,7 @@ export async function showLogs(msg: CustomMessage): Promise<void> {
         attributes: ["createdAt", "message"],
         include: [{
           model: User,
-          required: false,
+          required: true,
           where: {
             id: sender.id
           }

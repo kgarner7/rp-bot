@@ -235,6 +235,8 @@ export class Room {
       id: everyone
     }];
 
+    const existingRoles = new Set<String>([this.role.id]);
+
     if (manager.visibility.get(this.parent) !== true &&
       (!this.isPrivate || this.isPublic)) {
       const allowed: PermissionResolvable = ["READ_MESSAGES"];
@@ -251,8 +253,16 @@ export class Room {
               allow: allowed,
               id: room.role!.id
             });
+
+            existingRoles.add(room.role!.id);
           }
         }
+      }
+    }
+
+    for (const [, permission] of this.channel.permissionOverwrites) {
+      if (permission.type === "member" || existingRoles.has(permission.id)) {
+        overwrites.push(permission);
       }
     }
 

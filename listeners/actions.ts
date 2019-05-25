@@ -13,8 +13,8 @@ import {
 } from "./items";
 import { doors, handleLock, hide, links, usage as LinkUsage } from "./links";
 import { move, usage as MovementUsage, userMove } from "./movement";
-import { createRoom, deleteRoom, getAvailableRooms, usage as RoomUsage } from "./rooms";
-import { save, update, usage as SaveUsage } from "./state";
+import { createRoom, getAvailableRooms, usage as RoomUsage } from "./rooms";
+import { deleteFile, read, save, update, usage as SaveUsage, write } from "./state";
 import { members, showLogs, usage as UserUsage, users } from "./users";
 
 export interface UsageDescription {
@@ -102,7 +102,7 @@ async function help(msg: CustomMessage): Promise<void> {
  */
 export const actions: Dict<(msg: CustomMessage) => Promise<void>> = {
   "create-room": createRoom,
-  "delete-room": deleteRoom,
+  "delete": deleteFile,
   "doors": doors,
   "drop": dropItem,
   "give": giveItem,
@@ -116,6 +116,7 @@ export const actions: Dict<(msg: CustomMessage) => Promise<void>> = {
   "log": showLogs,
   "move": userMove,
   "mv": move,
+  "read": read,
   "rooms": getAvailableRooms,
   "save": save,
   "take": takeItem,
@@ -123,5 +124,6 @@ export const actions: Dict<(msg: CustomMessage) => Promise<void>> = {
   "unlock": handleLock(false),
   "update": update,
   "users": users,
-  "who": members
+  "who": members,
+  "write": write
 };

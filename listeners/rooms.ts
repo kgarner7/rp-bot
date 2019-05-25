@@ -8,22 +8,6 @@ import { Action } from "./actions";
 import { adjacentRooms, getRoom, parseCommand, sendMessage } from "./baseHelpers";
 
 export const usage: Action = {
-  "create-room": {
-    adminOnly: true,
-    description: "Creates a new private room",
-    uses: [{
-      example: "!create-room testing room",
-      use: "!create-room **room**"
-    }]
-  },
-  "delete-room": {
-    adminOnly: true,
-    description: "destroys an existing room",
-    uses: [{
-      example: "!delete-room room a",
-      use: "!delete-room **room**"
-    }]
-  },
   "rooms": {
     description: "Lists all rooms that you have visited and can currently access",
     uses: [{

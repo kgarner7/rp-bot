@@ -10,6 +10,5 @@ module.exports = {
 		instances: 1,
 		name: "discordo bot",
     script: `dist/index.js`,
-    watch: ["dist"]
 	}
 }

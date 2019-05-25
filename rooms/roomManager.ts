@@ -144,14 +144,6 @@ export class RoomManager {
       if (!isNone(channel)) await channel.delete();
     }
 
-    const categories = guild.channels
-      .filter(channel => channel instanceof CategoryChannel &&
-        channel.children.size === 0);
-
-    for (const [, category] of categories) {
-      await category.delete();
-    }
-
     await transaction.commit();
 
     const ids: number[] = [];
@@ -249,7 +241,7 @@ export class RoomManager {
         .find(c => c.name === category && c.type === "category") as CategoryChannel;
 
       if (existing !== null && force) {
-        existing.delete();
+        await existing.delete();
         existing = null;
       }
 
@@ -268,7 +260,7 @@ export class RoomManager {
           };
         }
 
-        existing.overwritePermissions(everyone, overwrites);
+        await existing.overwritePermissions(everyone, overwrites);
       }
 
       for (const room of categories.get(category) as Room[]) {
@@ -278,6 +270,14 @@ export class RoomManager {
 
     const manager = new RoomManager(rooms, force);
     manager.visibility = status;
+
+    const oldCategories = guild.channels
+      .filter(channel => !categories.has(channel.name) &&
+        channel instanceof CategoryChannel);
+
+    for (const [, category] of oldCategories) {
+      category.delete();
+    }
 
     return manager;
   }

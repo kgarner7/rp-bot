@@ -14,6 +14,7 @@
     "moment": "^2.24.0",
     "pg": "^7.11.0",
     "pm2": "^3.5.0",
+    "request": "^2.88.0",
     "sequelize": "^4.44.0",
     "tmp": "0.0.33",
     "vm2": "^3.8.1"
@@ -23,6 +24,7 @@
     "@types/glob": "^7.1.1",
     "@types/node": "^10.14.7",
     "@types/pg": "^7.4.14",
+    "@types/request": "^2.48.1",
     "@types/sequelize": "github:types/sequelize",
     "@types/tmp": "0.0.33",
     "sequelize-cli": "^5.4.0",

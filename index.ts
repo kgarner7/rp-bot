@@ -9,7 +9,13 @@ import { Op } from "sequelize";
 
 import { config } from "./config/config";
 import { InvalidCommandError } from "./config/errors";
-import { initGuild, initRooms, initUsers, roomManager } from "./helpers/base";
+import {
+  initGuild,
+  initRooms,
+  initUsers,
+  requireAdmin,
+  roomManager
+} from "./helpers/base";
 import { CustomMessage } from "./helpers/classes";
 import { actions } from "./listeners/actions";
 import { sendMessage } from "./listeners/baseHelpers";
