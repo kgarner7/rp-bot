@@ -281,7 +281,7 @@ export async function write(msg: CustomMessage): Promise<void> {
   requireAdmin(msg);
   const command = parseCommand(msg);
 
-  const json = JSON.parse(command.params.join(""));
+  const json = JSON.parse(command.params.join(", "));
   let path = "./data/";
 
   if (isRoomAttribute(json)) {
