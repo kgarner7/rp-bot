@@ -217,7 +217,7 @@ export class RoomManager {
       if (isRoomAttribute(json)) {
         room = new Room(json);
       } else {
-        const error = `Not valid room JSON file ${file}: ${json}`;
+        const error = `Not valid room JSON file ${file}: ${JSON.stringify(json)}`;
         guild.owner.send(error);
         console.error(error);
         continue;
