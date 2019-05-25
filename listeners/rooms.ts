@@ -8,7 +8,7 @@ import { Action } from "./actions";
 import { adjacentRooms, getRoom, parseCommand, sendMessage } from "./baseHelpers";
 
 export const usage: Action = {
-  "rooms": {
+  rooms: {
     description: "Lists all rooms that you have visited and can currently access",
     uses: [{
       use: "!rooms"

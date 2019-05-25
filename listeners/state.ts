@@ -1,4 +1,4 @@
-import { existsSync, unlinkSync } from "fs";
+import { existsSync, unlinkSync, readFile, readFileSync } from "fs";
 import { sync } from "glob";
 import { writeFile } from "jsonfile";
 import { basename } from "path";
@@ -123,7 +123,8 @@ export async function deleteFile(msg: CustomMessage): Promise<void> {
 
 export async function read(msg: CustomMessage): Promise<void> {
   requireAdmin(msg);
-  const command = parseCommand(msg, ["type"]),
+  const command = parseCommand(msg, ["as", "type"]),
+    format = (command.args.get("as") || []).join(""),
     type = (command.args.get("type") || []).join("");
 
   let dir: "rooms" | "users";
@@ -157,9 +158,18 @@ export async function read(msg: CustomMessage): Promise<void> {
     sendMessage(msg, message,  true);
   } else {
     try {
-      await msg.author.send({
-        files: attachments
-      });
+      if (format === "text") {
+        let message = "";
+        for (const file of attachments) {
+          message += readFileSync(file.attachment) + "\n";
+        }
+
+        await sendMessage(msg, message, true);
+      } else {
+        await msg.author.send({
+          files: attachments
+        });
+      }
     } catch (err) {
       throw err;
     }
