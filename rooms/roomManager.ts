@@ -208,7 +208,7 @@ export class RoomManager {
       rooms: Room[] = [],
       status: Map<string, boolean> = new Map();
 
-    for (const file of sync(`${directory}/*.json`, { absolute: true })) {
+    for (const file of sync(`${directory}/**/*.json`, { absolute: true })) {
       const json = await readFile(file);
       let room: Room;
 
