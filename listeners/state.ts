@@ -1,4 +1,4 @@
-import { existsSync, unlinkSync, readFile, readFileSync } from "fs";
+import { existsSync, readFileSync, unlinkSync } from "fs";
 import { sync } from "glob";
 import { writeFile } from "jsonfile";
 import { basename } from "path";

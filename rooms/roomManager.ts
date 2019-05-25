@@ -205,6 +205,7 @@ export class RoomManager {
 
     const categories: Map<string, Room[]> = new Map(),
       everyone = everyoneRole().id,
+      guild = mainGuild(),
       rooms: Room[] = [],
       status: Map<string, boolean> = new Map();
 
@@ -216,6 +217,9 @@ export class RoomManager {
       if (isRoomAttribute(json)) {
         room = new Room(json);
       } else {
+        const error = `Not valid room JSON file ${file}: ${json}`;
+        guild.owner.send(error);
+        console.error(error);
         continue;
       }
       // tslint:enable:no-unsafe-any
@@ -233,8 +237,6 @@ export class RoomManager {
           (status.get(room.parent) === true) && room.isPrivate);
       }
     }
-
-    const guild = mainGuild();
 
     for (const category of categories.keys()) {
       let existing: CategoryChannel | null = guild.channels
