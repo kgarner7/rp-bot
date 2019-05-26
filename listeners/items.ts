@@ -429,7 +429,7 @@ export async function inspect(msg: CustomMessage): Promise<void> {
 
   try {
     const user = await User.findOne({
-      attributes: ["id", "inventory"],
+      attributes: ["inventory"],
       where: {
         id: msg.author.id
       }
@@ -453,10 +453,13 @@ export async function inspect(msg: CustomMessage): Promise<void> {
       }
     }
 
+    let hasUserItem = false;
+
     for (const item of missingItems) {
       const userItem = user!.inventory[item];
 
       if (!isNone(userItem)) {
+        hasUserItem = true;
         descriptions.add(`**${item}:: ${userItem.description} (in inventory)`);
       }
     }
@@ -470,7 +473,7 @@ export async function inspect(msg: CustomMessage): Promise<void> {
       message = descriptions.join("\n");
     }
 
-    sendMessage(msg, message, true);
+    sendMessage(msg, message, hasUserItem);
   } finally {
     await lock({ release: true, room: roomId, user: msg.author.id});
   }
