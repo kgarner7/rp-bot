@@ -453,19 +453,22 @@ export async function inspect(msg: CustomMessage): Promise<void> {
       }
     }
 
-    let hasUserItem = false;
+    let privateMessage = false;
+    console.log(user!.inventory);
 
     for (const item of missingItems) {
       const userItem = user!.inventory[item];
 
       if (!isNone(userItem)) {
-        hasUserItem = true;
+        privateMessage = true;
         descriptions.add(`**${item}:: ${userItem.description} (in inventory)`);
       }
     }
     let message = "";
 
     if (missingItems.size > 0) {
+      privateMessage = true;
+
       for (const item of missingItems) {
         message += `Could not find ${item}\n`;
       }
@@ -473,7 +476,7 @@ export async function inspect(msg: CustomMessage): Promise<void> {
       message = descriptions.join("\n");
     }
 
-    sendMessage(msg, message, hasUserItem);
+    sendMessage(msg, message, privateMessage);
   } finally {
     await lock({ release: true, room: roomId, user: msg.author.id});
   }
