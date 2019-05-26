@@ -3,7 +3,7 @@ import { TextChannel } from "discord.js";
 import { Dict, mainGuild, roomManager } from "../helpers/base";
 import { CustomMessage, SortableArray } from "../helpers/classes";
 import { lock } from "../helpers/locks";
-import { Undefined } from "../helpers/types";
+import { isNone, Undefined } from "../helpers/types";
 import { Op, Room, sequelize, User } from "../models/models";
 import { Item, ItemModel } from "../rooms/item";
 
@@ -422,31 +422,57 @@ export async function items(msg: CustomMessage): Promise<void> {
 
 export async function inspect(msg: CustomMessage): Promise<void> {
   const roomModel = await getRoom(msg, true),
-    itemsList = parseCommand(msg);
+    itemsList = parseCommand(msg),
+    roomId = isNone(roomModel) ? undefined : roomModel.id;
 
-  if (roomModel !== null) {
-    await lock({ release: false, room: roomModel.id });
+  await lock({ release: false, room: roomId, user: msg.author.id });
+
+  try {
+    const user = await User.findOne({
+      attributes: ["id"],
+      where: {
+        id: msg.author.id
+      }
+    });
+
     const descriptions = new SortableArray<string>();
+    const missingItems = new Set<string>();
 
-    try {
+    if (!isNone(roomModel)) {
       const room = roomManager().rooms
-        .get(roomModel.name)!;
+      .get(roomModel.name)!;
 
       for (const item of itemsList.params) {
         const roomItem = room.items.get(item);
 
         if (roomItem !== undefined) {
           descriptions.add(`**${item}**: ${roomItem.description}`);
+        } else {
+          missingItems.add(item);
         }
-
       }
-    } catch (err) {
-      throw err;
-    } finally {
-      sendMessage(msg, descriptions.join("\n"));
-      await lock({ release: true, room: roomModel.id });
     }
 
+    for (const item of missingItems) {
+      const userItem = user!.inventory[item];
+
+      if (!isNone(userItem)) {
+        descriptions.add(`**${item}:: ${userItem.description} (in inventory)`);
+      }
+    }
+    let message = "";
+
+    if (missingItems.size > 0) {
+      for (const item of missingItems) {
+        message += `Could not find ${item}\n`;
+      }
+    } else {
+      message = descriptions.join("\n");
+    }
+
+    sendMessage(msg, message, true);
+  } finally {
+    await lock({ release: true, room: roomId, user: msg.author.id});
   }
 }
 

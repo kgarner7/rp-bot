@@ -226,7 +226,7 @@ export async function handleSave(): Promise<void> {
       parent: room.parent
     };
 
-    writeFile(`./data/rooms/${room.parent}/${room.name}.json`, 
+    writeFile(`./data/rooms/${room.parent}/${room.name}.json`,
       data, { spaces: 2 }, err => {
       if (err) {
         console.error(err);
