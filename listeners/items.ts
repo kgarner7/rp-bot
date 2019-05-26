@@ -577,8 +577,7 @@ export async function takeItem(msg: CustomMessage): Promise<void> {
     try {
       existing.quantity -= quantity;
 
-      if (existing.quantity <= 0) {
-        quantity += existing.quantity;
+      if (existing.quantity === 0) {
         room.items.delete(itemName);
       }
 
@@ -593,6 +592,8 @@ export async function takeItem(msg: CustomMessage): Promise<void> {
       } else {
         user.inventory[itemName] = new Item({ ...existing, quantity});
       }
+
+      console.log(user.inventory);
 
       await user.update({
         inventory: user.inventory
