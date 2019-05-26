@@ -436,7 +436,7 @@ export async function inspect(msg: CustomMessage): Promise<void> {
     });
 
     const descriptions = new SortableArray<string>();
-    const missingItems = new Set<string>();
+    const missingItems = new Set<string>(itemsList.params);
 
     if (!isNone(roomModel)) {
       const room = roomManager().rooms
@@ -447,18 +447,14 @@ export async function inspect(msg: CustomMessage): Promise<void> {
 
         if (!isNone(roomItem)) {
           descriptions.add(`**${item}**: ${roomItem.description}`);
-        } else {
-          missingItems.add(item);
+          missingItems.delete(item);
         }
       }
     }
 
     let privateMessage = false;
-    console.log(user!.inventory);
 
     for (const item of missingItems) {
-      console.log(item);
-      console.log(user!.inventory[item]);
       const userItem = user!.inventory[item];
 
       if (!isNone(userItem)) {
