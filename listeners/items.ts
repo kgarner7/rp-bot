@@ -454,12 +454,13 @@ export async function inspect(msg: CustomMessage): Promise<void> {
 
     let privateMessage = false;
 
-    for (const item of missingItems) {
+    for (const item of new Set<string>(missingItems)) {
       const userItem = user!.inventory[item];
 
       if (!isNone(userItem)) {
         privateMessage = true;
         descriptions.add(`**${item}:: ${userItem.description} (in inventory)`);
+        missingItems.delete(item);
       }
     }
 
