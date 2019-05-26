@@ -454,8 +454,11 @@ export async function inspect(msg: CustomMessage): Promise<void> {
     }
 
     let privateMessage = false;
+    console.log(user!.inventory);
 
     for (const item of missingItems) {
+      console.log(item);
+      console.log(user!.inventory[item]);
       const userItem = user!.inventory[item];
 
       if (!isNone(userItem)) {
@@ -592,8 +595,6 @@ export async function takeItem(msg: CustomMessage): Promise<void> {
       } else {
         user.inventory[itemName] = new Item({ ...existing, quantity});
       }
-
-      console.log(user.inventory);
 
       await user.update({
         inventory: user.inventory
