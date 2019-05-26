@@ -429,7 +429,7 @@ export async function inspect(msg: CustomMessage): Promise<void> {
 
   try {
     const user = await User.findOne({
-      attributes: ["id"],
+      attributes: ["id", "inventory"],
       where: {
         id: msg.author.id
       }
