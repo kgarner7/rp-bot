@@ -445,7 +445,7 @@ export async function inspect(msg: CustomMessage): Promise<void> {
       for (const item of itemsList.params) {
         const roomItem = room.items.get(item);
 
-        if (roomItem !== undefined) {
+        if (!isNone(roomItem)) {
           descriptions.add(`**${item}**: ${roomItem.description}`);
         } else {
           missingItems.add(item);
