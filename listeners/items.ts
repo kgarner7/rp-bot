@@ -459,7 +459,7 @@ export async function inspect(msg: CustomMessage): Promise<void> {
 
       if (!isNone(userItem)) {
         privateMessage = true;
-        descriptions.add(`**${item}:: ${userItem.description} (in inventory)`);
+        descriptions.add(`**${item}**: ${userItem.description} (in inventory)`);
         missingItems.delete(item);
       }
     }
