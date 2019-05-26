@@ -32,7 +32,7 @@ import { sequelize } from "./connection";
 export interface UserResolvable {
   discordName: string;
   id: string;
-  inventory: ItemResolvable[];
+  inventory: Dict<ItemResolvable>;
   name: string;
 }
 

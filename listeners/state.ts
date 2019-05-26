@@ -3,7 +3,7 @@ import { sync } from "glob";
 import { writeFile } from "jsonfile";
 import { basename } from "path";
 
-import { initRooms, initUsers, requireAdmin, roomManager } from "../helpers/base";
+import { Dict, initRooms, initUsers, requireAdmin, roomManager } from "../helpers/base";
 import { CustomMessage } from "../helpers/classes";
 import { isNone, isRoomAttribute, isUserResolvable, Undefined } from "../helpers/types";
 import { User, UserResolvable } from "../models/user";
@@ -237,7 +237,7 @@ export async function handleSave(): Promise<void> {
   const users = await User.findAll();
 
   for (const user of users) {
-    const inventory: ItemAttributes[] = [];
+    const inventory: Dict<ItemAttributes> = { };
 
     for (const item of Object.values(user.inventory)) {
       const itemData: ItemAttributes = {
@@ -247,7 +247,7 @@ export async function handleSave(): Promise<void> {
         quantity: item.quantity
       };
 
-      inventory.push(itemData);
+      inventory[item.name] = itemData;
     }
 
     const userData: UserResolvable = {

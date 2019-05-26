@@ -454,7 +454,6 @@ export async function inspect(msg: CustomMessage): Promise<void> {
     }
 
     let privateMessage = false;
-    console.log(user!.inventory);
 
     for (const item of missingItems) {
       const userItem = user!.inventory[item];
@@ -464,6 +463,7 @@ export async function inspect(msg: CustomMessage): Promise<void> {
         descriptions.add(`**${item}:: ${userItem.description} (in inventory)`);
       }
     }
+
     let message = "";
 
     if (missingItems.size > 0) {

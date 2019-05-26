@@ -217,11 +217,12 @@ export function isUserResolvable(arg: any): arg is UserResolvable {
   const baseCheck = exists(arg) &&
     exists(arg.discordName) && typeof(arg.discordName) === "string" &&
     exists(arg.id) && typeof(arg.id) === "string" &&
+    exists(arg.inventory) && typeof(arg.inventory) === "object" &&
     exists(arg.name) && typeof(arg.name) === "string";
 
   if (!baseCheck) return false;
 
-  for (const item of arg.inventory) {
+  for (const item of Object.values(arg.inventory)) {
     if (!isItemResolvable(item)) return false;
   }
 
