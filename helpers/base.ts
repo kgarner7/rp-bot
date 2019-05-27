@@ -12,7 +12,7 @@ import { AccessError } from "../config/errors";
 import { User, UserResolvable } from "../models/user";
 import { RoomManager } from "../rooms/roomManager";
 
-import { isUserResolvable, Undefined } from "./types";
+import { isUserResolvable, Undefined, isNone } from "./types";
 
 let everyone: Undefined<Role>,
   guild: Guild,
@@ -39,6 +39,12 @@ export async function initUsers(path: string): Promise<void> {
       user = module;
     } else {
       continue;
+    }
+
+    for (const item of Object.values(user.inventory)) {
+      if (isNone(item.quantity)) {
+        item.quantity = 1;
+      }
     }
 
     await User.update({
