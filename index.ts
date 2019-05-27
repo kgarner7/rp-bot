@@ -8,15 +8,14 @@ import {
 import { Op } from "sequelize";
 
 import { config } from "./config/config";
-import { InvalidCommandError } from "./config/errors";
 import {
   initGuild,
   initRooms,
   initUsers,
-  requireAdmin,
   roomManager
 } from "./helpers/base";
 import { CustomMessage } from "./helpers/classes";
+import { globalLock } from "./helpers/locks";
 import { actions } from "./listeners/actions";
 import { sendMessage } from "./listeners/baseHelpers";
 import { handleSave } from "./listeners/state";
@@ -85,8 +84,6 @@ client.on("message", async (msg: DiscordMessage) => {
     let message = msg.content.substring(1, endIndex),
       username = "";
 
-    if (msg.deletable) await msg.delete();
-
     try {
       if (message.startsWith("as")) {
         const split = msg.content.split(" ")
@@ -108,6 +105,8 @@ client.on("message", async (msg: DiscordMessage) => {
       }
 
       if (message in actions) {
+        if (msg.deletable) await msg.delete();
+
         if (username !== "" && msg.author.id === guild.ownerID) {
 
           const user = await User.findOne({
@@ -128,13 +127,14 @@ client.on("message", async (msg: DiscordMessage) => {
           }
         }
 
+        await globalLock({ acquire: true, writer: false });
         await actions[message](mesg);
-      } else {
-        throw new InvalidCommandError(message);
       }
     } catch (err) {
       sendMessage(msg, (err as Error).message, true);
       console.error((err as Error).stack);
+    } finally {
+      await globalLock({ acquire: false, writer: false });
     }
   } else if (msg.channel instanceof TextChannel) {
     await Message.createFromMsg(msg);

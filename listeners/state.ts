@@ -5,6 +5,7 @@ import { basename } from "path";
 
 import { Dict, initRooms, initUsers, requireAdmin, roomManager } from "../helpers/base";
 import { CustomMessage } from "../helpers/classes";
+import { globalLock } from "../helpers/locks";
 import { isNone, isRoomAttribute, isUserResolvable, Undefined } from "../helpers/types";
 import { User, UserResolvable } from "../models/user";
 import { ItemAttributes } from "../rooms/item";
@@ -80,45 +81,51 @@ export async function deleteFile(msg: CustomMessage): Promise<void> {
   const types: string[] = Array(command.params.length)
     .fill(type);
 
-  for (let idx = 0; idx < command.params.length; idx++) {
-    const file = command.params[idx];
-    let localType: Undefined<string> = types[idx];
+  await globalLock({ acquire: true, writer: true });
 
-    if (localType !== "room" && localType !== "user") {
-      localType = undefined;
+  try {
+    for (let idx = 0; idx < command.params.length; idx++) {
+      const file = command.params[idx];
+      let localType: Undefined<string> = types[idx];
 
-      for (const possibleType of possibleTypes) {
-        const path = `./data/${possibleType}s/${file}.json`;
+      if (localType !== "room" && localType !== "user") {
+        localType = undefined;
 
-        if (existsSync(path)) {
-          localType = possibleType;
-          break;
+        for (const possibleType of possibleTypes) {
+          const path = `./data/${possibleType}s/${file}.json`;
+
+          if (existsSync(path)) {
+            localType = possibleType;
+            break;
+          }
+        }
+
+        if (localType === undefined) {
+          throw new Error(`Could not find room or user for ${file}`);
+        }
+
+        types[idx] = localType;
+      } else {
+        const path = `./data/${type}s/${file}.json`;
+        if (!existsSync(path)) {
+          throw new Error(`No ${type} file with name ${file}`);
         }
       }
-
-      if (localType === undefined) {
-        throw new Error(`Could not find room or user for ${file}`);
-      }
-
-      types[idx] = localType;
-    } else {
-      const path = `./data/${type}s/${file}.json`;
-      if (!existsSync(path)) {
-        throw new Error(`No ${type} file with name ${file}`);
-      }
     }
+
+    for (let idx = 0; idx < command.params.length; idx++) {
+      const file = command.params[idx],
+        localType = types[idx],
+        path = `./data/${localType}s/${file}.json`;
+
+      unlinkSync(path);
+    }
+
+    const unlinked = command.params.join(", ");
+    sendMessage(msg, `Successfully unlinked files ${unlinked}`, true);
+  } finally {
+    await globalLock({ acquire: false, writer: true });
   }
-
-  for (let idx = 0; idx < command.params.length; idx++) {
-    const file = command.params[idx],
-      localType = types[idx],
-      path = `./data/${localType}s/${file}.json`;
-
-    unlinkSync(path);
-  }
-
-  const unlinked = command.params.join(", ");
-  sendMessage(msg, `Successfully unlinked files ${unlinked}`, true);
 }
 
 export async function read(msg: CustomMessage): Promise<void> {
@@ -137,7 +144,10 @@ export async function read(msg: CustomMessage): Promise<void> {
     throw new Error("There is no file of that type");
   }
 
-  const attachments = command.params
+  await globalLock({ acquire: true, writer: true });
+
+  try {
+    const attachments = command.params
     .map(filename => {
       const path = `./data/${dir}/${filename}.json`;
 
@@ -147,39 +157,47 @@ export async function read(msg: CustomMessage): Promise<void> {
       };
     });
 
-  if (attachments.length === 0) {
-    const files = sync(`./data/${dir}/**/*.json`)
-      // tslint:disable-next-line:no-unnecessary-callback-wrapper
-      .map(file => basename(file));
+    if (attachments.length === 0) {
+      const files = sync(`./data/${dir}/**/*.json`)
+        // tslint:disable-next-line:no-unnecessary-callback-wrapper
+        .map(file => basename(file));
 
-    const message = files.length === 0 ?
-         `There are no files in ./data/${dir}` : files.join(", ");
+      const message = files.length === 0 ?
+          `There are no files in ./data/${dir}` : files.join(", ");
 
-    sendMessage(msg, message,  true);
-  } else {
-    try {
-      if (format === "text") {
-        let message = "";
-        for (const file of attachments) {
-          message += readFileSync(file.attachment) + "\n";
+      sendMessage(msg, message,  true);
+    } else {
+      try {
+        if (format === "text") {
+          let message = "";
+          for (const file of attachments) {
+            message += readFileSync(file.attachment) + "\n";
+          }
+
+          await sendMessage(msg, message, true);
+        } else {
+          await msg.author.send({
+            files: attachments
+          });
         }
-
-        await sendMessage(msg, message, true);
-      } else {
-        await msg.author.send({
-          files: attachments
-        });
+      } catch (err) {
+        throw err;
       }
-    } catch (err) {
-      throw err;
     }
+  } finally {
+    await globalLock({ acquire: false, writer: true });
   }
 }
 
 export async function save(msg: CustomMessage): Promise<void> {
   requireAdmin(msg);
-  await handleSave();
-  sendMessage(msg, "Saved successfully", true);
+  await globalLock({ acquire: true, writer: true });
+  try {
+    await handleSave();
+    sendMessage(msg, "Saved successfully", true);
+  } finally {
+    await globalLock({ acquire: false, writer: true });
+  }
 }
 
 export async function handleSave(): Promise<void> {
@@ -267,8 +285,14 @@ export async function handleSave(): Promise<void> {
 
 export async function update(msg: CustomMessage): Promise<void> {
   requireAdmin(msg);
-  await handleUpdate();
-  sendMessage(msg, "Updated successfully", true);
+  await globalLock({ acquire: true, writer: true });
+
+  try {
+    await handleUpdate();
+    sendMessage(msg, "Updated successfully", true);
+  } finally {
+    await globalLock({ acquire: false, writer: true });
+  }
 }
 
 export async function handleUpdate(): Promise<void> {
@@ -296,10 +320,14 @@ export async function write(msg: CustomMessage): Promise<void> {
     throw new Error("Neither a user nor room resolvable");
   }
 
+  await globalLock({ acquire: true, writer: true });
+
   try {
     await writeFile(path, json, { spaces: 2 });
     sendMessage(msg, `Updated file ${path} successfully`, true);
   } catch (err) {
     sendMessage(msg, `Could not update ${path}: ${err}`, true);
+  } finally {
+    await globalLock({ acquire: false, writer: true });
   }
 }

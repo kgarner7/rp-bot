@@ -5,6 +5,8 @@ import { isNone, None } from "./types";
 const roomLock: Set<string> = new Set(),
   userLock: Set<string> = new Set();
 
+const MAX_PARALLEL_LOCKS = 5;
+
 const lockQueue = async.queue(
   ({ release, room, user }: { release: boolean; room?: string; user?: string | string[] },
    callback: (err: None<Error>) => void) => {
@@ -53,7 +55,37 @@ const lockQueue = async.queue(
 
       callback(undefined);
   });
-}, 1);
+}, MAX_PARALLEL_LOCKS);
+
+let readers = 0;
+let hasWriter = false;
+
+const globalReadWriteQueue = async.queue(
+  ({ acquire, writer }: { acquire: boolean; writer: boolean},
+   callback: () => void) => {
+
+  async.until(() => {
+    if (!acquire) {
+      return true;
+    } else {
+      return writer ?
+        !hasWriter :
+        readers === 1;
+    }
+  }, () => { /* do nothing*/ }, () => {
+    if (writer) {
+      hasWriter = hasWriter;
+    } else {
+      if (acquire) {
+        readers++;
+      } else {
+        readers--;
+      }
+    }
+  });
+
+  callback();
+}, MAX_PARALLEL_LOCKS);
 
 /**
  * Requests to acquire or release a lock for a room and/or use
@@ -69,6 +101,16 @@ export async function lock({ release, room, user }:
         throw err;
       }
 
+      resolve();
+    });
+  });
+}
+
+export async function globalLock({ acquire, writer }:
+  { acquire: boolean; writer: boolean}): Promise<void> {
+
+  return new Promise((resolve: () => void): void => {
+    globalReadWriteQueue.push({ acquire, writer }, () => {
       resolve();
     });
   });
