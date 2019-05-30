@@ -39,13 +39,16 @@ export async function createRoom(msg: CustomMessage): Promise<void> {
 
   const everyone: string = guild.roles.find(r => r.name === "@everyone").id;
 
-  await guild.createChannel(name, "text", [{
-    allow: ["READ_MESSAGES", "SEND_MESSAGES"],
-    id: role.id
-  }, {
-    deny: ["READ_MESSAGES", "READ_MESSAGE_HISTORY", "SEND_MESSAGES"],
-    id: everyone
-  }]);
+  await guild.createChannel(name, {
+    permissionOverwrites: [{
+      allow: ["READ_MESSAGES", "SEND_MESSAGES"],
+      id: role.id
+    }, {
+      deny: ["READ_MESSAGES", "READ_MESSAGE_HISTORY", "SEND_MESSAGES"],
+      id: everyone
+    }],
+    type: "text"
+  });
 
   sendMessage(msg, `Successfully created room ${name}`, true);
 }

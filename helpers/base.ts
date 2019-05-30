@@ -12,7 +12,7 @@ import { AccessError } from "../config/errors";
 import { User, UserResolvable } from "../models/user";
 import { RoomManager } from "../rooms/roomManager";
 
-import { isUserResolvable, Undefined, isNone } from "./types";
+import { isNone, isUserResolvable, Undefined } from "./types";
 
 let everyone: Undefined<Role>,
   guild: Guild,

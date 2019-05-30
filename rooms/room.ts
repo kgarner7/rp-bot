@@ -154,7 +154,9 @@ export class Room {
         }
 
         if (isNone(channel)) {
-          channel = await guild.createChannel(this.name, "text") as TextChannel;
+          channel = await guild.createChannel(this.name, {
+            type: "text"
+          }) as TextChannel;
           existingChannel.update({
             id: channel.id
           });
@@ -195,8 +197,11 @@ export class Room {
       const channel = guild.channels
         .find(c => c.name === Room.discordChannelName(this.name));
 
-      this.channel = channel !== null && channel instanceof TextChannel ? channel :
-        await guild.createChannel(this.name, "text") as TextChannel;
+      this.channel = channel !== null && channel instanceof TextChannel ?
+        channel :
+        await guild.createChannel(this.name, {
+          type: "text"
+        }) as TextChannel;
 
       await RoomModel.create({
         discordName: this.channel.name,

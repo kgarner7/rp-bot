@@ -248,7 +248,7 @@ export async function users(msg: CustomMessage): Promise<void> {
     let itemString = "Inventory:";
 
     for (const item of Object.values(member.inventory)) {
-      itemString += `\n**${item.name}**: ${item.description} (${item.quantity})`;
+      itemString += `\n**${item.name}** (${item.quantity})`;
     }
 
     if (itemString === "Inventory:") itemString = "Inventory: none";

@@ -248,10 +248,13 @@ export class RoomManager {
       }
 
       if (existing === null) {
-        existing = await guild.createChannel(category, "category", [{
-          deny: (status.get(category) === true ? ["READ_MESSAGES", "VIEW_CHANNEL"] : []),
-          id: everyone
-        }]) as CategoryChannel;
+        existing = await guild.createChannel(category, {
+          permissionOverwrites: [{
+            deny: status.get(category) === true ? ["READ_MESSAGES", "VIEW_CHANNEL"] : [],
+            id: everyone
+          }],
+          type: "category"
+        }) as CategoryChannel;
       } else {
         let overwrites: PermissionObject = { };
 
