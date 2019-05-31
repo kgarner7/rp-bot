@@ -170,7 +170,7 @@ export async function consume(msg: CustomMessage): Promise<void> {
       inventory: user.inventory
     });
 
-    sendMessage(msg, `You dropped ${quantity} of ${itemName}`, true);
+    sendMessage(msg, `You consumed ${quantity} of ${itemName}`, true);
   } finally {
     await lock({ release: true, user: user.id });
   }
