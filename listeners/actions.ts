@@ -3,6 +3,7 @@ import { CustomMessage } from "../helpers/classes";
 
 import { parseCommand, sendMessage } from "./baseHelpers";
 import {
+  consume,
   dropItem,
   giveItem,
   inspect,
@@ -101,6 +102,7 @@ async function help(msg: CustomMessage): Promise<void> {
  * A mapping of administrative actions to functions
  */
 export const actions: Dict<(msg: CustomMessage) => Promise<void>> = {
+  "consume": consume,
   "create-room": createRoom,
   "delete": deleteFile,
   "doors": doors,

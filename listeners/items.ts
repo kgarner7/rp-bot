@@ -11,6 +11,16 @@ import { Action } from "./actions";
 import { getRoom, parseCommand, sendMessage } from "./baseHelpers";
 
 export const usage: Action = {
+  consume: {
+    description: "Removes a quantiy of items from your inventory. They cannot be locked",
+    uses: [
+      {
+        example: "!consume 5 of a pizza",
+        explanation: "Consumes 5 pizzas",
+        use: "!consume **number** of **item**"
+      }
+    ]
+  },
   drop: {
     description: "Drops a number of items into the room",
     uses: [
@@ -119,6 +129,51 @@ function getInt(value: string): number {
   }
 
   return numOrNaN;
+}
+
+export async function consume(msg: CustomMessage): Promise<void> {
+  const command = parseCommand(msg, ["of"]),
+    user = await User.findOne({
+    attributes: ["id", "inventory"],
+    where: {
+      id: msg.author.id
+    }
+  });
+
+  if (isNone(user)) throw new Error(`Could not find a user ${msg.author.username}`);
+
+  let itemName = command.params.join(), quantity = 1;
+
+  if (command.args.has("of")) {
+    quantity = getInt(itemName);
+    itemName = command.args.get("of")!.join();
+  }
+
+  if (quantity < 1) throw new Error("Must be positive quantity");
+
+  await lock({ release: false, user: user.id});
+
+  try {
+    const item: Undefined<ItemModel> = user.inventory[itemName];
+
+    if (isNone(item)) throw new Error(`You do not have ${itemName}`);
+    else if (item.locked) throw new Error(`You cannot remove ${itemName}`);
+
+    if (quantity > item.quantity) {
+      const mesg = `You have ${item.quantity} ${itemName}, you cannot remove ${quantity}`;
+      throw new Error(mesg);
+    }
+
+    item.quantity -= quantity;
+
+    await user.update({
+      inventory: user.inventory
+    });
+
+    sendMessage(msg, `You dropped ${quantity} of ${itemName}`, true);
+  } finally {
+    await lock({ release: true, user: user.id });
+  }
 }
 
 export async function dropItem(msg: CustomMessage): Promise<void> {
