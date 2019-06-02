@@ -1,4 +1,4 @@
-import async from "async";
+import { queue, until } from "async";
 
 import { isNone, None } from "./types";
 
@@ -7,11 +7,11 @@ const roomLock: Set<string> = new Set(),
 
 const MAX_PARALLEL_LOCKS = 5;
 
-const lockQueue = async.queue(
+const lockQueue = queue(
   ({ release, room, user }: { release: boolean; room?: string; user?: string | string[] },
    callback: (err: None<Error>) => void) => {
 
-  async.until(() => {
+  until(() => {
     if (release) return true;
 
     let available = true;
@@ -60,11 +60,11 @@ const lockQueue = async.queue(
 let readers = 0;
 let hasWriter = false;
 
-const globalReadWriteQueue = async.queue(
+const globalReadWriteQueue = queue(
   ({ acquire, writer }: { acquire: boolean; writer: boolean},
    callback: () => void) => {
 
-  async.until(() => {
+  until(() => {
     if (!acquire) {
       return true;
     } else {

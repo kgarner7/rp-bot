@@ -276,14 +276,6 @@ export class RoomManager {
     const manager = new RoomManager(rooms, force);
     manager.visibility = status;
 
-    const oldCategories = guild.channels
-      .filter(channel => !categories.has(channel.name) &&
-        channel instanceof CategoryChannel);
-
-    for (const [, category] of oldCategories) {
-      category.delete();
-    }
-
     return manager;
   }
 }
