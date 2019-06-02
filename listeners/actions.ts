@@ -1,4 +1,4 @@
-import { Dict, mainGuild } from "../helpers/base";
+import { Dict, lineEnd, mainGuild } from "../helpers/base";
 import { CustomMessage } from "../helpers/classes";
 
 import { parseCommand, sendMessage } from "./baseHelpers";
@@ -67,7 +67,7 @@ async function help(msg: CustomMessage): Promise<void> {
   if (commandName === "") {
     const commands = Object.keys(availableUsages)
       .sort()
-      .join("\n");
+      .join(lineEnd);
 
     sendMessage(msg, commands, true);
   } else {
@@ -78,20 +78,20 @@ async function help(msg: CustomMessage): Promise<void> {
     }
 
     let count = 1,
-      message = `***${commandName}***: ${usage.description}\nUses:`;
+      message = `***${commandName}***: ${usage.description}${lineEnd}Uses:`;
 
     for (const use of usage.uses) {
-      message += `\n${count++}: ${use.use}`;
+      message += `${lineEnd}${count++}: ${use.use}`;
 
       if (use.explanation !== undefined) {
-        message += `\n${use.explanation}`;
+        message += `${lineEnd}${use.explanation}`;
       }
 
       if (use.example !== undefined) {
-        message += `\nEX: ${use.example}`;
+        message += `${lineEnd}EX: ${use.example}`;
       }
 
-      message += "\n";
+      message += lineEnd;
     }
 
     sendMessage(msg, message, true);

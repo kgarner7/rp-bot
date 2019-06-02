@@ -3,7 +3,14 @@ import { sync } from "glob";
 import { writeFile } from "jsonfile";
 import { basename } from "path";
 
-import { Dict, initRooms, initUsers, requireAdmin, roomManager } from "../helpers/base";
+import {
+  Dict,
+  initRooms,
+  initUsers,
+  lineEnd,
+  requireAdmin,
+  roomManager
+} from "../helpers/base";
 import { CustomMessage } from "../helpers/classes";
 import { globalLock } from "../helpers/locks";
 import { isNone, isRoomAttribute, isUserResolvable, Undefined } from "../helpers/types";
@@ -171,7 +178,7 @@ export async function read(msg: CustomMessage): Promise<void> {
         if (format === "text") {
           let message = "";
           for (const file of attachments) {
-            message += readFileSync(file.attachment) + "\n";
+            message += readFileSync(file.attachment) + lineEnd;
           }
 
           await sendMessage(msg, message, true);

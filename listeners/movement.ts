@@ -1,7 +1,7 @@
 import { GuildMember, Role } from "discord.js";
 
 import { ChannelNotFoundError } from "../config/errors";
-import { mainGuild, requireAdmin, roomManager } from "../helpers/base";
+import { lineEnd, mainGuild, requireAdmin, roomManager } from "../helpers/base";
 import { CustomMessage } from "../helpers/classes";
 import { lock } from "../helpers/locks";
 import { Undefined } from "../helpers/types";
@@ -103,7 +103,7 @@ export async function move(msg: CustomMessage): Promise<void> {
   try {
     const command = parseCommand(msg, ["to"]),
     guild = mainGuild(),
-    targetName = (command.args.get("to") || []).join("\n"),
+    targetName = (command.args.get("to") || []).join(lineEnd),
     targetRoom = await getRoomModel(targetName);
 
     if (targetRoom === null) {

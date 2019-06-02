@@ -26,6 +26,8 @@ export function initGuild(externalGuild: Guild): void {
   guild = externalGuild;
 }
 
+export const lineEnd = "\r\n";
+
 /**
  * Updates users with items
  * @param path the path to initialize users
@@ -126,7 +128,7 @@ export type FunctionResolvable = Function | string | string[];
 export function toFunction(fn: FunctionResolvable, env: any): Function {
   if (fn instanceof Function) return fn.bind(env);
 
-  const fnString: string = fn instanceof Array ? fn.join("\n") : fn,
+  const fnString: string = fn instanceof Array ? fn.join(lineEnd) : fn,
     script = new VMScript(fnString),
     vm = new NodeVM({
       console: "inherit",

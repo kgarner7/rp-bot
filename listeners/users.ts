@@ -5,7 +5,7 @@ import { Op } from "sequelize";
 import tmp from "tmp";
 
 import {  NoLogError } from "../config/errors";
-import { mainGuild, requireAdmin } from "../helpers/base";
+import { mainGuild, requireAdmin, lineEnd } from "../helpers/base";
 import { CustomMessage } from "../helpers/classes";
 import { Null } from "../helpers/types";
 import { Link, Message as MessageModel, Room as RoomModel, User } from "../models/models";
@@ -166,7 +166,7 @@ export async function showLogs(msg: CustomMessage): Promise<void> {
 
           return `${senderName} (${timeString}): ${message.message}`;
         })
-        .join("\n"));
+        .join(lineEnd));
 
         sender.send({
           files: [{
@@ -248,12 +248,13 @@ export async function users(msg: CustomMessage): Promise<void> {
     let itemString = "Inventory:";
 
     for (const item of Object.values(member.inventory)) {
-      itemString += `\n**${item.name}** (${item.quantity})`;
+      itemString += `${lineEnd}**${item.name}** (${item.quantity})`;
     }
 
     if (itemString === "Inventory:") itemString = "Inventory: none";
 
-    message += `${guildMember}\n${roomString}\n${visitedString}\n${itemString}\n`;
+    message += [guildMember, roomString, visitedString, itemString].join(lineEnd)
+      + lineEnd;
   }
 
   msg.author.send(message);

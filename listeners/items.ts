@@ -1,6 +1,6 @@
 import { TextChannel } from "discord.js";
 
-import { Dict, mainGuild, roomManager } from "../helpers/base";
+import { Dict, lineEnd, mainGuild, roomManager } from "../helpers/base";
 import { CustomMessage, SortableArray } from "../helpers/classes";
 import { lock } from "../helpers/locks";
 import { isNone, Undefined } from "../helpers/types";
@@ -225,7 +225,7 @@ export async function dropItem(msg: CustomMessage): Promise<void> {
 
     if (quantity > item.quantity) {
       const message = `Cannot drop **${quantity}** of **${itemName}**` +
-                      `\nYou have **${item.quantity}**`;
+                      `${lineEnd}You have **${item.quantity}**`;
       throw new Error(message);
     }
 
@@ -382,7 +382,7 @@ export async function giveItem(msg: CustomMessage): Promise<void> {
 
     if (quantity > item.quantity) {
       const message = `Cannot give **${quantity}** of **${itemName}**` +
-                      `\nYou have **${item.quantity}**`;
+                      `${lineEnd}You have **${item.quantity}**`;
       throw new Error(message);
     }
 
@@ -460,12 +460,12 @@ export async function items(msg: CustomMessage): Promise<void> {
 
         for (const item of room.items.values()) {
           const ending = item.locked ? " locked" : "";
-          itemString += `${item.name} (${item.quantity})${ending}\n`;
+          itemString += `${item.name} (${item.quantity})${ending}${lineEnd}`;
         }
 
         itemString = itemString.substr(0, itemString.length - 1);
 
-        sendMessage(msg, `The following items are present: \n${itemString}`);
+        sendMessage(msg, `The following items are present: ${lineEnd}${itemString}`);
       }
     } catch (err) {
       throw err;
@@ -525,10 +525,10 @@ export async function inspect(msg: CustomMessage): Promise<void> {
       privateMessage = true;
 
       for (const item of missingItems) {
-        message += `Could not find ${item}\n`;
+        message += `Could not find ${item}${lineEnd}`;
       }
     } else {
-      message = descriptions.join("\n");
+      message = descriptions.join(lineEnd);
     }
 
     sendMessage(msg, message, privateMessage);
@@ -557,10 +557,10 @@ export async function inventory(msg: CustomMessage): Promise<void> {
     const userItems = Object.values(user.inventory)
       .sort()
       .map(i => `**${i.name}**: ${i.description} (${i.quantity})`)
-      .join("\n");
+      .join(lineEnd);
 
     const message = userItems.length > 0 ?
-      `You have the following items:\n${userItems}` : "You have no items";
+      `You have the following items:${lineEnd}${userItems}` : "You have no items";
 
     sendMessage(msg, message, true);
   } catch (err) {
@@ -623,7 +623,7 @@ export async function takeItem(msg: CustomMessage): Promise<void> {
 
     if (quantity > existing.quantity) {
       const err = `Cannot take **${quantity}** of **${itemName}**` +
-                  `\nYou have **${existing.quantity}**`;
+                  `${lineEnd}You have **${existing.quantity}**`;
       throw new Error(err);
     }
 

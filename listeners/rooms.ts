@@ -1,7 +1,7 @@
 import { Guild, Role } from "discord.js";
 
 import { ChannelNotFoundError, ExistingChannelError } from "../config/errors";
-import { mainGuild, requireAdmin } from "../helpers/base";
+import { lineEnd, mainGuild, requireAdmin } from "../helpers/base";
 import { CustomMessage } from "../helpers/classes";
 
 import { Action } from "./actions";
@@ -86,7 +86,7 @@ export async function getAvailableRooms(msg: CustomMessage): Promise<void> {
     .sort();
 
     sendMessage(msg,
-      `Here are the rooms you can visit:\n${roomList.join("\n")}`,
+      `Here are the rooms you can visit:${lineEnd}${roomList.join(lineEnd)}`,
       true);
 
     resolve();

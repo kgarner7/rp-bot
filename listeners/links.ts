@@ -1,7 +1,7 @@
 import { Op } from "sequelize";
 
 import { ChannelNotFoundError } from "../config/errors";
-import { Dict, mainGuild, requireAdmin, roomManager } from "../helpers/base";
+import { Dict, lineEnd, mainGuild, requireAdmin, roomManager } from "../helpers/base";
 import { CustomMessage } from "../helpers/classes";
 import { Link, Room as RoomModel } from "../models/models";
 
@@ -197,7 +197,7 @@ export function handleLock(locked: boolean): (msg: CustomMessage) => Promise<voi
 
     sendMessage(msg, (messageArray.length > 0 ?
       messageArray.sort()
-        .join("\n") :
+        .join(lineEnd) :
         "No links changed"),
       true);
   };
@@ -274,7 +274,7 @@ export function hide(hidden: boolean): (msg: CustomMessage) => Promise<void> {
 
     sendMessage(msg, (messageArray.length > 0 ?
       messageArray.sort()
-        .join("\n") :
+        .join(lineEnd) :
         "No links changed"),
       true);
   };
@@ -331,7 +331,7 @@ export async function links(msg: CustomMessage): Promise<void> {
 
     return `${link.source.name} => ${link.target.name}${endString} (${neighbor.name})`;
   })
-  .join("\n");
+  .join(lineEnd);
 
   if (linkString === "") {
     linkString = "No links found with those parameters";
@@ -365,7 +365,7 @@ export async function doors(msg: CustomMessage): Promise<void> {
 
         if (neighbor.locked) messageString += ": locked";
 
-        messageString += "\n";
+        messageString += lineEnd;
       }
     }
   } else {
