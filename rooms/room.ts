@@ -239,7 +239,7 @@ export class Room {
 
     const denyPermission: PermissionResolvable = ["READ_MESSAGES", "SEND_MESSAGES"];
 
-    if (!history) {
+    if (!this.history) {
       denyPermission.push("READ_MESSAGE_HISTORY");
     }
 
