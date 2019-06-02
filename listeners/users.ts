@@ -5,7 +5,7 @@ import { Op } from "sequelize";
 import tmp from "tmp";
 
 import {  NoLogError } from "../config/errors";
-import { mainGuild, requireAdmin, lineEnd } from "../helpers/base";
+import { lineEnd, mainGuild, requireAdmin } from "../helpers/base";
 import { CustomMessage } from "../helpers/classes";
 import { Null } from "../helpers/types";
 import { Link, Message as MessageModel, Room as RoomModel, User } from "../models/models";

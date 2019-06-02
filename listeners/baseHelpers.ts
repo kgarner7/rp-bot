@@ -241,7 +241,7 @@ export function sendMessage(msg: CustomMessage, message: string,
 
     while (idx < message.length) {
       const mesg = message.slice(idx, idx + MAX_MESSAGE_SIZE);
-      target.sendMessage(mesg);
+      target.send(mesg);
 
       idx += MAX_MESSAGE_SIZE;
     }
