@@ -167,6 +167,8 @@ export function isRoomAttribute(arg: any): arg is RoomAttributes {
     (exists(arg.color) ?
       (typeof(arg.color) === "number" || typeof(arg.color) === "string") : true) &&
     typeof(arg.description) === "string" &&
+    (exists(arg.history) ?
+      typeof(arg.history) === "boolean" : true) &&
     (exists(arg.isPrivate) ?
       typeof(arg.isPrivate) === "boolean" : true) &&
     (exists(arg.isPublic) ?

@@ -42,6 +42,7 @@ export interface RoomAttributes {
   actions?: Dict<FunctionResolvable>;
   color?: string | number;
   description: string;
+  history?: boolean;
   isPrivate?: boolean;
   isPublic?: boolean;
   itemsList?: ItemResolvable[];
@@ -55,11 +56,12 @@ export type RoomResolvable = RoomAttributes | Room;
 export class Room {
   public actions: Map<string, Function> = new Map();
   public channel?: TextChannel;
-  public color: string | number;
-  public description: string;
-  public name: string;
-  public isPrivate: boolean;
-  public isPublic: boolean;
+  public readonly color: string | number;
+  public readonly description: string;
+  public readonly name: string;
+  public readonly history: boolean;
+  public readonly isPrivate: boolean;
+  public readonly isPublic: boolean;
   public items: SerializedMap<Item, ItemModel> = new SerializedMap();
   public neighborMap: Map<string, Neighbor> = new Map();
   public parent: string;
@@ -68,12 +70,13 @@ export class Room {
   protected state: object = { };
   protected manager: RoomManager;
 
-  public constructor({ actions = { }, color = "RANDOM", description, isPrivate = false,
-                       isPublic = false, itemsList = [], name, neighbors = [],
-                       parent}: RoomAttributes) {
+  public constructor({ actions = { }, color = "RANDOM", description, history = false,
+                       isPrivate = false, isPublic = false, itemsList = [], name,
+                       neighbors = [], parent}: RoomAttributes) {
 
     this.color = color;
     this.description = description;
+    this.history = history;
     this.isPrivate = isPrivate;
     this.isPublic = isPublic;
     this.name = name;
@@ -234,11 +237,17 @@ export class Room {
         this.role === undefined ||
         this.parentChannel === undefined) return;
 
+    const denyPermission: PermissionResolvable = ["READ_MESSAGES", "SEND_MESSAGES"];
+
+    if (!history) {
+      denyPermission.push("READ_MESSAGE_HISTORY");
+    }
+
     const overwrites: Array<ChannelCreationOverwrites | PermissionOverwrites> = [{
       allow: ["READ_MESSAGES", "SEND_MESSAGES"],
       id: this.role.id
     }, {
-      deny: ["READ_MESSAGES", "READ_MESSAGE_HISTORY", "SEND_MESSAGES"],
+      deny: denyPermission,
       id: everyone
     }];
 
