@@ -201,6 +201,7 @@ export class Room {
       this.channel = channel !== null && channel instanceof TextChannel ?
         channel :
         await guild.createChannel(this.name, {
+          topic: this.description,
           type: "text"
         }) as TextChannel;
 
