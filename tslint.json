@@ -148,7 +148,7 @@
       "named-imports-order": "case-insensitive",
       "module-source-path": "full"
     }],
-    "prefer-conditional-expression": [true, "check-else-if"],
+    "prefer-conditional-expression": [true],
     "prefer-const": [true, {
       "destructuring": "all"
     }],

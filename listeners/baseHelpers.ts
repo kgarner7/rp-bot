@@ -1,4 +1,4 @@
-import { GuildMember, Role, TextChannel } from "discord.js";
+import { GuildMember, Role, TextChannel, User } from "discord.js";
 import { Op } from "sequelize";
 
 import { mainGuild, roomManager } from "../helpers/base";
@@ -6,6 +6,8 @@ import { CustomMessage } from "../helpers/classes";
 import { Null } from "../helpers/types";
 import { Room as RoomModel } from "../models/models";
 import { RoomManager } from "../rooms/roomManager";
+
+const MAX_MESSAGE_SIZE = 1900;
 
 /**
  * Gets the rooms adjacent to the target room
@@ -222,11 +224,26 @@ export async function getRoom(msg: CustomMessage,
 export function sendMessage(msg: CustomMessage, message: string,
                             isPrivate: boolean = false): void {
 
+  let target: User | TextChannel;
+
   if (msg.overridenSender !== undefined) {
-    msg.overridenSender.send(message);
+    target = msg.overridenSender;
   } else if (!isPrivate && msg.channel instanceof TextChannel) {
-    msg.channel.send(message);
+    target = msg.channel;
   } else {
-    msg.author.send(message);
- }
+    target = msg.author;
+  }
+
+  if (message.length < MAX_MESSAGE_SIZE) {
+    target.send(message);
+  } else {
+    let idx = 0;
+
+    while (idx < message.length) {
+      const mesg = message.slice(idx, idx + MAX_MESSAGE_SIZE);
+      target.sendMessage(mesg);
+
+      idx += MAX_MESSAGE_SIZE;
+    }
+  }
 }
