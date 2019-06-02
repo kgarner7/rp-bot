@@ -155,6 +155,7 @@ export class Room {
 
         if (isNone(channel)) {
           channel = await guild.createChannel(this.name, {
+            topic: this.description,
             type: "text"
           }) as TextChannel;
           existingChannel.update({
