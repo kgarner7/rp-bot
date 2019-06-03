@@ -12,6 +12,7 @@ import { AccessError } from "../config/errors";
 import { User, UserResolvable } from "../models/user";
 import { RoomManager } from "../rooms/roomManager";
 
+import { CustomMessage } from "./classes";
 import { isNone, isUserResolvable, Undefined } from "./types";
 
 let everyone: Undefined<Role>,
@@ -110,8 +111,12 @@ export function getMembers(msg: Message): string[] {
  * @param msg the message we are handling
  * @throws {AccessError}
  */
-export function requireAdmin(msg: Message): void {
-  if (msg.author.id !== mainGuild().ownerID) throw new AccessError(msg.content);
+export function requireAdmin(msg: CustomMessage): void {
+  if (!isAdmin(msg)) throw new AccessError(msg.content);
+}
+
+export function isAdmin(msg: CustomMessage): boolean {
+  return msg.author.id !== mainGuild().ownerID;
 }
 
 export interface Dict<T> {

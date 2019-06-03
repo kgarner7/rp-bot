@@ -1,9 +1,9 @@
 import { TextChannel } from "discord.js";
 
-import { Dict, lineEnd, mainGuild, roomManager } from "../helpers/base";
+import { Dict, isAdmin, lineEnd, mainGuild, roomManager } from "../helpers/base";
 import { CustomMessage, SortableArray } from "../helpers/classes";
 import { lock } from "../helpers/locks";
-import { isNone, Undefined } from "../helpers/types";
+import { isNone, None, Undefined } from "../helpers/types";
 import { Op, Room, sequelize, User } from "../models/models";
 import { Item, ItemModel } from "../rooms/item";
 
@@ -131,6 +131,10 @@ function getInt(value: string): number {
   return numOrNaN;
 }
 
+function missing(msg: CustomMessage, item: None<ItemModel>): boolean {
+  return isNone(item) || (item.hidden && !isAdmin(msg));
+}
+
 export async function consume(msg: CustomMessage): Promise<void> {
   const command = parseCommand(msg, ["of"]),
     user = await User.findOne({
@@ -156,7 +160,7 @@ export async function consume(msg: CustomMessage): Promise<void> {
   try {
     const item: Undefined<ItemModel> = user.inventory[itemName];
 
-    if (isNone(item)) throw new Error(`You do not have ${itemName}`);
+    if (missing(msg, item)) throw new Error(`You do not have ${itemName}`);
     else if (item.locked) throw new Error(`You cannot remove ${itemName}`);
 
     if (quantity > item.quantity) {
@@ -217,7 +221,7 @@ export async function dropItem(msg: CustomMessage): Promise<void> {
 
     const item: Undefined<ItemModel> = user.inventory[itemName];
 
-    if (item === undefined) {
+    if (missing(msg, item)) {
       throw new Error(`You do not have ${itemName}`);
     } else if (item.locked) {
       throw new Error(`You cannot drop ${itemName}: it is locked`);
@@ -313,9 +317,7 @@ export async function giveItem(msg: CustomMessage): Promise<void> {
 
   if (sender === undefined) throw new Error("You do not exist as a sender");
 
-  if (target === undefined) {
-    throw new Error(`Could not find user "${targetJoined}"`);
-  }
+  if (target === undefined) throw new Error(`Could not find user "${targetJoined}"`);
 
   const senderUser = guild.members.get(sender.id)!,
     targetUser = guild.members.get(target.id)!;
@@ -374,7 +376,7 @@ export async function giveItem(msg: CustomMessage): Promise<void> {
 
     const item: Undefined<ItemModel> = sender.inventory[itemName];
 
-    if (item === undefined) {
+    if (missing(msg, item)) {
       throw new Error(`You do not have "${itemName}"`);
     } else if (item.locked) {
       throw new Error(`You cannot give "${itemName}"`);
@@ -459,8 +461,10 @@ export async function items(msg: CustomMessage): Promise<void> {
         let itemString = "";
 
         for (const item of room.items.values()) {
-          const ending = item.locked ? " locked" : "";
-          itemString += `${item.name} (${item.quantity})${ending}${lineEnd}`;
+          if (!missing(msg, item)) {
+            const ending = item.locked ? " locked" : "";
+            itemString += `${item.name} (${item.quantity})${ending}${lineEnd}`;
+          }
         }
 
         itemString = itemString.substr(0, itemString.length - 1);
@@ -495,13 +499,13 @@ export async function inspect(msg: CustomMessage): Promise<void> {
 
     if (!isNone(roomModel)) {
       const room = roomManager().rooms
-      .get(roomModel.name)!;
+        .get(roomModel.name)!;
 
       for (const item of itemsList.params) {
         const roomItem = room.items.get(item);
 
-        if (!isNone(roomItem)) {
-          descriptions.add(`**${item}**: ${roomItem.description}`);
+        if (!missing(msg, roomItem)) {
+          descriptions.add(`**${item}**: ${roomItem!.description}`);
           missingItems.delete(item);
         }
       }
@@ -538,12 +542,13 @@ export async function inspect(msg: CustomMessage): Promise<void> {
 }
 
 export async function inventory(msg: CustomMessage): Promise<void> {
-  const user = await User.findOne({
-    attributes: ["id"],
-    where: {
-      id: msg.author.id
-    }
-  });
+  const admin = isAdmin(msg),
+    user = await User.findOne({
+      attributes: ["id"],
+      where: {
+        id: msg.author.id
+      }
+    });
 
   if (user === null) throw new Error("Invalid user");
 
@@ -556,6 +561,7 @@ export async function inventory(msg: CustomMessage): Promise<void> {
 
     const userItems = Object.values(user.inventory)
       .sort()
+      .filter(i => !admin && i.hidden)
       .map(i => `**${i.name}**: ${i.description} (${i.quantity})`)
       .join(lineEnd);
 
@@ -615,24 +621,24 @@ export async function takeItem(msg: CustomMessage): Promise<void> {
 
     const existing = room.items.get(itemName);
 
-    if (existing === undefined) {
+    if (missing(msg, existing)) {
       throw new Error(`${itemName} does not exist in the room`);
-    } else if (existing.locked) {
+    } else if (existing!.locked) {
       throw new Error(`${itemName} cannot be removed`);
     }
 
-    if (quantity > existing.quantity) {
+    if (quantity > existing!.quantity) {
       const err = `Cannot take **${quantity}** of **${itemName}**` +
-                  `${lineEnd}You have **${existing.quantity}**`;
+                  `${lineEnd}You have **${existing!.quantity}**`;
       throw new Error(err);
     }
 
     const transaction = await sequelize.transaction();
 
     try {
-      existing.quantity -= quantity;
+      existing!.quantity -= quantity;
 
-      if (existing.quantity === 0) {
+      if (existing!.quantity === 0) {
         room.items.delete(itemName);
       }
 
@@ -645,7 +651,7 @@ export async function takeItem(msg: CustomMessage): Promise<void> {
       if (itemName in user.inventory) {
         user.inventory[itemName].quantity += quantity;
       } else {
-        user.inventory[itemName] = new Item({ ...existing, quantity});
+        user.inventory[itemName] = new Item({ ...existing!, quantity});
       }
 
       await user.update({
@@ -658,8 +664,8 @@ export async function takeItem(msg: CustomMessage): Promise<void> {
 
       sendMessage(msg, `${senderName(msg)} took ${quantity} of ${itemName}`);
     } catch (err) {
-      existing.quantity += quantity;
-      room.items.set(itemName, existing);
+      existing!.quantity += quantity;
+      room.items.set(itemName, existing!);
 
       await transaction.rollback();
     }

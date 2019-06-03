@@ -7,6 +7,7 @@ export interface ItemAttributes {
   actions?: { [key: string]: FunctionResolvable };
   children?: ItemAttributes[];
   description: string;
+  hidden?: boolean;
   locked?: boolean;
   name: string;
   quantity?: number;
@@ -17,6 +18,7 @@ export type ItemResolvable = ItemAttributes | Item;
 export interface ItemModel {
   children: ItemModel[];
   description: string;
+  hidden: boolean;
   locked: boolean;
   name: string;
   quantity: number;
@@ -26,17 +28,19 @@ export class Item implements Serializable<ItemModel> {
   public actions: { [key: string]: Function } = { };
   public children: Item[] = [];
   public description: string;
+  public hidden: boolean;
   public locked: boolean;
-  public name: string;
+  public readonly name: string;
   public quantity: number;
   public room: Room;
   protected state: object = { };
 
-  public constructor({ actions = { }, children = [], description, locked = false, name,
-                       quantity = 1}: ItemAttributes) {
+  public constructor({ actions = { }, children = [], description, hidden = false, 
+                       locked = false, name, quantity = 1}: ItemAttributes) {
 
-    this.locked = locked;
     this.description = description;
+    this.hidden = hidden;
+    this.locked = locked;
     this.name = name;
     this.quantity = quantity;
 
@@ -69,6 +73,7 @@ export class Item implements Serializable<ItemModel> {
     return {
       children: this.children.map(c => c.serialize()),
       description: this.description,
+      hidden: this.hidden,
       locked: this.locked,
       name: this.name,
       quantity: this.quantity
