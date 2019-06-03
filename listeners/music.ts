@@ -38,6 +38,7 @@ export const usage: Action = {
 };
 
 const activeChannels = new Map<string, StreamDispatcher>();
+const tempChannels = new Map<string, StreamDispatcher>();
 
 const musicQueue = queue(
   ({ shouldPlay, channels = [], path = "", tube = "", loop = false }:
@@ -48,10 +49,6 @@ const musicQueue = queue(
   const guild = mainGuild();
 
   if (shouldPlay) {
-    if (activeChannels.size > 0) {
-      stopDispatches(guild);
-    }
-
     startChannels(channels, guild, loop, path, tube)
       .then(() => {
         callback(undefined);
@@ -87,12 +84,19 @@ async function startChannels(channels: string[], guild: Guild, loop: boolean,
     if (isNone(channel)) {
       throw new Error(`Could not find channel ${channelName}`);
     } else {
+      const existing = activeChannels.get(channel.id);
+
+      if (!isNone(existing)) {
+        existing.end("early stop");
+        activeChannels.delete(channel.id);
+      }
+
       try {
         const connection = channel.connection || await channel.join();
         const dispatch = isNone(tube) ? connection.playFile(path) :
           connection.playStream(ytdl(path, { filter: "audioonly" }));
 
-        activeChannels.set(channel.id, dispatch);
+        tempChannels.set(channel.id, dispatch);
 
         dispatch.on("end", reason => {
           if (loop && isNone(reason)) {
@@ -102,7 +106,7 @@ async function startChannels(channels: string[], guild: Guild, loop: boolean,
           }
         });
       } catch (err) {
-        activeChannels.clear();
+        tempChannels.clear();
         throw err;
       }
     }
@@ -124,6 +128,7 @@ export async function play(msg: CustomMessage): Promise<void> {
       (err: None<Error>): void => {
 
         if (!isNone(err)) {
+          tempChannels.clear();
           console.error(err);
           sendMessage(msg, err.message, true);
           reject(err);
@@ -131,6 +136,11 @@ export async function play(msg: CustomMessage): Promise<void> {
           return;
         }
 
+        for (const [channel, dispatch] of tempChannels) {
+          activeChannels.set(channel, dispatch);
+        }
+
+        tempChannels.clear();
         const message = `Now playing ${path} in ${channels}`;
         sendMessage(msg, message, true);
         resolve();
