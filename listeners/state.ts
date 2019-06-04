@@ -232,11 +232,12 @@ export async function handleSave(): Promise<void> {
     if (!isNone(links)) {
       for (const link of links.values()) {
         const neighborData: NeighborResolvable = {
-          hidden: link.hidden,
-          locked: link.locked,
           name: link.name,
           to: link.to
         };
+
+        if (link.hidden) neighborData.hidden = true;
+        if (link.locked) neighborData.locked = true;
 
         neighborsList.push(neighborData);
       }
@@ -270,10 +271,12 @@ export async function handleSave(): Promise<void> {
     for (const item of Object.values(user.inventory)) {
       const itemData: ItemAttributes = {
         description: item.description,
-        locked: item.locked,
-        name: item.name,
-        quantity: item.quantity
+        name: item.name
       };
+
+      if (item.hidden) itemData.hidden = true;
+      if (item.locked) itemData.locked = true;
+      if (item.quantity > 1) itemData.quantity = item.quantity;
 
       inventory[item.name] = itemData;
     }
