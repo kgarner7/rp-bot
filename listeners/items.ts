@@ -462,7 +462,7 @@ export async function items(msg: CustomMessage): Promise<void> {
 
         for (const item of room.items.values()) {
           if (!missing(msg, item)) {
-            const ending = item.locked ? " locked" : "";
+            const ending = (item.hidden ? " hidden" : "") + item.locked ? " locked" : "";
             itemString += `${item.name} (${item.quantity})${ending}${lineEnd}`;
           }
         }
@@ -561,7 +561,7 @@ export async function inventory(msg: CustomMessage): Promise<void> {
 
     const userItems = Object.values(user.inventory)
       .sort()
-      .filter(i => !admin && i.hidden)
+      .filter(i => admin || !i.hidden)
       .map(i => `**${i.name}**: ${i.description} (${i.quantity})`)
       .join(lineEnd);
 
