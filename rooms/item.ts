@@ -35,7 +35,7 @@ export class Item implements Serializable<ItemModel> {
   public room: Room;
   protected state: object = { };
 
-  public constructor({ actions = { }, children = [], description, hidden = false, 
+  public constructor({ actions = { }, children = [], description, hidden = false,
                        locked = false, name, quantity = 1}: ItemAttributes) {
 
     this.description = description;

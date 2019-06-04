@@ -216,10 +216,12 @@ export async function handleSave(): Promise<void> {
     for (const item of room.items.values()) {
       const itemData: ItemAttributes = {
         description: item.description,
-        locked: item.locked,
-        name: item.name,
-        quantity: item.quantity
+        name: item.name
       };
+
+      if (item.hidden) itemData.hidden = true;
+      if (item.locked) itemData.locked = true;
+      if (item.quantity > 1) itemData.quantity = item.quantity;
 
       itemsList.push(itemData);
     }
@@ -243,13 +245,14 @@ export async function handleSave(): Promise<void> {
     const data: RoomResolvable = {
       color: room.color,
       description: room.description,
-      isPrivate: room.isPrivate,
-      isPublic: room.isPublic,
-      itemsList,
       name: room.name,
-      neighbors: neighborsList,
       parent: room.parent
     };
+
+    if (room.isPrivate) data.isPrivate = true;
+    if (room.isPublic) data.isPublic = true;
+    if (itemsList.length > 0) data.itemsList = itemsList;
+    if (neighborsList.length > 0) data.neighbors = neighborsList;
 
     writeFile(`./data/rooms/${room.parent}/${room.name}.json`,
       data, { spaces: 2 }, err => {
