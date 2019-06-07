@@ -295,7 +295,6 @@ export async function writeJson(path: string, data: any): Promise<void> {
         console.error(err);
         reject(err);
       } else {
-        console.log(`Wrote: ${path}`);
         resolve();
       }
     });

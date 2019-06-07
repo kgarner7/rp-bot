@@ -462,7 +462,8 @@ export async function items(msg: CustomMessage): Promise<void> {
 
         for (const item of room.items.values()) {
           if (!missing(msg, item)) {
-            const ending = (item.hidden ? " hidden" : "") + item.locked ? " locked" : "";
+            const ending = (item.hidden ? " hidden" : "") +
+              (item.locked ? " locked" : "");
             itemString += `${item.name} (${item.quantity})${ending}${lineEnd}`;
           }
         }
