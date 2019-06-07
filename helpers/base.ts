@@ -116,7 +116,10 @@ export function requireAdmin(msg: CustomMessage): void {
 }
 
 export function isAdmin(msg: CustomMessage): boolean {
-  return msg.author.id === mainGuild().ownerID;
+  const owner = mainGuild().ownerID;
+
+  return msg.author.id === owner ||
+    !isNone(msg.overridenSender) && msg.overridenSender.id === owner;
 }
 
 export interface Dict<T> {
