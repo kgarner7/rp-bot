@@ -277,7 +277,7 @@ export class Room {
     }
 
     for (const [, permission] of this.channel.permissionOverwrites) {
-      if (permission.type === "member" || existingRoles.has(permission.id)) {
+      if (permission.type === "member" || !existingRoles.has(permission.id)) {
         overwrites.push(permission);
       }
     }

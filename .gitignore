@@ -3,3 +3,4 @@ node_modules
 testing.ts
 !.gitkeep
 notes/*
+.stversions

@@ -105,8 +105,6 @@ client.on("message", async (msg: DiscordMessage) => {
       }
 
       if (message in actions) {
-        if (msg.deletable) await msg.delete();
-
         if (username !== "" && msg.author.id === guild.ownerID) {
 
           const user = await User.findOne({
