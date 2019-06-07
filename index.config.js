@@ -1,6 +1,5 @@
 module.exports = {
 	apps: {
-		args: ["--kill-timeout=3000"],
 		env: {
 			"NODE_ENV": "development",
 		},
@@ -8,6 +7,7 @@ module.exports = {
 			"NODE_ENV": "production",
 		},
 		instances: 1,
+		kill_timeout: 3000,
 		name: "discordo bot",
     script: `dist/index.js`,
 	}
