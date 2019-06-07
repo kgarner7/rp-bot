@@ -255,12 +255,7 @@ export async function handleSave(): Promise<void> {
     if (itemsList.length > 0) data.itemsList = itemsList;
     if (neighborsList.length > 0) data.neighbors = neighborsList;
 
-    writeFile(`./data/rooms/${room.parent}/${room.name}.json`,
-      data, { spaces: 2 }, err => {
-      if (err) {
-        console.error(err);
-      }
-    });
+    await writeJson(`./data/rooms/${room.parent}/${room.name}.json`, data);
   }
 
   const users = await User.findAll();
@@ -288,12 +283,23 @@ export async function handleSave(): Promise<void> {
       name: user.name
     };
 
-    writeFile(`./data/users/${user.name}.json`, userData, { spaces: 2 }, err => {
+    await writeJson(`./data/users/${user.name}.json`, userData);
+  }
+}
+
+// tslint:disable-next-line:no-any
+export async function writeJson(path: string, data: any): Promise<void> {
+  return new Promise((resolve: () => void, reject: (reason: Error) => void): void => {
+    writeFile(path, data, { spaces: 2}, err => {
       if (err) {
         console.error(err);
+        reject(err);
+      } else {
+        console.log(`Wrote: ${path}`);
+        resolve();
       }
     });
-  }
+  });
 }
 
 export async function update(msg: CustomMessage): Promise<void> {
