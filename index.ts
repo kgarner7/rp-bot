@@ -193,8 +193,11 @@ initDB()
   });
 
 async function handleExit(): Promise<void> {
-  await handleSave();
-  process.exit(0);
+  try {
+    await handleSave();
+  } finally {
+    process.exit(0);
+  }
 }
 
 process.on("exit", handleExit);
