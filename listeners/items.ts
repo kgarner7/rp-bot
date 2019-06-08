@@ -563,8 +563,8 @@ export async function inventory(msg: CustomMessage): Promise<void> {
     const userItems = Object.values(user.inventory)
       .sort()
       .filter(i => admin || !i.hidden)
-      .map(i => `**${i.name}**: ${i.description} (${i.quantity})`)
-      .join(lineEnd);
+      .map(i => `**${i.name}**: (${i.quantity}${i.locked ? " locked" : ""})`)
+      .join(",");
 
     const message = userItems.length > 0 ?
       `You have the following items:${lineEnd}${userItems}` : "You have no items";
