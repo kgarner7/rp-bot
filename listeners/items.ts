@@ -1,6 +1,13 @@
 import { TextChannel } from "discord.js";
 
-import { Dict, isAdmin, lineEnd, mainGuild, roomManager } from "../helpers/base";
+import {
+  Dict,
+  isAdmin,
+  lineEnd,
+  mainGuild,
+  requireAdmin,
+  roomManager
+} from "../helpers/base";
 import { CustomMessage, SortableArray } from "../helpers/classes";
 import { lock } from "../helpers/locks";
 import { isNone, None, Undefined } from "../helpers/types";
@@ -8,9 +15,20 @@ import { Op, Room, sequelize, User } from "../models/models";
 import { Item, ItemModel } from "../rooms/item";
 
 import { Action } from "./actions";
-import { getRoom, parseCommand, sendMessage } from "./baseHelpers";
+import { Command, getRoom, getRoomModel, parseCommand, sendMessage } from "./baseHelpers";
 
 export const usage: Action = {
+  change: {
+    description:
+      "Changes the description of an item (including creation and destruction)",
+    uses: [
+      {
+        example: "!change paper for room delete",
+        explanation: "Deletes the item paper in the room, 'room'",
+        use: "!change **item** for **room** delete"
+      }
+    ]
+  },
   consume: {
     description: "Removes a quantiy of items from your inventory. They cannot be locked",
     uses: [
@@ -105,6 +123,9 @@ export const usage: Action = {
   }
 };
 
+// alias for friendliness
+usage.examine = usage.inspect;
+
 function senderName(msg: CustomMessage): string {
   return (msg.channel instanceof TextChannel) ? msg.author.toString() : "You";
 }
@@ -177,6 +198,136 @@ export async function consume(msg: CustomMessage): Promise<void> {
     sendMessage(msg, `You consumed ${quantity} of ${itemName}`);
   } finally {
     await lock({ release: true, user: user.id });
+  }
+}
+
+export async function changeItem(msg: CustomMessage): Promise<void> {
+  requireAdmin(msg);
+  const command = parseCommand(msg,
+    ["count", "delete", "for", "hide", "lock", "show", "text", "type", "unlock"]);
+
+  if (!command.args.has("for")) {
+    throw new Error("Missing target user/room");
+  }
+
+  const target = command.args.get("for")![0];
+  let isRoom: boolean;
+
+  if (command.args.has("type")) {
+    const tempType = command.args.get("type")![0];
+    if (tempType !== "room" && tempType !== "user") {
+      throw new Error(`${tempType} is not a valid type`);
+    }
+
+    isRoom = tempType === "room";
+  } else {
+    isRoom = true;
+  }
+
+  if (isRoom) {
+    await changeRoomItem(command, target);
+  } else {
+    await changeUserItem(command, target);
+  }
+}
+
+async function changeUserItem(command: Command, target: string): Promise<void> {
+  const user = await User.findOne({
+    attributes: ["id"],
+    where: {
+      [Op.or]: [
+        { discordName: target },
+        { name: target }
+      ]
+    }
+  });
+
+  if (!user) throw new Error(`Could not find user ${user}`);
+
+  await lock({ release: false, user: user.id });
+
+  await user.reload({ attributes: ["inventory"] });
+
+  try {
+    if (command.args.has("delete")) {
+      user.inventory = exclude(user.inventory, target);
+    } else {
+      user.inventory[target] = createOrUpdateItem(command,
+        user.inventory[target], target);
+    }
+
+    await user.update({ inventory: user.inventory });
+  } finally {
+    await lock({ release: true, user: user.id });
+  }
+}
+
+async function changeRoomItem(command: Command, target: string): Promise<void> {
+  const roomModel = await getRoomModel(target);
+
+  if (!roomModel) throw new Error(`Could not find room ${target}`);
+
+  await lock({ release: false, room: roomModel.id});
+
+  const room = roomManager().rooms
+    .get(roomModel.name)!;
+
+  try {
+    await roomModel.reload({ attributes: ["inventory"]});
+    const item = roomModel.inventory[target];
+
+    if (command.args.has("delete")) {
+      roomModel.inventory = exclude(roomModel.inventory, target);
+      room.items.delete(target);
+    } else {
+      const updatedItem = createOrUpdateItem(command, item, target);
+      roomModel.inventory[target] = updatedItem;
+      room.items.set(target, new Item({ ...updatedItem }));
+    }
+
+    await roomModel.update({ inventory: roomModel.inventory });
+  } finally {
+    await lock({ release: true, room: roomModel.id});
+  }
+}
+
+function createOrUpdateItem(command: Command, item: None<ItemModel>,
+                            name: string): ItemModel {
+
+  if (item) {
+    if (command.args.has("hide")) item.hidden = true;
+    if (command.args.has("lock")) item.locked = true;
+    if (command.args.has("show")) item.locked = false;
+    if (command.args.has("unlock")) item.locked = false;
+
+    if (command.args.has("count")) {
+      const quantity = getInt(command.args.get("count")![0]);
+
+      if (quantity <= 0) throw new Error("Must have at least one of an item");
+    }
+
+    if (command.args.has("text")) {
+      item.description = command.args.get("text")!.join();
+    }
+
+    return item;
+  } else {
+    const description = command.args.get("text");
+
+    if (!description) {
+      throw new Error(`Missing description for ${name}`);
+    }
+
+    const quantity = getInt((command.args.get("count") || ["1"]).join());
+
+    return {
+      children: [],
+      description: description.join(),
+      hidden: command.args.has("hide"),
+      locked: command.args.has("lock"),
+      name,
+      quantity
+    };
   }
 }
 

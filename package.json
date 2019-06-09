@@ -4,9 +4,9 @@
   "description": "a bot for discord rp",
   "main": "index.ts",
   "dependencies": {
-    "@types/jsonfile": "^5.0.0",
     "async": "^2.6.2",
     "bufferutil": "^3.0.5",
+    "cron": "^1.7.1",
     "discord.js": "^11.5.1",
     "erlpack": "github:discordapp/erlpack",
     "ffmpeg": "0.0.4",
@@ -25,7 +25,9 @@
   },
   "devDependencies": {
     "@types/async": "^2.4.2",
+    "@types/cron": "^1.7.1",
     "@types/glob": "^7.1.1",
+    "@types/jsonfile": "^5.0.0",
     "@types/node": "^10.14.8",
     "@types/pg": "^7.4.14",
     "@types/request": "^2.48.1",

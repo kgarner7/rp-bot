@@ -1,3 +1,4 @@
+import { CronJob } from "cron";
 import {
   Client,
   Guild,
@@ -184,12 +185,23 @@ initDB()
     try {
       await sequelize.sync();
       await client.login(config.botToken);
+
+      const job = new CronJob("0 * * * * *", async (): Promise<void> => {
+        try {
+          await handleSave();
+        } catch (err) {
+          guild.owner.send(`Could not save: ${err}`);
+        }
+      });
+
+      job.start();
     } catch (err) {
       console.error((err as Error).stack);
     }
   })
   .catch((err: Error) => {
     console.error(err);
+    process.exit(0);
   });
 
 async function handleExit(): Promise<void> {

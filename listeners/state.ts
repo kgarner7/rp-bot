@@ -289,14 +289,12 @@ export async function handleSave(): Promise<void> {
 
 // tslint:disable-next-line:no-any
 export async function writeJson(path: string, data: any): Promise<void> {
-  console.log(`writing ${path}`);
   return new Promise((resolve: () => void, reject: (reason: Error) => void): void => {
     writeFile(path, data, { spaces: 2}, err => {
       if (err) {
         console.error(err);
         reject(err);
       } else {
-        console.log(`wrote ${path}`);
         resolve();
       }
     });
