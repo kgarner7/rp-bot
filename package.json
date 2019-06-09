@@ -9,6 +9,7 @@
     "cron": "^1.7.1",
     "discord.js": "^11.5.1",
     "erlpack": "github:discordapp/erlpack",
+    "express": "^4.17.1",
     "ffmpeg": "0.0.4",
     "glob": "^7.1.4",
     "jsonfile": "^5.0.0",

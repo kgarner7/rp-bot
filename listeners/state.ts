@@ -198,109 +198,96 @@ export async function read(msg: CustomMessage): Promise<void> {
 
 export async function save(msg: CustomMessage): Promise<void> {
   requireAdmin(msg);
+  await handleSave();
+  sendMessage(msg, "Saved successfully", true);
+}
+
+export async function handleSave(): Promise<void> {
   await globalLock({ acquire: true, writer: true });
+
   try {
-    await handleSave();
-    sendMessage(msg, "Saved successfully", true);
+    const manager = roomManager();
+
+    for (const [, room] of manager.rooms) {
+      const itemsList: ItemAttributes[] = [];
+
+      for (const item of room.items.values()) {
+        const itemData: ItemAttributes = {
+          description: item.description,
+          name: item.name
+        };
+
+        if (item.hidden) itemData.hidden = true;
+        if (item.locked) itemData.locked = true;
+        if (item.quantity > 1) itemData.quantity = item.quantity;
+
+        itemsList.push(itemData);
+      }
+
+      const neighborsList: NeighborResolvable[] = [];
+      const links = manager.links.get(room.name);
+
+      if (!isNone(links)) {
+        for (const link of links.values()) {
+          const neighborData: NeighborResolvable = {
+            name: link.name,
+            to: link.to
+          };
+
+          if (link.hidden) neighborData.hidden = true;
+          if (link.locked) neighborData.locked = true;
+
+          neighborsList.push(neighborData);
+        }
+      }
+
+      const data: RoomResolvable = {
+        color: room.color,
+        description: room.description,
+        name: room.name,
+        parent: room.parent
+      };
+
+      if (room.isPrivate) data.isPrivate = true;
+      if (room.isPublic) data.isPublic = true;
+      if (itemsList.length > 0) data.itemsList = itemsList;
+      if (neighborsList.length > 0) data.neighbors = neighborsList;
+
+      await writeFile(`./data/rooms/${room.parent}/${room.name}.json`,
+        data, { spaces: 2 });
+    }
+
+    const users = await User.findAll();
+
+    for (const user of users) {
+      const inventory: Dict<ItemAttributes> = { };
+
+      for (const item of Object.values(user.inventory)) {
+        const itemData: ItemAttributes = {
+          description: item.description,
+          name: item.name
+        };
+
+        if (item.hidden) itemData.hidden = true;
+        if (item.locked) itemData.locked = true;
+        if (item.quantity > 1) itemData.quantity = item.quantity;
+
+        inventory[item.name] = itemData;
+      }
+
+      const userData: UserResolvable = {
+        discordName: user.discordName,
+        id: user.id,
+        inventory,
+        name: user.name
+      };
+
+      await writeFile(`./data/users/${user.name}.json`, userData, { spaces: 2 });
+    }
   } finally {
     await globalLock({ acquire: false, writer: true });
   }
 }
-
-export async function handleSave(): Promise<void> {
-  const manager = roomManager();
-
-  for (const [, room] of manager.rooms) {
-    const itemsList: ItemAttributes[] = [];
-
-    for (const item of room.items.values()) {
-      const itemData: ItemAttributes = {
-        description: item.description,
-        name: item.name
-      };
-
-      if (item.hidden) itemData.hidden = true;
-      if (item.locked) itemData.locked = true;
-      if (item.quantity > 1) itemData.quantity = item.quantity;
-
-      itemsList.push(itemData);
-    }
-
-    const neighborsList: NeighborResolvable[] = [];
-    const links = manager.links.get(room.name);
-
-    if (!isNone(links)) {
-      for (const link of links.values()) {
-        const neighborData: NeighborResolvable = {
-          name: link.name,
-          to: link.to
-        };
-
-        if (link.hidden) neighborData.hidden = true;
-        if (link.locked) neighborData.locked = true;
-
-        neighborsList.push(neighborData);
-      }
-    }
-
-    const data: RoomResolvable = {
-      color: room.color,
-      description: room.description,
-      name: room.name,
-      parent: room.parent
-    };
-
-    if (room.isPrivate) data.isPrivate = true;
-    if (room.isPublic) data.isPublic = true;
-    if (itemsList.length > 0) data.itemsList = itemsList;
-    if (neighborsList.length > 0) data.neighbors = neighborsList;
-
-    await writeJson(`./data/rooms/${room.parent}/${room.name}.json`, data);
-  }
-
-  const users = await User.findAll();
-
-  for (const user of users) {
-    const inventory: Dict<ItemAttributes> = { };
-
-    for (const item of Object.values(user.inventory)) {
-      const itemData: ItemAttributes = {
-        description: item.description,
-        name: item.name
-      };
-
-      if (item.hidden) itemData.hidden = true;
-      if (item.locked) itemData.locked = true;
-      if (item.quantity > 1) itemData.quantity = item.quantity;
-
-      inventory[item.name] = itemData;
-    }
-
-    const userData: UserResolvable = {
-      discordName: user.discordName,
-      id: user.id,
-      inventory,
-      name: user.name
-    };
-
-    await writeJson(`./data/users/${user.name}.json`, userData);
-  }
-}
-
-// tslint:disable-next-line:no-any
-export async function writeJson(path: string, data: any): Promise<void> {
-  return new Promise((resolve: () => void, reject: (reason: Error) => void): void => {
-    writeFile(path, data, { spaces: 2}, err => {
-      if (err) {
-        console.error(err);
-        reject(err);
-      } else {
-        resolve();
-      }
-    });
-  });
-}
-
 export async function update(msg: CustomMessage): Promise<void> {
   requireAdmin(msg);
   await globalLock({ acquire: true, writer: true });
