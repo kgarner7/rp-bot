@@ -1,183 +1,84 @@
+import bodyParser from "body-parser";
+import compression from "compression";
+import connectRedis from "connect-redis";
+import cookieParser from "cookie-parser";
 import { CronJob } from "cron";
-import {
-  Client,
-  Guild,
-  GuildMember,
-  Message as DiscordMessage,
-  TextChannel
-} from "discord.js";
-import { Op } from "sequelize";
+import { randomBytes } from "crypto";
+import express, { NextFunction, Request, Response } from "express";
+import session from "express-session";
+import { readFileSync } from "fs";
+import helmet from "helmet";
+import { createServer } from "https";
 
+import { client } from "./client";
 import { config } from "./config/config";
-import {
-  initGuild,
-  initRooms,
-  initUsers,
-  roomManager
-} from "./helpers/base";
-import { CustomMessage } from "./helpers/classes";
-import { globalLock } from "./helpers/locks";
-import { actions } from "./listeners/actions";
-import { sendMessage } from "./listeners/baseHelpers";
+import { mainGuild } from "./helpers/base";
 import { handleSave } from "./listeners/state";
-import { initDB, Message, sequelize, User } from "./models/models";
-import { Room } from "./rooms/room";
-import { RoomManager } from "./rooms/roomManager";
+import { initDB, sequelize } from "./models/models";
+import { router } from "./routes/index";
+import { socket } from "./socket";
 
-const client = new Client();
-let guild: Guild;
+const RedisStore = connectRedis(session);
 
-function invalid(msg: DiscordMessage): boolean {
-  return client.user.id === msg.author.id || (msg.guild !== guild && msg.guild !== null);
-}
+// tslint:disable:no-magic-numbers
+const PORT = process.env.PORT || 443;
+const MAX_AGE = 1000 * 3600;
+// tslint:enable:no-magic-numbers
 
-client.on("ready", async () => {
-  guild = client.guilds.find((g: Guild) => g.name === config.guildName);
-  initGuild(guild);
+const SECRET_LENGTH = 100;
 
-  const userIds: string[] = [];
-  for (const [, member] of guild.members) {
-    const user = await User.createFromMember(member);
-
-    if (user) userIds.push(user[0].id);
-  }
-
-  User.destroy({
-    where: {
-      id: {
-        [Op.not]: userIds
-      }
-    }
-  });
-
-  const manager = await RoomManager.create("./data/rooms");
-  initRooms(manager);
-  await initUsers("./data/users");
+const sessionMiddleware = session({
+  cookie: {
+    httpOnly: true,
+    maxAge: MAX_AGE
+  },
+  secret: randomBytes(SECRET_LENGTH)
+    .toString("binary"),
+  store: new RedisStore({ })
 });
 
-client.on("messageDelete", (msg: DiscordMessage) => {
-  if (invalid(msg)) return;
+const options = {
+  cacheControl: true,
+  maxAge: "30d"
+};
 
-  Message.destroy({
-    where: {
-      id: msg.id
-    }
-  });
+const app = express();
+app.use(bodyParser.urlencoded({ extended: true }));
+app.use(bodyParser.json());
+app.use(express.static("./frontend/scripts", options));
+app.use(express.static("./frontend/styles", options));
+app.use(compression());
+app.use(cookieParser());
+app.use(sessionMiddleware);
+app.set("view engine", "ejs");
+app.set("views", "./frontend/views");
+
+app.use(helmet({
+  dnsPrefetchControl: { allow: false },
+  frameguard: true,
+  hidePoweredBy: {
+    setTo: ""
+  },
+  referrerPolicy: { policy: "no-referrer" }
+}));
+
+app.use("/", router);
+
+const server = createServer({
+  cert: readFileSync("./certs/server.crt"),
+  key: readFileSync("./certs/server.key")
+}, app);
+
+const io = socket(server);
+
+io.use((sock, next) => {
+  sessionMiddleware(sock.request, sock.request.res, next);
 });
 
-client.on("messageUpdate", async (_old: DiscordMessage, msg: DiscordMessage) => {
-  if (invalid(msg)) return;
-
-  return Message.updateFromMsg(msg);
-});
-
-client.on("message", async (msg: DiscordMessage) => {
-  if (invalid(msg)) return;
-
-  const mesg = msg as CustomMessage;
-
-  const content: string = msg.content;
-
-  if (content.startsWith(config.prefix)) {
-    let endIndex = content.indexOf(" ");
-    if (endIndex === -1) endIndex = content.length;
-
-    let message = msg.content.substring(1, endIndex),
-      username = "";
-
-    try {
-      if (message.startsWith("as")) {
-        const split = msg.content.split(" ")
-          .splice(1);
-
-        let index = 0;
-        for (const part of split) {
-          if (part.startsWith("!")) break;
-
-          username += ` ${part}`;
-          index++;
-        }
-
-        username = username.substr(1);
-
-        message = split[index].substr(1);
-        msg.content = split.splice(index)
-          .join(" ");
-      }
-
-      if (message in actions) {
-        if (username !== "" && msg.author.id === guild.ownerID) {
-
-          const user = await User.findOne({
-            where: {
-              [Op.or]: [
-                { discordName: username },
-                { name: username }
-              ]
-            }
-          });
-
-          if (user !== null) {
-            const overrideUser = guild.members.get(user.id)!;
-
-            mesg.overridenSender = msg.author;
-            mesg.author = overrideUser.user;
-            mesg.member = overrideUser;
-          }
-        }
-
-        await globalLock({ acquire: true, writer: false });
-        await actions[message](mesg);
-      }
-    } catch (err) {
-      sendMessage(msg, (err as Error).message, true);
-      console.error((err as Error).stack);
-    } finally {
-      await globalLock({ acquire: false, writer: false });
-    }
-  } else if (msg.channel instanceof TextChannel) {
-    await Message.createFromMsg(msg);
-  }
-});
-
-client.on("guildMemberAdd", async (member: GuildMember) => {
-  await User.createFromMember(member);
-});
-
-client.on("guildMemberUpdate",
-  async (oldMember: GuildMember, newMember: GuildMember) => {
-
-  const manager = roomManager();
-
-  if (oldMember.displayName !== newMember.displayName) {
-    await User.update({
-      discordName: newMember.displayName
-    }, {
-      where: {
-        id: newMember.id
-      }
-    });
-  }
-
-  if (oldMember.roles === newMember.roles) return;
-
-  const roomIds: string[] = [],
-    roleNames: string[] = [];
-
-  for (const [, role] of newMember.roles) {
-    if (!manager.rooms.has(role.name)) {
-      return;
-    }
-
-    if (!oldMember.roles.has(role.id)) {
-      const channel = (manager.rooms.get(role.name) as Room).channel;
-
-      if (channel !== undefined) {
-        roomIds.push(channel.id);
-        roleNames.push(role.name);
-      }
-    }
-  }
+app.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {
+  console.error(err.stack);
+  res.status(500)
+    .send("Something went wrong inside");
 });
 
 initDB()
@@ -190,11 +91,16 @@ initDB()
         try {
           await handleSave();
         } catch (err) {
-          guild.owner.send(`Could not save: ${err}`);
+          mainGuild().owner
+            .send(`Could not save: ${err}`);
         }
       });
 
       job.start();
+
+      server.listen(PORT, () => {
+        console.error("started server");
+      });
     } catch (err) {
       console.error((err as Error).stack);
     }

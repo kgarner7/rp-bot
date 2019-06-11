@@ -55,6 +55,7 @@ export class User extends Model {
   public inventory: Dict<ItemModel>;
   /** the display name of the corresponding Discord user */
   public name: string;
+  public password: string;
   public createdAt?: Date;
   public updatedAt?: Date;
 
@@ -131,6 +132,9 @@ User.init({
   },
   name: {
     allowNull: false,
+    type: TEXT
+  },
+  password: {
     type: TEXT
   }
 }, {

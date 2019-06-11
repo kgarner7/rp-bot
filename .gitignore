@@ -4,3 +4,5 @@ testing.ts
 !.gitkeep
 notes/*
 .stversions
+.stignore
+certs

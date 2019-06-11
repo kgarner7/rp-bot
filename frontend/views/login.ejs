@@ -1,0 +1,34 @@
+<%- include("layouts/header") %>
+  <script type="text" src="login.js"></script>
+  </head>
+  <body class="d-flex justify-content-center align-items-center" style="height:100%">
+    <div class="container center-content">
+      <h2 class="text-center">Login</h2>
+      <% if (error) { %> 
+      <div class="alert alert-danger">
+        <p><%= error %></p>
+      </div>
+      <% } %>
+      <div>
+        <form action="/login" method="POST">
+          <div class="input-group mb-3">
+            <div class="input-group-prepend">
+              <span class="input-group-text">Username</span>
+            </div>
+            <input class="form-control" type="text" name="username" placeholder="Discord username">
+          </div>
+          <div class="input-group mb-3">
+            <div class="input-group-prepend">
+              <span class="input-group-text">Password</span>
+            </div>
+            <input class="form-control" type="password" name="password" placeholder="Password">
+          </div>
+          <button type="submit" class="btn btn-primary col-12">Login</button>
+        </form>
+      </div>
+      <div class="text-center">
+        New to us? <a href="/signup">Sign Up</a>
+      </div>
+    </div>
+  </body>
+</html>
