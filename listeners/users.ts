@@ -257,5 +257,5 @@ export async function users(msg: CustomMessage): Promise<void> {
       + lineEnd;
   }
 
-  msg.author.send(message);
+  sendMessage(msg, message, true);
 }

@@ -1,5 +1,7 @@
 /* tslint:disable:max-classes-per-file */
-import { Message, TextChannel } from "discord.js";
+import { TextChannel } from "discord.js";
+
+import { CustomMessage } from "../helpers/classes";
 
 import { config } from "./config";
 
@@ -47,7 +49,7 @@ export class InvalidCommandError extends Error {
  * Thrown when requesting logs but no logs exist for that channel
  */
 export class NoLogError extends Error {
-  public constructor(msg: Message) {
+  public constructor(msg: CustomMessage) {
     if (msg.channel instanceof TextChannel) {
       super(`You have no logs for the room ${msg.channel.name}`);
     } else {

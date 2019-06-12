@@ -210,7 +210,8 @@ export async function changeItem(msg: CustomMessage): Promise<void> {
     throw new Error("Missing target user/room");
   }
 
-  const target = command.args.get("for")![0];
+  const name = command.params[0],
+    target = command.args.get("for")![0];
   let isRoom: boolean;
 
   if (command.args.has("type")) {
@@ -225,13 +226,14 @@ export async function changeItem(msg: CustomMessage): Promise<void> {
   }
 
   if (isRoom) {
-    await changeRoomItem(command, target);
+    await changeRoomItem(command, target, name);
   } else {
-    await changeUserItem(command, target);
+    await changeUserItem(command, target, name);
   }
 }
 
-async function changeUserItem(command: Command, target: string): Promise<void> {
+async function changeUserItem(command: Command, target: string, name: string):
+  Promise<void> {
   const user = await User.findOne({
     attributes: ["id"],
     where: {
@@ -250,10 +252,10 @@ async function changeUserItem(command: Command, target: string): Promise<void> {
 
   try {
     if (command.args.has("delete")) {
-      user.inventory = exclude(user.inventory, target);
+      user.inventory = exclude(user.inventory, name);
     } else {
-      user.inventory[target] = createOrUpdateItem(command,
-        user.inventory[target], target);
+      user.inventory[name] = createOrUpdateItem(command,
+        user.inventory[name], name);
     }
 
     await user.update({ inventory: user.inventory });
@@ -262,7 +264,8 @@ async function changeUserItem(command: Command, target: string): Promise<void> {
   }
 }
 
-async function changeRoomItem(command: Command, target: string): Promise<void> {
+async function changeRoomItem(command: Command, target: string, name: string):
+  Promise<void> {
   const roomModel = await getRoomModel(target);
 
   if (!roomModel) throw new Error(`Could not find room ${target}`);
@@ -274,15 +277,15 @@ async function changeRoomItem(command: Command, target: string): Promise<void> {
 
   try {
     await roomModel.reload({ attributes: ["inventory"]});
-    const item = roomModel.inventory[target];
+    const item = roomModel.inventory[name];
 
     if (command.args.has("delete")) {
-      roomModel.inventory = exclude(roomModel.inventory, target);
-      room.items.delete(target);
+      roomModel.inventory = exclude(roomModel.inventory, name);
+      room.items.delete(name);
     } else {
-      const updatedItem = createOrUpdateItem(command, item, target);
-      roomModel.inventory[target] = updatedItem;
-      room.items.set(target, new Item({ ...updatedItem }));
+      const updatedItem = createOrUpdateItem(command, item, name);
+      roomModel.inventory[name] = updatedItem;
+      room.items.set(name, new Item({ ...updatedItem }));
     }
 
     await roomModel.update({ inventory: roomModel.inventory });
@@ -297,7 +300,7 @@ function createOrUpdateItem(command: Command, item: None<ItemModel>,
   if (item) {
     if (command.args.has("hide")) item.hidden = true;
     if (command.args.has("lock")) item.locked = true;
-    if (command.args.has("show")) item.locked = false;
+    if (command.args.has("show")) item.hidden = false;
     if (command.args.has("unlock")) item.locked = false;
 
     if (command.args.has("count")) {
