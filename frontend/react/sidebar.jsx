@@ -6,7 +6,7 @@ class Group extends Component {
   }
 
   render() {
-    return <a href="#" class="list-group-item list-group-item-action" onClick={ this.props.onClick }>{ this.props.name }</a>
+    return <a href="#" className="list-group-item list-group-item-action" onClick={ this.props.onClick }>{ this.props.name }</a>
   }
 }
 
@@ -24,16 +24,16 @@ class Sidebar extends Component{
       .concat(this.props.admin ? this.props.adminOps : []);
 
     const items = options.map(value => {
-      return <Group name={value} onClick={(e) => this.handleSelect(value, e)}/>
+      return <Group key={value} name={value} onClick={(e) => this.handleSelect(value, e)}/>
     });
 
     return(
-      <div class="bg-light border-right" id="sidebar-wrapper">
-      <div class="sidebar-heading"></div>
-      <div class="list-group list-group-flush">
-        {items}
+      <div className="bg-light border-right" id="sidebar-wrapper">
+        <div className="sidebar-heading">Discordo-chan</div>
+        <div className="list-group list-group-flush">
+          {items}
+        </div>
       </div>
-    </div>
     );
   }
 }

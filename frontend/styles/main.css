@@ -1,0 +1,66 @@
+#page-content-wrapper {
+  white-space:pre-wrap;
+}
+
+.card {
+  -webkit-column-width: 150px; 
+  column-width: 150px;
+  height: 100%;
+}
+
+.card-title {
+  text-align: center;
+  font-size: 1.25rem;
+}
+
+.react-resizable-handle {
+  background-image: none !important;
+}
+
+.react-grid-item.react-grid-placeholder {
+  background: none !important;
+}
+
+.card-body {
+  max-height: 100%;
+}
+
+.card-body .close {
+  color: #00bc8c;
+  margin-top: -2.50rem;
+  position: fixed;
+  font-size: 1.5rem;
+}
+
+.rooms .card-text {
+  max-height: calc(100% - 2rem);
+  overflow-y: auto;
+}
+
+.item, .left, .right {
+  font-family: "Courier New", Courier, monospace;
+}
+
+.left, .right {
+  max-width: 70%;
+  padding-bottom: 2px;
+}
+
+.left {
+  margin-left: 1.25rem;
+}
+
+.right {
+  margin-left: auto;
+  margin-right: 1.25rem;
+  text-align: right;
+}
+
+.messages {
+  max-height: 60vh;
+  overflow-y: auto;
+}
+
+.item {
+  overflow-y: auto;
+}

@@ -16,6 +16,8 @@ import { sendMessage } from "./listeners/baseHelpers";
 import { Message, User } from "./models/models";
 import { Room } from "./rooms/room";
 import { RoomManager } from "./rooms/roomManager";
+import { MESSAGE_CREATE, MESSAGE_DELETE, MESSAGE_UPDATE } from "./socket/consts";
+import { triggerRoom } from "./socket/helpers";
 
 export const client = new Client();
 let guild: Guild;
@@ -51,6 +53,8 @@ client.on("ready", async () => {
 client.on("messageDelete", (msg: DiscordMessage) => {
   if (invalid(msg)) return;
 
+  triggerRoom(msg, MESSAGE_DELETE);
+
   Message.destroy({
     where: {
       id: msg.id
@@ -61,15 +65,18 @@ client.on("messageDelete", (msg: DiscordMessage) => {
 client.on("messageUpdate", async (_old: DiscordMessage, msg: DiscordMessage) => {
   if (invalid(msg)) return;
 
+  triggerRoom(msg, MESSAGE_UPDATE);
+
   return Message.updateFromMsg(msg);
 });
 
 client.on("message", async (msg: DiscordMessage) => {
   if (invalid(msg)) return;
 
-  const mesg = msg as CustomMessage;
+  const mesg = msg as CustomMessage,
+    content: string = msg.content;
 
-  const content: string = msg.content;
+  triggerRoom(msg, MESSAGE_CREATE);
 
   if (content.startsWith(config.prefix)) {
     let endIndex = content.indexOf(" ");

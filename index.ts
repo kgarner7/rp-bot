@@ -16,22 +16,26 @@ import { mainGuild } from "./helpers/base";
 import { handleSave } from "./listeners/state";
 import { initDB, sequelize } from "./models/models";
 import { router } from "./routes/index";
-import { socket } from "./socket";
+import { socket } from "./socket/socket";
 
 const RedisStore = connectRedis(session);
 
 // tslint:disable:no-magic-numbers
-const PORT = process.env.PORT || 443;
 const MAX_AGE = 1000 * 3600;
+const PORT = process.env.PORT || 443;
 // tslint:enable:no-magic-numbers
 
+const DEFAULT_ERROR_CODE = 500;
 const SECRET_LENGTH = 100;
 
 const sessionMiddleware = session({
   cookie: {
     httpOnly: true,
-    maxAge: MAX_AGE
+    maxAge: MAX_AGE,
+    secure: true
   },
+  resave: true,
+  rolling: true,
   secret: randomBytes(SECRET_LENGTH)
     .toString("binary"),
   store: new RedisStore({ })
@@ -77,7 +81,7 @@ io.use((sock, next) => {
 
 app.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {
   console.error(err.stack);
-  res.status(500)
+  res.status(DEFAULT_ERROR_CODE)
     .send("Something went wrong inside");
 });
 

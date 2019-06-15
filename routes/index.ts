@@ -1,9 +1,8 @@
 import { compare, hash } from "bcrypt";
-import express, { NextFunction, Request , Response} from "express";
+import express, { NextFunction, Request , Response } from "express";
 
 import { isNone, None } from "../helpers/types";
-import { Message, User } from "../models/models";
-import { Room } from "../models/room";
+import {  User } from "../models/models";
 
 const MIN_PASS_LENGTH = 8;
 const SALT_ROUNDS = 15;
@@ -24,7 +23,7 @@ function error(res: Response, path: string, msg: string): void {
 
 router.get("/", wrapper(async (req, res, _next) => {
   if (req.session && req.session.userId) {
-    const user = await User.find({
+    const user = await User.findOne({
       attributes: ["discordName", "id", "name"],
       where: {
         id: req.session.userId
@@ -65,6 +64,7 @@ router.post("/login", wrapper(async (req, res, _next) => {
 
     if (match) {
       req.session!.userId = user.id;
+      req.session!.loginTime = new Date();
       res.redirect("/");
     } else {
       error(res, "login", "Invalid username/password combination");
