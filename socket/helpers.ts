@@ -10,6 +10,7 @@ import { Server, Socket } from "socket.io";
 
 import { Dict, mainGuild } from "../helpers/base";
 import { None } from "../helpers/types";
+import { usages } from "../listeners/actions";
 import { Link, Message, Room, sequelize, User } from "../models/models";
 import { ItemModel } from "../rooms/item";
 
@@ -49,7 +50,7 @@ export function triggerUser(member: User | GuildMember | DiscordUser,
 
 const roomAttributes = ["discordName", "id", "inventory", "name", "updatedAt"];
 
-export async function getRooms(user: User): Promise<object[]> {
+export async function getRooms(user: GuildMember | User): Promise<object[]> {
   const guild = mainGuild(),
     visibleRooms = new Set<String>();
 
@@ -124,20 +125,20 @@ export async function getRooms(user: User): Promise<object[]> {
 
   return messageRooms.map(room => {
     const present = visibleRooms.has(room.discordName);
-    return roomToJson(room, present, user, guild);
+    return roomToJson(room, present, user.id === guild.ownerID, guild);
   });
 }
 
 // tslint:disable:no-any
 export function roomToJson(room: Room, present: boolean,
-                           user: User, guild: Guild): Dict<any> {
+                           isAdmin: boolean, guild: Guild): Dict<any> {
   const json: Dict<any> = { n: room.name },
     channel = guild.channels.get(room.id) as TextChannel;
   // tslint:enable:no-any
 
   if (present) {
     json.c = inventoryToJson(room.inventory)
-      .filter(item => user.id === guild.ownerID || !item.h);
+      .filter(item => isAdmin || !item.h);
 
     json.p = true;
   }
@@ -280,4 +281,34 @@ export async function getMessages(user: User | GuildMember | DiscordUser,
   }
 
   return response;
+}
+
+export function getCommands(isAdmin: boolean): Dict<object> {
+  const commands: Dict<object> = { };
+
+  for (const [name, description] of Object.entries(usages)) {
+    if (description.adminOnly && !isAdmin) continue;
+
+    // tslint:disable-next-line:no-any
+    const command: Dict<any> = { d: description.description, u: [] };
+
+    if (description.adminOnly) command.a = true;
+
+    for (const use of description.uses) {
+      if (use.admin && !isAdmin) continue;
+
+      const usage: Dict<boolean | string> = { u: use.use };
+      if (use.admin) usage.a = true;
+      if (use.example) usage.x = use.example;
+      if (use.explanation) usage.e = use.explanation;
+
+      command.u.push(usage);
+    }
+
+    if (command.u.length > 0) {
+      commands[name] = command;
+    }
+  }
+
+  return commands;
 }

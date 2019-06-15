@@ -29,6 +29,7 @@ class CurrentRooms extends Component {
 
   render() {
     const options = Array.from(this.props.rooms.entries())
+      .filter(room => room[1].present)
       .sort((a, b) => compareString(a[1].name, b[1].name, 1))
       .map(room => ({
         label: room[1].name,

@@ -2,7 +2,7 @@
   white-space:pre-wrap;
 }
 
-.card {
+.card.item, .card.room {
   -webkit-column-width: 150px; 
   column-width: 150px;
   height: 100%;
@@ -21,7 +21,7 @@
   background: none !important;
 }
 
-.card-body {
+.card.room .card-body, .card.item .card-body {
   max-height: 100%;
 }
 

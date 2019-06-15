@@ -14,10 +14,14 @@ import { globalLock } from "./helpers/locks";
 import { actions } from "./listeners/actions";
 import { sendMessage } from "./listeners/baseHelpers";
 import { Message, User } from "./models/models";
-import { Room } from "./rooms/room";
 import { RoomManager } from "./rooms/roomManager";
-import { MESSAGE_CREATE, MESSAGE_DELETE, MESSAGE_UPDATE } from "./socket/consts";
-import { triggerRoom } from "./socket/helpers";
+import {
+  MESSAGE_CREATE,
+  MESSAGE_DELETE,
+  MESSAGE_UPDATE,
+  ROOM_INFORMATION
+} from "./socket/consts";
+import { getRooms, triggerRoom, triggerUser } from "./socket/helpers";
 
 export const client = new Client();
 let guild: Guild;
@@ -147,8 +151,6 @@ client.on("guildMemberAdd", async (member: GuildMember) => {
 client.on("guildMemberUpdate",
   async (oldMember: GuildMember, newMember: GuildMember) => {
 
-  const manager = roomManager();
-
   if (oldMember.displayName !== newMember.displayName) {
     await User.update({
       discordName: newMember.displayName
@@ -159,23 +161,8 @@ client.on("guildMemberUpdate",
     });
   }
 
-  if (oldMember.roles === newMember.roles) return;
+  if (oldMember.roles.equals(newMember.roles)) return;
 
-  const roomIds: string[] = [],
-    roleNames: string[] = [];
-
-  for (const [, role] of newMember.roles) {
-    if (!manager.rooms.has(role.name)) {
-      return;
-    }
-
-    if (!oldMember.roles.has(role.id)) {
-      const channel = (manager.rooms.get(role.name) as Room).channel;
-
-      if (channel !== undefined) {
-        roomIds.push(channel.id);
-        roleNames.push(role.name);
-      }
-    }
-  }
+  const json = await getRooms(newMember);
+  triggerUser(newMember, ROOM_INFORMATION, JSON.stringify(json));
 });

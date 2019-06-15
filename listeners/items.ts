@@ -13,6 +13,8 @@ import { lock } from "../helpers/locks";
 import { isNone, None, Undefined } from "../helpers/types";
 import { Op, Room, sequelize, User } from "../models/models";
 import { Item, ItemModel } from "../rooms/item";
+import { ROOM_INFORMATION, USER_INVENTORY_CHANGE } from "../socket/consts";
+import { inventoryToJson, roomToJson, triggerUser } from "../socket/helpers";
 
 import { Action } from "./actions";
 import { Command, getRoom, getRoomModel, parseCommand, sendMessage } from "./baseHelpers";
@@ -156,6 +158,28 @@ function missing(msg: CustomMessage, item: None<ItemModel>): boolean {
   return isNone(item) || (item.hidden && !isAdmin(msg));
 }
 
+function notifyUserInventoryChange(user: User): void {
+  const json = JSON.stringify(inventoryToJson(user.inventory));
+  triggerUser(user, USER_INVENTORY_CHANGE, json);
+}
+
+function notifyRoomInventoryChange(msg: CustomMessage, room: Room): void {
+  const guild = mainGuild();
+
+  if (msg.channel instanceof TextChannel) {
+    const json = JSON.stringify([roomToJson(room, true, false, mainGuild())]);
+
+    for (const member of msg.channel.members.values()) {
+      if (member.id !== guild.ownerID) {
+        triggerUser(member, ROOM_INFORMATION, json);
+      }
+    }
+  }
+
+  const adminJson = JSON.stringify([roomToJson(room, true, false, mainGuild())]);
+  triggerUser(guild.owner, ROOM_INFORMATION, adminJson);
+}
+
 export async function consume(msg: CustomMessage): Promise<void> {
   const command = parseCommand(msg, ["of"]),
     user = await User.findOne({
@@ -195,6 +219,8 @@ export async function consume(msg: CustomMessage): Promise<void> {
       inventory: user.inventory
     });
 
+    notifyUserInventoryChange(user);
+
     sendMessage(msg, `You consumed ${quantity} of ${itemName}`);
   } finally {
     await lock({ release: true, user: user.id });
@@ -226,7 +252,7 @@ export async function changeItem(msg: CustomMessage): Promise<void> {
   }
 
   if (isRoom) {
-    await changeRoomItem(command, target, name);
+    await changeRoomItem(command, target, name, msg);
   } else {
     await changeUserItem(command, target, name);
   }
@@ -259,13 +285,14 @@ async function changeUserItem(command: Command, target: string, name: string):
     }
 
     await user.update({ inventory: user.inventory });
+    notifyUserInventoryChange(user);
   } finally {
     await lock({ release: true, user: user.id });
   }
 }
 
-async function changeRoomItem(command: Command, target: string, name: string):
-  Promise<void> {
+async function changeRoomItem(command: Command, target: string, name: string,
+                              msg: CustomMessage): Promise<void> {
   const roomModel = await getRoomModel(target);
 
   if (!roomModel) throw new Error(`Could not find room ${target}`);
@@ -289,6 +316,7 @@ async function changeRoomItem(command: Command, target: string, name: string):
     }
 
     await roomModel.update({ inventory: roomModel.inventory });
+    notifyRoomInventoryChange(msg, roomModel);
   } finally {
     await lock({ release: true, room: roomModel.id});
   }
@@ -415,6 +443,8 @@ export async function dropItem(msg: CustomMessage): Promise<void> {
       }, { transaction });
 
       transaction.commit();
+      notifyUserInventoryChange(user);
+      notifyRoomInventoryChange(msg, roomModel);
     } catch (err) {
       roomItem.quantity -= quantity;
 
@@ -494,9 +524,7 @@ export async function giveItem(msg: CustomMessage): Promise<void> {
     }
   });
 
-  if (rooms.length === 0) {
-    throw new Error("Must be in the same room to trade");
-  }
+  if (rooms.length === 0) throw new Error("Must be in the same room to trade");
 
   const ofArg = command.args.get("of");
   let itemName: string = command.params.join(),
@@ -572,6 +600,9 @@ export async function giveItem(msg: CustomMessage): Promise<void> {
       }, {
         transaction
       });
+
+      notifyUserInventoryChange(sender);
+      notifyUserInventoryChange(target);
 
       transaction.commit();
     } catch (err) {
@@ -816,6 +847,8 @@ export async function takeItem(msg: CustomMessage): Promise<void> {
       });
 
       await transaction.commit();
+      notifyUserInventoryChange(user);
+      notifyRoomInventoryChange(msg, roomModel);
 
       sendMessage(msg, `${senderName(msg)} took ${quantity} of ${itemName}`);
     } catch (err) {

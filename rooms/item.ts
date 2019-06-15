@@ -64,8 +64,6 @@ export class Item implements Serializable<ItemModel> {
 
     if (command !== undefined && command in this.actions) {
       this.actions[command](args);
-    } else {
-      // console.log("Not a valid command");
     }
   }
 

@@ -35,7 +35,7 @@ export interface Usage {
 
 export type Action = Dict<Usage>;
 
-const usages: Action = {
+export const usages: Action = {
   ...ItemUsage,
   ...LinkUsage,
   ...MovementUsage,

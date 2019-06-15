@@ -4,6 +4,7 @@ import Header from "./header";
 import Inventory from "./inventory";
 import Rooms from "./rooms";
 import CurrentRoom from "./currentRoom";
+import Commands from "./commands";
 import { sanitize } from "dompurify";
 import { 
   MESSAGES_GET,
@@ -13,14 +14,21 @@ import {
   ROOM_INFORMATION,
   ROOM_LOGS,
   USER_INVENTORY_CHANGE,
-  USER_NAME
+  USER_NAME,
+  COMMANDS
 } from "../../dist/socket/consts";
 
 const USER_OPS = ["Inventory", "Rooms", "Current room(s)", "Commands"];
 const ADMIN_OPS = ["View users"];
 
 const converter = new showdown.Converter();
-const startupTasks = [USER_NAME, USER_INVENTORY_CHANGE, ROOM_INFORMATION, MESSAGES_GET];
+const startupTasks = [
+  USER_NAME, 
+  USER_INVENTORY_CHANGE, 
+  ROOM_INFORMATION, 
+  MESSAGES_GET, 
+  COMMANDS
+];
 
 function toHtml(content) {
   return sanitize(converter.makeHtml(content));
@@ -34,6 +42,7 @@ export class App extends Component{
 
     this.state = {
       admin: false,
+      commands: {},
       inventory: [],
       rooms: new Map(),
       selected: "Inventory",
@@ -42,6 +51,30 @@ export class App extends Component{
       username: "",
       width: document.body.clientWidth
     };
+
+    socket.on(COMMANDS, data => {
+      const json = JSON.parse(data),
+        commands = { };
+
+      for (const [name, command] of Object.entries(json)) {
+        const comm = { description: command.d };
+
+        if (command.a) comm.a = true;
+        comm.uses = command.u.map(use => {
+          const usage = { use: use.u };
+
+          if (use.a) usage.admin = true;
+          if (use.e) usage.explanation = use.e;
+          if (use.x) usage.example = use.x;
+
+          return usage;
+        });
+        
+        commands[name] = comm;
+      }
+
+      this.setState({ commands });
+    });
 
     socket.on(USER_INVENTORY_CHANGE, data => { 
       const json = JSON.parse(data);
@@ -63,7 +96,7 @@ export class App extends Component{
           const data = state.rooms.get(room.i) || { 
             archive: [],
             messages: [],
-            updatedAt: new Date(0).getTime()
+            updatedAt: new Date().getTime()
           };
 
           data.description = toHtml(room.d),
@@ -72,10 +105,9 @@ export class App extends Component{
           data.name = room.n;
           data.present = room.p === true;
           data.section = room.s;
+
           roomsMap.set(room.i, data);
         }
-
-        console.log(roomsMap);
 
         return { rooms: roomsMap };
       });
@@ -243,6 +275,7 @@ export class App extends Component{
           <Inventory inventory={this.state.inventory} name="inventory" selected={this.state.selected === "Inventory"} sidebar={this.state.sidebar} width={this.state.width}/>
           <Rooms rooms={this.state.rooms} selected={this.state.selected === "Rooms"} sidebar={this.state.sidebar} width={this.state.width} username={this.state.username} getLogs={this.getLogs}/>
           <CurrentRoom rooms={this.state.rooms} selected={this.state.selected === "Current room(s)"} sidebar={this.state.sidebar} width={this.state.width}/>
+          <Commands commands={this.state.commands} selected={this.state.selected === "Commands"}/>
         </div>
       </div>
     );

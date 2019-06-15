@@ -87,7 +87,7 @@ class Room extends Component {
     });
 
     return (
-      <div className="card">
+      <div className="card room">
         <div className="card-body">
           <h5 className="card-title">{this.props.name} ({this.props.section})</h5>
           <button type="button" className="close" onClick={() => this.props.toggleModal(this.props.id)}>

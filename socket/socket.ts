@@ -4,6 +4,7 @@ import { mainGuild } from "../helpers/base";
 import { lock } from "../helpers/locks";
 
 import {
+  COMMANDS,
   MESSAGES_GET,
   ROOM_INFORMATION,
   ROOM_LOGS,
@@ -12,6 +13,7 @@ import {
 } from "./consts";
 import {
   getArchivedRoomLogs,
+  getCommands,
   getMessages,
   getRooms,
   getUser,
@@ -51,6 +53,11 @@ export function socket(app: any): Server {
     }
 
     await lock({ release: true, room: LOCK_NAME });
+
+    sock.on(COMMANDS, async () => {
+      const commands = getCommands(user.id === mainGuild().ownerID);
+      sock.emit(COMMANDS, JSON.stringify(commands));
+    });
 
     sock.on(MESSAGES_GET, async () => {
       const messages = await getMessages(user, sock.request.session.loginTime);

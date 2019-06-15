@@ -1,3 +1,4 @@
+export const COMMANDS = "commands";
 export const MESSAGES_GET = "get messages";
 export const MESSAGE_CREATE = "new message";
 export const MESSAGE_DELETE = "message delete";
