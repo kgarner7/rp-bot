@@ -150,7 +150,7 @@ export function roomToJson(room: Room, present: boolean,
   return json;
 }
 
-export async function getArchivedRoomLogs(roomId: string, user: User, time: Date): 
+export async function getArchivedRoomLogs(roomId: string, user: User, time: Date):
   Promise<object[]> {
 
   const room = await Room.findOne({

@@ -1,7 +1,10 @@
-import React, { Component} from "react";
+import { Component} from "react";
 
 class SearchBar extends Component {
-
+  constructor(props) {
+    super(props);
+  }
+  
   render() {
     let first = true;
     const options = this.props.options.map(option => {
@@ -20,7 +23,7 @@ class SearchBar extends Component {
     return (  
       <div className="input-group col-12">
         <input type="text" className="form-control" placeholder={this.props.placeholder} value={this.props.filter} onChange={this.props.handleFilter}/>
-        <div className="input-group-append btn-group btn-group-toggle" id="button-addon4" data-toggle="buttons">
+        <div className="input-group-append btn-group btn-group-toggle" data-toggle="buttons">
           { options }
         </div>
       </div>

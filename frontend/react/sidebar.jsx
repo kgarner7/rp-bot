@@ -1,4 +1,4 @@
-import React, { Component} from "react";
+import { Component} from "react";
 
 class Group extends Component {
   constructor(props) {

@@ -2,6 +2,8 @@ import React, { Component} from "react";
 
 class Modal extends Component {
   render() {
+    console.log(this.props.id);
+    
     const id = this.props.id + "Modal";
     const body = this.props.html ? 
     (<div dangerouslySetInnerHTML={{ __html: this.props.body}}></div>): this.props.body;

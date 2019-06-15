@@ -1,4 +1,4 @@
-import React, { Component} from "react";
+import { Component} from "react";
 import { Responsive } from "react-grid-layout";
 import Modal from "./modal";
 import SearchBar from "./search";
@@ -11,7 +11,7 @@ class Item extends Component {
       <div className="card item">
         <div className="card-body">
           <h5 className="card-title">{message}</h5>
-          <button type="button" className="close" onClick={(e) => this.props.toggle(message, this.props.description)}>
+          <button type="button" className="close" onClick={() => this.props.toggle(message, this.props.description)}>
             <span>^</span>
           </button>
           <p className="card-text item" dangerouslySetInnerHTML={{ __html: this.props.description}}></p>
@@ -55,7 +55,7 @@ class Inventory extends Component {
       modal: { body, title }
     });
 
-    $("#inventoryModal").modal("show");
+    $(`#${this.props.name}Modal`).modal("show");
   }
 
   handleSort(sort) {
@@ -65,21 +65,38 @@ class Inventory extends Component {
   }
 
   handleLayout(layout) {
-    const layoutMap = new Map();
-
-    for(const item of layout) {
-      layoutMap.set(item.i, [item.w, item.h]);
+    if (layout.length === 0) {
+      return;
     }
 
-    this.setState({ sizes: layoutMap });
+    const currentMap = this.state.sizes,
+    layoutMap = new Map();
+
+    let changed = false;
+
+    for(const item of layout) {
+      const currentLayout = currentMap.get(item.i),
+        layoutChange = currentLayout === undefined ||
+          currentLayout[0] !== item.w || currentLayout[1] !== item.h;
+
+      if (layoutChange) {
+        layoutMap.set(item.i, [item.w, item.h]);
+        changed = true;
+      }
+    }
+
+    if (changed) {
+      this.setState({ sizes: layoutMap })
+    }
   }
 
   handleWidth(_width, _margin, cols) {
-    this.setState({ cols });
+    if (cols !== this.state.cols) {
+      this.setState({ cols });
+    }
   }
 
   render() {
-    if (!this.props.selected) return null;
     const layout = [],
       width = this.props.width - (this.props.sidebar ? 200 : 0);
     let x = 0;
@@ -128,14 +145,16 @@ class Inventory extends Component {
     for (const key of sizes) {
       layouts[key] = layout;
     }
+
+    const className = this.props.selected ? "visible": "invisible";
       
     return (
-      <div>
-        <SearchBar filter={this.state.filter} handleFilter={this.handleFilter} options={options} handleSort={this.handleSort} placeholder={"select an item"}/>
+      <div className={className}>
+        <SearchBar filter={this.state.filter} handleFilter={this.handleFilter} options={options} handleSort={this.handleSort} placeholder={"select an item"} name={this.props.name}/>
         <Responsive className="layout" rowHeight={50} width={width} layouts={layouts} onLayoutChange={this.handleLayout} onWidthChange={this.handleWidth}>
           {elements}
         </Responsive>
-        <Modal id={"inventory"} title={this.state.modal.title} body={this.state.modal.body} html={true} />
+        <Modal id={this.props.name} title={this.state.modal.title} body={this.state.modal.body} html={true} />
       </div>
     );
   }

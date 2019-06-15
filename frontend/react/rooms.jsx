@@ -1,4 +1,4 @@
-import React, { Component} from "react";
+import { Component } from "react";
 import { Responsive } from "react-grid-layout";
 import SearchBar from "./search";
 
@@ -102,6 +102,25 @@ class Room extends Component {
   }
 }
 
+function matchMessageToFilters(filters, message) {
+  if (filters.length === 0) return true;
+  
+  for (const filter of filters) {
+    if (filter.startsWith("a:")) {
+      const nickname = filter.substring(2);
+
+      if (message.author.startsWith(nickname)) {
+        return true;
+      }
+    } else {
+      if (message.content.indexOf(filter) !== -1) {
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
 class RoomModal extends Component {
   constructor(props) {
     super(props);
@@ -112,6 +131,7 @@ class RoomModal extends Component {
 
     this.handleFilter = this.handleFilter.bind(this);
   }
+  
 
   handleFilter(event) {
     this.setState({ filter: event.target.value });
@@ -127,30 +147,39 @@ class RoomModal extends Component {
       };
     }
 
-    const filter = this.state.filter,
-      messages = [], 
-      noFilter = filter === "";
+    const filters = this.state.filter.split(",").filter(rule => rule.length > 0),
+      messages = [];
 
     for (const message of room.archive) {
       const isAuthor = this.props.username === message.author;
 
-      if (noFilter || message.content.indexOf(filter) !== -1) {
+      if (matchMessageToFilters(filters, message)) {
         messages.push((
           <Messge key={message.id} isAuthor={isAuthor} author={message.author} content={message.content} time={message.time} />
         ));
       }
     }
 
+    let showLogButton = undefined;
+
     if (room.archive.length > 0) {
       messages.push((
         <hr key="hr" className="bg-dark"/>
       ));
+    } 
+
+    if (room.hasArchive !== true) {
+      showLogButton = (
+        <button type="button" className="btn btn-success" onClick={() => this.props.getLogs(this.props.roomId)}>
+          Get logs
+        </button>
+      );
     }
 
     for (const message of room.messages) {
       const isAuthor = this.props.username === message.author;
 
-      if (noFilter || message.content.indexOf(filter) !== -1) {
+      if (matchMessageToFilters(filters, message)) {
         messages.push((
           <Messge key={message.id} isAuthor={isAuthor} author={message.author} content={message.content} time={message.time} />
         ));
@@ -159,7 +188,7 @@ class RoomModal extends Component {
 
     let search = undefined;
     if (messages.length > 0 || this.state.filter !== "") {
-      search = (<SearchBar filter={this.state.filter} handleFilter={this.handleFilter} options={[]} placeholder={"Enter text to search"} />) 
+      search = (<SearchBar filter={this.state.filter} handleFilter={this.handleFilter} options={[]} placeholder={"Enter text to search, or a: to find a sender"} />) 
     }
 
     let separator = messages.length > 0 ? (<hr className="bg-dark"/>): undefined;
@@ -182,9 +211,7 @@ class RoomModal extends Component {
               <div className="messages">{messages}</div>
             </div>
             <div className="modal-footer">
-              <button type="button" className="btn btn-success" onClick={() => this.props.getLogs(this.props.roomId)}>
-                Get logs
-              </button>
+              {showLogButton}
               <button type="button" className="btn btn-secondary" data-dismiss="modal">Close</button>
             </div>
           </div>
@@ -203,8 +230,8 @@ class Rooms extends Component {
       filter: "",
       roomId: undefined,
       sizes: new Map(),
-      sort: "ztoa-t",
-    }
+      sort: "ztoa-t"
+    };
 
     this.handleFilter = this.handleFilter.bind(this);
     this.handleLayout = this.handleLayout.bind(this);
@@ -215,16 +242,32 @@ class Rooms extends Component {
 
   handleFilter(event) {
     this.setState({ filter: event.target.value });
-  }
+  }  
 
   handleLayout(layout) {
-    const layoutMap = new Map();
-
-    for(const room of layout) {
-      layoutMap.set(room.i, [room.w, room.h]);
+    if (layout.length === 0) {
+      return;
     }
 
-    this.setState({ sizes: layoutMap });
+    const currentMap = this.state.sizes,
+    layoutMap = new Map();
+
+    let changed = false;
+
+    for(const item of layout) {
+      const currentLayout = currentMap.get(item.i),
+        layoutChange = currentLayout === undefined ||
+          currentLayout[0] !== item.w || currentLayout[1] !== item.h;
+
+      if (layoutChange) {
+        layoutMap.set(item.i, [item.w, item.h]);
+        changed = true;
+      }
+    }
+
+    if (changed) {
+      this.setState({ sizes: layoutMap })
+    }
   }
 
   toggleModal(roomId) {
@@ -237,12 +280,12 @@ class Rooms extends Component {
   }
 
   handleWidth(_width, _margin, cols) {
-    this.setState({ cols });
+    if (cols !== this.state.cols) {
+      this.setState({ cols });
+    }
   }
 
   render() {
-    if (!this.props.selected) return null;
-
     const layout = [],
       width = this.props.width - (this.props.sidebar ? 200 : 0);
     let x = 0, y = 0;
@@ -324,10 +367,12 @@ class Rooms extends Component {
       layouts[key] = layout;
     }
 
+    const className = this.props.selected ? "visible": "invisible";
+
     return (
-      <div>
-        <SearchBar filter={this.state.filter} handleFilter={this.handleFilter} options={options} handleSort={this.handleSort} placeholder={"a room name, wildcard (*), or list (comma separated)"}/>
-        <Responsive className="layout rooms" rowHeight={60} width={width} layouts={layouts} onLayoutChange={this.handleLayout} onWidthChange={this.handleWidth} draggableCancel={".no-drag"} cols={cols}>
+      <div className={className}>
+        <SearchBar filter={this.state.filter} handleFilter={this.handleFilter} options={options} handleSort={this.handleSort} placeholder={"a room name, sector (s:), wildcard (*), or list (comma separated)"}/>
+        <Responsive className="layout rooms" rowHeight={60} width={width} layouts={layouts} onLayoutChange={this.handleLayout} onWidthChange={this.handleWidth} cols={cols}>
           {elements}
         </Responsive>
         <RoomModal getLogs={this.props.getLogs} roomId={this.state.roomId} rooms={this.props.rooms} username={this.props.username} />

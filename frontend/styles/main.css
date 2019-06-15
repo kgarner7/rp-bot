@@ -64,3 +64,11 @@
 .item {
   overflow-y: auto;
 }
+
+.invisible {
+  display: none;
+}
+
+.btn-group-toggle {
+  z-index: -1;
+}

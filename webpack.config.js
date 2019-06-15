@@ -3,6 +3,10 @@ const webpack = require("webpack");
 
 module.exports = {
   entry: "./frontend/react/index.js",
+  externals: {
+    'react': 'React',
+    'react-dom': 'ReactDOM'
+  },
   mode: "development",
   module: {
     rules: [
