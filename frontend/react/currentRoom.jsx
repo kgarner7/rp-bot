@@ -4,6 +4,10 @@ import Select from "react-select"
 import Inventory from "./inventory";
 
 const style = {
+  menu: (provided, state) => ({
+    ...provided,
+    "z-index": 5
+  }),
   option: (provided, state) => ({
     ...provided,
     backgroundColor: state.isSelected ? "#00bc8c" : "white",

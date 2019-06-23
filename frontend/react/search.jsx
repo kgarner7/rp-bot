@@ -1,10 +1,6 @@
 import { Component} from "react";
 
 class SearchBar extends Component {
-  constructor(props) {
-    super(props);
-  }
-  
   render() {
     let first = true;
     const options = this.props.options.map(option => {

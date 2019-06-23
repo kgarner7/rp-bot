@@ -147,7 +147,7 @@ class Inventory extends Component {
     }
 
     const className = this.props.selected ? "visible": "invisible";
-      
+    
     return (
       <div className={className}>
         <SearchBar filter={this.state.filter} handleFilter={this.handleFilter} options={options} handleSort={this.handleSort} placeholder={"select an item"} name={this.props.name}/>

@@ -2,6 +2,10 @@ import { Options } from "sequelize";
 
 import { Dict } from "../helpers/base";
 
+// tslint:disable-next-line:no-magic-numbers
+const IDLE_TIME = 1000 * 10;
+const MAX_POOLS = 15;
+
 /**
  * Database configurations
  */
@@ -9,11 +13,18 @@ import { Dict } from "../helpers/base";
 export let database: Dict<{
   username: string;
   password: string;
+  pool?: Dict<string | number>;
   options?: Options;
+  retry?: object;
 }> = {
   development: {
     username: "postgres",
     password: "postgres",
+    pool: {
+      max: MAX_POOLS,
+      min: 0,
+      idle: IDLE_TIME
+    },
     options: {
       dialect: "postgres",
       operatorsAliases: false
@@ -22,6 +33,11 @@ export let database: Dict<{
   test: {
     username: "discordo_testing",
     password: "discordo_testing",
+    pool: {
+      max: MAX_POOLS,
+      min: 0,
+      idle: IDLE_TIME
+    },
     options: {
       dialect: "postgres",
       operatorsAliases: false
@@ -30,6 +46,11 @@ export let database: Dict<{
   production: {
     username: process.env.DB_USERNAME || "",
     password: process.env.DB_PASSWORD || "",
+    pool: {
+      max: MAX_POOLS,
+      min: 0,
+      idle: IDLE_TIME
+    },
     options: {
       dialect: "postgres",
       operatorsAliases: false

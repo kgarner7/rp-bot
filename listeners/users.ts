@@ -144,7 +144,7 @@ export async function showLogs(msg: CustomMessage): Promise<void> {
     room = await getChannel(name);
   }
 
-  if (warning) msg.author.send(warning);
+  if (warning) (msg.overridenSender || sender).send(warning);
 
   if (room === null) {
     throw new NoLogError(msg);
@@ -168,7 +168,7 @@ export async function showLogs(msg: CustomMessage): Promise<void> {
         })
         .join(lineEnd));
 
-        sender.send({
+        (msg.overridenSender || sender).send({
           files: [{
             attachment: path,
             name: `${name}-log.txt`

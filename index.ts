@@ -36,6 +36,7 @@ const sessionMiddleware = session({
   },
   resave: true,
   rolling: true,
+  saveUninitialized: false,
   secret: randomBytes(SECRET_LENGTH)
     .toString("binary"),
   store: new RedisStore({ })
@@ -91,7 +92,7 @@ initDB()
       await sequelize.sync();
       await client.login(config.botToken);
 
-      const job = new CronJob("0 * * * * *", async (): Promise<void> => {
+      const job = new CronJob("0 */5 * * * *", async (): Promise<void> => {
         try {
           await handleSave();
         } catch (err) {
