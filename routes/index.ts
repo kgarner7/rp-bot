@@ -21,29 +21,34 @@ function error(res: Response, path: string, msg: string): void {
   res.render(path, { error: msg });
 }
 
-router.get("/", wrapper(async (req, res, _next) => {
+function requireLogin(req: Request, res: Response, next: NextFunction): void {
   if (req.session && req.session.userId) {
-    const user = await User.findOne({
-      attributes: ["discordName", "id", "name"],
-      where: {
-        id: req.session.userId
-      }
-    });
-
-    if (user) {
-      res.render("main", { name: `${user.discordName} (${user.name})` });
-    } else {
-      req.session.userId = undefined;
-      res.redirect("/login");
-    }
+    req.session.touch();
+    next();
   } else {
+    res.redirect("/login");
+  }
+}
+
+router.get("/", requireLogin, wrapper(async (req, res, _next) => {
+  const user = await User.findOne({
+    attributes: ["discordName", "id", "name"],
+    where: {
+      id: req.session!.userId
+    }
+  });
+
+  if (user) {
+    res.render("main", { name: `${user.discordName} (${user.name})` });
+  } else {
+    req.session!.userId = undefined;
     res.redirect("/login");
   }
 }));
 
 router.get("/login", (_req, res) => res.render("login", { error: undefined }));
 
-router.post("/login", wrapper(async (req, res, _next) => {
+router.post("/login", wrapper(async (req, res) => {
   const user = await User.findOne({
     attributes: ["id", "name", "password"],
     where: {
@@ -74,7 +79,7 @@ router.post("/login", wrapper(async (req, res, _next) => {
 
 router.get("/signup", (_req, res) => res.render("signup", { error: undefined }));
 
-router.post("/signup", wrapper(async (req, res, _next) => {
+router.post("/signup", wrapper(async (req, res) => {
   const username = req.body.username,
     confirmation = req.body.confirm,
     password: None<Object> = req.body.password;
@@ -106,10 +111,22 @@ router.post("/signup", wrapper(async (req, res, _next) => {
   res.redirect("/login");
 }));
 
-router.get("/logout", wrapper(async (req, res, _next) => {
-  if (req.session) {
-    req.session.destroy(_err => res.redirect("/login"));
-  } else {
+router.get("/logout", requireLogin, wrapper(async (req, res) => {
+  req.session!.destroy(_err => res.redirect("/login"));
+}));
+
+router.get("/button", requireLogin, wrapper(async (req, res) => {
+  const user = await User.findOne({
+    attributes: ["discordName"],
+    where: {
+      id: req.session!.user_id
+    }
+  });
+
+  if (!user) {
     res.redirect("/login");
+    return;
   }
+
+  res.render("button", { user: user.discordName });
 }));
