@@ -12,9 +12,8 @@ class Header extends Component {
   
         <div className="collapse navbar-collapse" id="navbarSupportedContent">
           <ul className="navbar-nav ml-auto mt-2 mt-lg-0">
-            <li>
-              <a className="dropdown-item" href="/logout">Logout</a>
-            </li>
+            <li><a className="dropdown-item" href="/button">The button</a></li>
+            <li><a className="dropdown-item" href="/logout">Logout</a></li>
           </ul>
         </div>
       </nav>

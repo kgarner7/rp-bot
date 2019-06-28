@@ -1,8 +1,11 @@
 import { compare, hash } from "bcrypt";
 import express, { NextFunction, Request , Response } from "express";
+import moment from "moment";
 
+import { mainGuild } from "../helpers/base";
 import { isNone, None } from "../helpers/types";
-import {  User } from "../models/models";
+import { User } from "../models/models";
+import { client } from "../models/redis";
 
 const MIN_PASS_LENGTH = 8;
 const SALT_ROUNDS = 15;
@@ -117,9 +120,9 @@ router.get("/logout", requireLogin, wrapper(async (req, res) => {
 
 router.get("/button", requireLogin, wrapper(async (req, res) => {
   const user = await User.findOne({
-    attributes: ["discordName"],
+    attributes: ["discordName", "id"],
     where: {
-      id: req.session!.user_id
+      id: req.session!.userId
     }
   });
 
@@ -128,5 +131,17 @@ router.get("/button", requireLogin, wrapper(async (req, res) => {
     return;
   }
 
-  res.render("button", { user: user.discordName });
+  res.render("button", {
+    admin: user.id === mainGuild().ownerID,
+    user: user.discordName
+  });
+}));
+
+router.get("/button/admin", requireLogin, wrapper(async (req, res) => {
+  if (req.session!.userId !== mainGuild().ownerID) {
+    res.redirect("/button");
+    return;
+  }
+
+  res.render("button-admin");
 }));

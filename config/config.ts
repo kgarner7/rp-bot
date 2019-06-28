@@ -26,8 +26,7 @@ export let database: Dict<{
       idle: IDLE_TIME
     },
     options: {
-      dialect: "postgres",
-      operatorsAliases: false
+      dialect: "postgres"
     }
   },
   test: {
@@ -39,8 +38,7 @@ export let database: Dict<{
       idle: IDLE_TIME
     },
     options: {
-      dialect: "postgres",
-      operatorsAliases: false
+      dialect: "postgres"
     }
   },
   production: {
@@ -52,8 +50,7 @@ export let database: Dict<{
       idle: IDLE_TIME
     },
     options: {
-      dialect: "postgres",
-      operatorsAliases: false
+      dialect: "postgres"
     }
   }
 };

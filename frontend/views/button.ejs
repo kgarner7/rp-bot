@@ -1,0 +1,16 @@
+<%- include("layouts/header") %>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.24.0/moment.min.js" crossorigin="anonymous"></script>
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="button.js"></script>
+  </head>
+  <body class="d-flex justify-content-center align-items-center" style="height:100%">
+    <div class="container center-content">
+      <h3 class="text-center mb-4">Welcome <%= user %></h3>
+      <button type="button" class="btn btn-large btn-block big" id="button">Nothing to see here.....</button>
+      <h3 class="text-center mt-3"><a href="/">Go back</a></h3>
+      <% if (admin) { %>
+        <a class="btn btn-link btn-block mt-1 text-danger" href="/button/admin">Administer this button</a>
+      <% } %>
+    </div>
+  </body>
+</html>

@@ -83,7 +83,10 @@ export function isFunctionResolvableDict(arg: any): arg is Dict<FunctionResolvab
 export function isItemAttributes(arg: any): arg is ItemAttributes {
   const baseCheck = exists(arg) &&
     typeof(arg.description) === "string" &&
-    (exists(arg.locked) ? typeof(arg.locked) === "boolean" : true) &&
+    (exists(arg.editable) ?
+      typeof(arg.editable) === "boolean" : true) &&
+    (exists(arg.locked) ?
+      typeof(arg.locked) === "boolean" : true) &&
     typeof(arg.name) === "string" &&
     (exists(arg.quantity) ?
       (typeof(arg.quantity) === "number" && arg.quantity > 0) : true);

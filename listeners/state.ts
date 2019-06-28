@@ -15,7 +15,7 @@ import { CustomMessage } from "../helpers/classes";
 import { globalLock } from "../helpers/locks";
 import { isNone, isRoomAttribute, isUserResolvable, Undefined } from "../helpers/types";
 import { User, UserResolvable } from "../models/user";
-import { ItemAttributes } from "../rooms/item";
+import { ItemAttributes, ItemModel } from "../rooms/item";
 import { NeighborResolvable, RoomAttributes, RoomResolvable } from "../rooms/room";
 import { RoomManager } from "../rooms/roomManager";
 
@@ -212,16 +212,7 @@ export async function handleSave(): Promise<void> {
       const itemsList: ItemAttributes[] = [];
 
       for (const item of room.items.values()) {
-        const itemData: ItemAttributes = {
-          description: item.description,
-          name: item.name
-        };
-
-        if (item.hidden) itemData.hidden = true;
-        if (item.locked) itemData.locked = true;
-        if (item.quantity > 1) itemData.quantity = item.quantity;
-
-        itemsList.push(itemData);
+        itemsList.push(getItemAttributes(item));
       }
 
       const neighborsList: NeighborResolvable[] = [];
@@ -263,16 +254,7 @@ export async function handleSave(): Promise<void> {
       const inventory: Dict<ItemAttributes> = { };
 
       for (const item of Object.values(user.inventory)) {
-        const itemData: ItemAttributes = {
-          description: item.description,
-          name: item.name
-        };
-
-        if (item.hidden) itemData.hidden = true;
-        if (item.locked) itemData.locked = true;
-        if (item.quantity > 1) itemData.quantity = item.quantity;
-
-        inventory[item.name] = itemData;
+        inventory[item.name] = getItemAttributes(item);
       }
 
       const userData: UserResolvable = {
@@ -288,6 +270,22 @@ export async function handleSave(): Promise<void> {
     await globalLock({ acquire: false, writer: true });
   }
 }
+
+function getItemAttributes(item: ItemModel): ItemAttributes {
+  const itemData: ItemAttributes = {
+    description: item.description,
+    name: item.name
+  };
+
+  if (item.editable) itemData.editable = true;
+  if (item.hidden) itemData.hidden = true;
+  if (item.locked) itemData.locked = true;
+
+  if (item.quantity > 1) itemData.quantity = item.quantity;
+
+  return itemData;
+}
+
 export async function update(msg: CustomMessage): Promise<void> {
   requireAdmin(msg);
   await globalLock({ acquire: true, writer: true });

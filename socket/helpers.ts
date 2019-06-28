@@ -86,7 +86,7 @@ export async function getRooms(user: GuildMember | User): Promise<object[]> {
 
     const messageRoomNames = new Set<string>(messageRooms.map(room => room.name));
 
-    const visitedLinks = await Link.findAll({
+    const links = await Link.findAll({
       attributes: ["id"],
       include: [{
         as: "visitors",
@@ -105,8 +105,9 @@ export async function getRooms(user: GuildMember | User): Promise<object[]> {
         model: Room
       }],
       transaction
-    })
-      .filter(link => link.visitors.length > 0);
+    });
+
+    const visitedLinks = links.filter(link => link.visitors.length > 0);
 
     for (const link of visitedLinks) {
       if (!messageRoomNames.has(link.target.name)) {

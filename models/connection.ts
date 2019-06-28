@@ -15,7 +15,6 @@ const nodeEnvironment: Undefined<string> = process.env.NODE_ENV,
  */
 export const sequelize = new Sequelize.
   Sequelize(dbName, config.username, config.password, config.options);
-export const Op = Sequelize.Op;
 
 /**
  * Attempts to create a new database for this server

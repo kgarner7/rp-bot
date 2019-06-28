@@ -93,7 +93,6 @@ initDB()
       await client.login(config.botToken);
 
       const job = new CronJob("0 * * * * *", async (): Promise<void> => {
-        console.log(`Saved at ${new Date()}`);
         try {
           await handleSave();
         } catch (err) {

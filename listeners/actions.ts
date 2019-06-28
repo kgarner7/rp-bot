@@ -6,6 +6,7 @@ import {
   changeItem,
   consume,
   dropItem,
+  editItem,
   giveItem,
   inspect,
   inventory,
@@ -16,7 +17,8 @@ import {
 import { doors, handleLock, hide, links, usage as LinkUsage } from "./links";
 import { move, usage as MovementUsage, userMove } from "./movement";
 import { play, stop, usage as PlayUsage } from "./music";
-import { createRoom, getAvailableRooms, usage as RoomUsage } from "./rooms";
+import { createItem, requests, usage as RequestUsage } from "./requests";
+import { getAvailableRooms, usage as RoomUsage } from "./rooms";
 import { deleteFile, read, save, update, usage as SaveUsage, write } from "./state";
 import { members, showLogs, usage as UserUsage, users } from "./users";
 
@@ -42,6 +44,7 @@ export const usages: Action = {
   ...RoomUsage,
   ...SaveUsage,
   ...PlayUsage,
+  ...RequestUsage,
   ...UserUsage
 };
 
@@ -107,9 +110,11 @@ async function help(msg: CustomMessage): Promise<void> {
 export const actions: Dict<(msg: CustomMessage) => Promise<void>> = {
   change: changeItem,
   consume,
+  create: createItem,
   delete: deleteFile,
   doors,
   drop: dropItem,
+  edit: editItem,
   examine: inspect,
   give: giveItem,
   help,
@@ -124,6 +129,7 @@ export const actions: Dict<(msg: CustomMessage) => Promise<void>> = {
   mv: move,
   play,
   read,
+  requests,
   rooms: getAvailableRooms,
   save,
   stop,

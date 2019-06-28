@@ -59,6 +59,16 @@ export class User extends Model {
   public createdAt?: Date;
   public updatedAt?: Date;
 
+  public visitedLinks: Link[];
+  public addVisitedLink: BelongsToManyAddAssociationMixin<Link, string>;
+  public addVisitedLinks: BelongsToManyAddAssociationsMixin<Link, string>;
+  public countVisitedLinks: BelongsToManyCountAssociationsMixin;
+  public createVisitedLink: BelongsToManyCreateAssociationMixin<Link>;
+  public getVisitedLinks: BelongsToManyGetAssociationsMixin<Link>;
+  public removeVisitedLink: BelongsToManyRemoveAssociationMixin<Link, string>;
+  public removeVisitedLinks: BelongsToManyRemoveAssociationsMixin<Link, string>;
+  public setVisitedLinks: BelongsToManySetAssociationsMixin<Link, string>;
+
   public Messages: Message[];
   public addMessage: BelongsToManyAddAssociationMixin<Message, string>;
   public addMessages: BelongsToManyAddAssociationsMixin<Message, string>;
@@ -77,15 +87,14 @@ export class User extends Model {
   public removeSentMessages: HasManyRemoveAssociationsMixin<Message, string>;
   public setSentMessages: HasManySetAssociationsMixin<Message, string>;
 
-  public visitedLinks: Link[];
-  public addVisitedLink: BelongsToManyAddAssociationMixin<Link, string>;
-  public addVisitedLinks: BelongsToManyAddAssociationsMixin<Link, string>;
-  public countVisitedLinks: BelongsToManyCountAssociationsMixin;
-  public createVisitedLink: BelongsToManyCreateAssociationMixin<Link>;
-  public getVisitedLinks: BelongsToManyGetAssociationsMixin<Link>;
-  public removeVisitedLink: BelongsToManyRemoveAssociationMixin<Link, string>;
-  public removeVisitedLinks: BelongsToManyRemoveAssociationsMixin<Link, string>;
-  public setVisitedLinks: BelongsToManySetAssociationsMixin<Link, string>;
+  public Requests: Request[];
+  public addRequest: BelongsToManyAddAssociationMixin<Request, number>;
+  public addRequests: BelongsToManyAddAssociationsMixin<Request, number>;
+  public createRequest: BelongsToManyCreateAssociationMixin<Request>;
+  public getRequests: BelongsToManyGetAssociationsMixin<Request>;
+  public removeRequest: BelongsToManyRemoveAssociationMixin<Request, number>;
+  public removeRequests: BelongsToManyRemoveAssociationsMixin<Request, number>;
+  public setRequests: BelongsToManySetAssociationsMixin<Request, number>;
 
   /**
    * Creates a User model from a Discord GuildMember
@@ -144,6 +153,12 @@ User.init({
 // tslint:disable-next-line:ordered-imports
 import { Link } from "./link";
 import { Message } from "./message";
+import { Request } from "./request";
+
+User.belongsToMany(Link, {
+  as: "visitedLinks",
+  through: "Visitation"
+});
 
 User.hasMany(Message, {
   as: "SentMessages"
@@ -153,7 +168,4 @@ User.belongsToMany(Message, {
   through: "UserMessage"
 });
 
-User.belongsToMany(Link, {
-  as: "visitedLinks",
-  through: "Visitation"
-});
+User.hasMany(Request);

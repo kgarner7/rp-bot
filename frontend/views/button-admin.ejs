@@ -1,0 +1,23 @@
+<%- include("layouts/header") %>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.24.0/moment.min.js" crossorigin="anonymous"></script>
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="/admin-button.js"></script>
+  </head>
+  <body class="d-flex justify-content-center align-items-center" style="height:100%">
+    <div class="container center-content">
+      <div class="alert alert-danger collapse" role="alert" id="error"></div>
+      <div class="alert alert-success collapse" role="alert" id="success"></div>
+
+      <div class="input-group">
+        <input type="number" class="form-control" placeholder="hours" id="hours" min="0">
+        <input type="number" class="form-control" placeholder="minutes" id="minutes" min="0">
+        <input type="number" class="form-control" placeholder="seconds" id="seconds" min="0">
+        <input type="number" class="form-control" placeholder="milliseconds" id="millis" min="0">
+        <div class="input-group-append">
+          <button class="btn btn-success" type="button" id="submit">Set countdown</button>
+        </div>
+      </div>
+      <button type="button" id="countdown" style="display: none" class="btn btn-large btn-block mt-3"></button>
+    </div>
+  </body>
+</html>

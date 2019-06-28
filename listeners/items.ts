@@ -1,4 +1,5 @@
 import { TextChannel } from "discord.js";
+import { Op } from "sequelize";
 
 import {
   Dict,
@@ -11,7 +12,7 @@ import {
 import { CustomMessage, SortableArray } from "../helpers/classes";
 import { lock } from "../helpers/locks";
 import { isNone, None, Undefined } from "../helpers/types";
-import { Op, Room, sequelize, User } from "../models/models";
+import { Room, sequelize, User } from "../models/models";
 import { Item, ItemModel } from "../rooms/item";
 import { ROOM_INFORMATION, USER_INVENTORY_CHANGE } from "../socket/consts";
 import { inventoryToJson, roomToJson, triggerUser } from "../socket/helpers";
@@ -54,6 +55,16 @@ export const usage: Action = {
         example: "!drop 5 of item 1 in room a",
         explanation: "Drops 5 of itme 1 in the specified room",
         use: "!drop **number** of **item** in **room**"
+      }
+    ]
+  },
+  edit: {
+    description: "Edit the description of an editable item",
+    uses: [
+      {
+        example: "!edit paper text \"a piece of paper\"",
+        explanation: "Edits the description of the editable item wiht name, item name",
+        use: "!edit **item name** text **description**"
       }
     ]
   },
@@ -144,11 +155,13 @@ function exclude<T>(arg: Dict<T>, excluded: string): Dict<T> {
   return newDict;
 }
 
-function getInt(value: string): number {
+export function getInt(value: string): number {
   const numOrNaN = parseInt(value, 10);
 
   if (isNaN(numOrNaN)) {
     throw new Error(`${value} is not a number`);
+  } else if (numOrNaN <= 0) {
+    throw new Error("Must have positive number");
   }
 
   return numOrNaN;
@@ -198,8 +211,6 @@ export async function consume(msg: CustomMessage): Promise<void> {
     itemName = command.args.get("of")!.join();
   }
 
-  if (quantity < 1) throw new Error("Must be positive quantity");
-
   await lock({ release: false, user: user.id});
 
   try {
@@ -227,10 +238,23 @@ export async function consume(msg: CustomMessage): Promise<void> {
   }
 }
 
+const ITEM_KEYWORDS = [
+  "count",
+  "delete",
+  "edit",
+  "for",
+  "hide",
+  "lock",
+  "no-edit",
+  "show",
+  "text",
+  "type",
+  "unlock"
+];
+
 export async function changeItem(msg: CustomMessage): Promise<void> {
   requireAdmin(msg);
-  const command = parseCommand(msg,
-    ["count", "delete", "for", "hide", "lock", "show", "text", "type", "unlock"]);
+  const command = parseCommand(msg, ITEM_KEYWORDS);
 
   if (!command.args.has("for")) {
     throw new Error("Missing target user/room");
@@ -322,20 +346,23 @@ async function changeRoomItem(command: Command, target: string, name: string,
   }
 }
 
+function setProperty(item: ItemModel, propName: "editable" | "hidden" | "locked",
+                     command: Command, trueKey: string, falseKey: string): void {
+
+  if (command.args.has(trueKey)) {
+    item[propName] = true;
+  } else if (command.args.has(falseKey)) {
+    item[propName] = false;
+  }
+}
+
 function createOrUpdateItem(command: Command, item: None<ItemModel>,
                             name: string): ItemModel {
 
   if (item) {
-    if (command.args.has("hide")) item.hidden = true;
-    if (command.args.has("lock")) item.locked = true;
-    if (command.args.has("show")) item.hidden = false;
-    if (command.args.has("unlock")) item.locked = false;
-
-    if (command.args.has("count")) {
-      const quantity = getInt(command.args.get("count")![0]);
-
-      if (quantity <= 0) throw new Error("Must have at least one of an item");
-    }
+    setProperty(item, "editable", command, "edit", "no-edit");
+    setProperty(item, "locked", command, "lock", "unlock");
+    setProperty(item, "hidden", command, "hide", "show");
 
     if (command.args.has("text")) {
       item.description = command.args.get("text")!.join();
@@ -354,6 +381,7 @@ function createOrUpdateItem(command: Command, item: None<ItemModel>,
     return {
       children: [],
       description: description.join(),
+      editable: command.args.has("edit"),
       hidden: command.args.has("hide"),
       locked: command.args.has("lock"),
       name,
@@ -389,10 +417,6 @@ export async function dropItem(msg: CustomMessage): Promise<void> {
   if (command.args.has("of")) {
     quantity = getInt(itemName);
     itemName = command.args.get("of")!.join();
-  }
-
-  if (quantity <= 0) {
-    throw new Error(`Cannot drop ${quantity} of ${itemName}`);
   }
 
   await lock({ release: false, room: roomModel.id, user: user.id });
@@ -460,6 +484,39 @@ export async function dropItem(msg: CustomMessage): Promise<void> {
     throw err;
   } finally {
     await lock({ release: true, room: roomModel.id, user: user.id });
+  }
+}
+
+export async function editItem(msg: CustomMessage): Promise<void> {
+  const command = parseCommand(msg, ["text"]),
+    itemName = command.params.join(" "),
+    user = await User.findOne({
+      attributes: ["id", "inventory"],
+      where: {
+        id: msg.author.id
+      }
+    });
+
+  if (isNone(user)) throw new Error(`Could not find user with id ${msg.author.id}`);
+  if (!command.args.has("text")) throw new Error("You must provide text");
+
+  await lock({ release: false, user: user.id });
+
+  try {
+    await user.reload({ attributes: ["inventory" ]});
+
+    const item = user.inventory[itemName];
+
+    if (isNone(item)) throw new Error(`You do not have ${itemName}`);
+    else if (!item.editable) throw new Error(`You cannot edit ${itemName}`);
+
+    item.description = command.args.get("text")!.join(" ");
+
+    await user.update({ inventory: user.inventory });
+    notifyUserInventoryChange(user);
+    sendMessage(msg, `Successfully updated ${itemName}`, true);
+  } finally {
+    await lock({ release: true, user: user.id });
   }
 }
 
@@ -533,10 +590,6 @@ export async function giveItem(msg: CustomMessage): Promise<void> {
   if (ofArg !== undefined) {
     quantity = getInt(itemName);
     itemName = ofArg.join();
-  }
-
-  if (quantity <= 0) {
-    throw new Error(`Cannot take ${quantity} items`);
   }
 
   await lock({ release: false, user: [sender.id, target.id]});
@@ -748,7 +801,8 @@ export async function inventory(msg: CustomMessage): Promise<void> {
     const userItems = Object.values(user.inventory)
       .sort()
       .filter(i => admin || !i.hidden)
-      .map(i => `**${i.name}**: (${i.quantity}${i.locked ? " locked" : ""})`)
+      .map(i => `**${i.name}**:` +
+        `(${i.quantity}${i.locked ? " locked" : ""}${i.editable ? " editable" : ""})`)
       .join(",");
 
     const message = userItems.length > 0 ?
@@ -788,10 +842,6 @@ export async function takeItem(msg: CustomMessage): Promise<void> {
   } else {
     quantity = getInt(joined);
     itemName = item.join();
-  }
-
-  if (quantity <= 0) {
-    throw new Error(`Cannot take ${quantity} items`);
   }
 
   await lock({ release: false, room: roomModel.id, user: user.id });

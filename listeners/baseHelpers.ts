@@ -48,6 +48,7 @@ export function parseCommand(msg: CustomMessage,
                              words: Iterable<string> = ["in"]): Command {
   let argName = "",
     built = "",
+    isString = false,
     params: string[] = [],
     split: string[] = msg.content.split(" ");
 
@@ -57,7 +58,10 @@ export function parseCommand(msg: CustomMessage,
   if (split[0].startsWith("!")) split = split.splice(1);
 
   for (let part of split) {
-    if (keywords.has(part)) {
+    if (part.startsWith("\"") || part.startsWith("\'")) {
+      isString = true;
+    }
+    if (keywords.has(part) && !isString) {
       if (built.length > 0) {
         params.push(built);
         built = "";
@@ -74,7 +78,7 @@ export function parseCommand(msg: CustomMessage,
     } else {
       let isList = false;
 
-      if (part.endsWith(",")) {
+      if (part.endsWith(",") && !isString) {
         isList = true;
         part = part.substr(0, part.length - 1);
       }
@@ -86,6 +90,11 @@ export function parseCommand(msg: CustomMessage,
       if (isList) {
         params.push(built);
         built = "";
+      }
+
+      if (part.endsWith("\"") || part.endsWith("\'")) {
+        isString = false;
+        built = built.substr(1, built.length - 2);
       }
     }
   }
