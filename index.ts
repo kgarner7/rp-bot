@@ -67,7 +67,7 @@ app.use(helmet({
 }));
 
 if (process.env.NODE_ENV === "production") {
-  app.enabled("trust proxy");
+  app.set("trust proxy", 1);
 }
 
 app.use("/", router);
