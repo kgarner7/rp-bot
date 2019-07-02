@@ -66,6 +66,10 @@ app.use(helmet({
   referrerPolicy: { policy: "no-referrer" }
 }));
 
+if (process.env.NODE_ENV === "production") {
+  app.enabled("trust proxy");
+}
+
 app.use("/", router);
 
 const server = createServer(app);
