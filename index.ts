@@ -6,9 +6,8 @@ import { CronJob } from "cron";
 import { randomBytes } from "crypto";
 import express, { NextFunction, Request, Response } from "express";
 import session from "express-session";
-import { readFileSync } from "fs";
 import helmet from "helmet";
-import { createServer } from "https";
+import { createServer } from "http";
 
 import { client } from "./client";
 import { config } from "./config/config";
@@ -69,10 +68,7 @@ app.use(helmet({
 
 app.use("/", router);
 
-const server = createServer({
-  cert: readFileSync("./certs/server.crt"),
-  key: readFileSync("./certs/server.key")
-}, app);
+const server = createServer(app);
 
 const io = socket(server);
 
