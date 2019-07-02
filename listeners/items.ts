@@ -65,6 +65,10 @@ export const usage: Action = {
         example: "!edit paper text \"a piece of paper\"",
         explanation: "Edits the description of the editable item wiht name, item name",
         use: "!edit **item name** text **description**"
+      },
+      {
+        explanation: "Appends the description to the items'description",
+        use: "!edit **item name** text **description** append"
       }
     ]
   },
@@ -488,7 +492,7 @@ export async function dropItem(msg: CustomMessage): Promise<void> {
 }
 
 export async function editItem(msg: CustomMessage): Promise<void> {
-  const command = parseCommand(msg, ["text"]),
+  const command = parseCommand(msg, ["append", "text"]),
     itemName = command.params.join(" "),
     user = await User.findOne({
       attributes: ["id", "inventory"],
@@ -510,7 +514,10 @@ export async function editItem(msg: CustomMessage): Promise<void> {
     if (isNone(item)) throw new Error(`You do not have ${itemName}`);
     else if (!item.editable) throw new Error(`You cannot edit ${itemName}`);
 
-    item.description = command.args.get("text")!.join(" ");
+    let text = command.args.get("text")!.join(" ");
+    if (command.args.has("append")) text = item.description + text;
+
+    item.description = text;
 
     await user.update({ inventory: user.inventory });
     notifyUserInventoryChange(user);

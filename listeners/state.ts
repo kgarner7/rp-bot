@@ -5,11 +5,11 @@ import { basename } from "path";
 
 import {
   Dict,
-  initRooms,
   initUsers,
   lineEnd,
   requireAdmin,
-  roomManager
+  roomManager,
+  initRooms
 } from "../helpers/base";
 import { CustomMessage } from "../helpers/classes";
 import { globalLock } from "../helpers/locks";

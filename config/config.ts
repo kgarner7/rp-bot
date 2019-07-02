@@ -50,6 +50,7 @@ export let database: Dict<{
       idle: IDLE_TIME
     },
     options: {
+      logging: false,
       dialect: "postgres"
     }
   }
