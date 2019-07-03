@@ -76,21 +76,15 @@ export class Room extends Model {
   public static async createFromChannel(channel: GuildChannel): Promise<void> {
     if (channel instanceof TextChannel) {
       await Room.findOrCreate({
-        defaults: {
-          name: channel.name
-        },
-        where: {
-          id: channel.id
-        }
+        defaults: { name: channel.name },
+        where: { id: channel.id }
       });
     }
   }
 }
 
 Room.init({
-  discordName: {
-    type: TEXT
-  },
+  discordName: { type: TEXT },
   id: {
     primaryKey: true,
     type: STRING
@@ -99,9 +93,7 @@ Room.init({
     defaultValue: { },
     type: JSON
   },
-  name: {
-    type: TEXT
-  }
+  name: { type: TEXT }
 }, { sequelize });
 
 // tslint:disable-next-line:ordered-imports
@@ -110,10 +102,6 @@ import { Message } from "./message";
 
 Room.hasMany(Message);
 
-Room.hasMany(Link, {
-  as: "sources"
-});
+Room.hasMany(Link, { as: "sources" });
 
-Room.hasMany(Link, {
-  as: "targets"
-});
+Room.hasMany(Link, { as: "targets" });

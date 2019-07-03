@@ -8,7 +8,7 @@ import { sync } from "glob";
 import { readFile } from "jsonfile";
 import { Op } from "sequelize";
 
-import { everyoneRole, mainGuild } from "../helpers/base";
+import { everyoneRole, initRooms, mainGuild } from "../helpers/base";
 import { isNone, isRoomAttribute } from "../helpers/types";
 import { Link, Room as RoomModel, sequelize, User } from "../models/models";
 
@@ -20,10 +20,8 @@ export class RoomManager {
   public rooms: Map<string, Room> = new Map();
   public visibility: Map<string, boolean> = new Map();
 
-  public constructor(rooms: Room[], force: boolean = false) {
+  public constructor(rooms: Room[]) {
     for (const room of rooms) this.rooms.set(room.name, room);
-
-    this.initialize(force);
   }
 
   public findPath(start: string, end: string): string[] | null {
@@ -148,30 +146,61 @@ export class RoomManager {
 
     const ids: number[] = [];
 
+    const links = await Link.findAll({
+      include: [{
+        as: "visitors",
+        model: User
+      }]
+    });
+
+    const linkMap = new Map<string, Map<string, Link>>();
+
+    for (const link of links) {
+      let sourceMap = linkMap.get(link.sourceId);
+
+      if (!sourceMap) {
+        sourceMap = new Map();
+        linkMap.set(link.sourceId, sourceMap);
+      }
+
+      sourceMap.set(link.targetId, link);
+    }
+
     for (const [, source] of this.rooms) {
       for (const [target, neighbor] of source.neighborMap) {
         const targetRoom = this.rooms.get(target);
 
-        if (targetRoom === undefined) {
-          continue;
-        }
+        if (targetRoom === undefined) continue;
 
-        const [link] = await Link.findOrCreate({
-          defaults: {
-            hidden: neighbor.hidden,
-            locked: neighbor.locked
-          },
-          where: {
-            sourceId: (source.channel as TextChannel).id,
-            targetId: (targetRoom.channel as TextChannel).id
+        const sourceId = (source.channel as TextChannel).id,
+          targetId = (targetRoom.channel as TextChannel).id;
+
+        let link: Link;
+
+        if (linkMap.has(sourceId) && linkMap.get(sourceId)!.has(targetId)) {
+          link = linkMap.get(sourceId)!
+            .get(targetId)!;
+
+          if (link.locked !== neighbor.locked || link.hidden !== neighbor.hidden) {
+            await link.update({
+              hidden: neighbor.hidden,
+              locked: neighbor.locked
+            });
           }
-        });
+        } else {
+          link = await Link.create({
+            hidden: neighbor.hidden,
+            locked: neighbor.locked,
+            sourceId,
+            targetId
+          });
+
+          link.visitors = [];
+        }
 
         ids.push(link.id);
 
-        const visitors: User[] = await link.getVisitors({
-          attributes: ["name"]
-        }),
+        const visitors: User[] = link.visitors,
           connection: Neighbor = {
             hidden: link.hidden,
             locked: link.locked,
@@ -187,21 +216,11 @@ export class RoomManager {
           this.links.set(source.name, new Map([[target, connection]]));
         }
       }
-
-      source.neighborMap.clear();
     }
-
-    await Link.destroy({
-      where: {
-        id: {
-          [Op.not]: ids
-        }
-      }
-    });
   }
 
   public static async create(directory: string, force: boolean = false):
-                             Promise<RoomManager> {
+                             Promise<void> {
 
     const categories: Map<string, Room[]> = new Map(),
       everyone = everyoneRole().id,
@@ -273,9 +292,9 @@ export class RoomManager {
       }
     }
 
-    const manager = new RoomManager(rooms, force);
+    const manager = new RoomManager(rooms);
     manager.visibility = status;
-
-    return manager;
+    initRooms(manager);
+    await manager.initialize(force);
   }
 }

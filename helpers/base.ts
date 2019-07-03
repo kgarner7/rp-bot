@@ -50,14 +50,11 @@ export async function initUsers(path: string): Promise<void> {
       }
     }
 
-    await User.update({
+    await User.upsert({
       discordName: user.discordName,
+      id: user.id,
       inventory: user.inventory,
       name: user.name
-    }, {
-      where: {
-        id: user.id
-      }
     });
   }
 }

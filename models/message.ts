@@ -94,27 +94,16 @@ export class Message extends Model {
    */
   public static async updateFromMsg(msg: DiscordMessage): Promise<void> {
     const message = await Message.findOne({
-      where: {
-        id: msg.id
-      }
+      where: { id: msg.id }
     });
 
-    if (message === null) {
-      return;
-    }
+    if (message === null) return;
 
     const transaction = await sequelize.transaction();
 
     try {
-      await message.setUsers(getMembers(msg), {
-        transaction
-      });
-
-      await message.update({
-        message: msg.content
-      }, {
-        transaction
-      });
+      await message.setUsers(getMembers(msg), { transaction  });
+      await message.update({  message: msg.content }, { transaction });
 
       await transaction.commit();
     } catch (err) {
@@ -124,9 +113,7 @@ export class Message extends Model {
 }
 
 Message.init({
-  channel: {
-    type: STRING
-  },
+  channel: { type: STRING },
   id: {
     primaryKey: true,
     type: TEXT
@@ -143,12 +130,8 @@ Message.init({
 import { Room } from "./room";
 import { User } from "./user";
 
-Message.belongsTo(User, {
-  as: "Sender"
-});
+Message.belongsTo(User, { as: "Sender" });
 
-Message.belongsToMany(User, {
-  through: "UserMessage"
-});
+Message.belongsToMany(User, { through: "UserMessage" });
 
 Message.belongsTo(Room);

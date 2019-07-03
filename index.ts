@@ -2,7 +2,6 @@ import bodyParser from "body-parser";
 import compression from "compression";
 import connectRedis from "connect-redis";
 import cookieParser from "cookie-parser";
-import { CronJob } from "cron";
 import { randomBytes } from "crypto";
 import express, { NextFunction, Request, Response } from "express";
 import session from "express-session";
@@ -11,7 +10,6 @@ import { createServer } from "http";
 
 import { client } from "./client";
 import { config } from "./config/config";
-import { mainGuild } from "./helpers/base";
 import { handleSave } from "./listeners/state";
 import { initDB, sequelize } from "./models/models";
 import { router } from "./routes/index";
@@ -92,22 +90,12 @@ initDB()
       await sequelize.sync();
       await client.login(config.botToken);
 
-      const job = new CronJob("0 * * * * *", async (): Promise<void> => {
-        try {
-          await handleSave();
-        } catch (err) {
-          mainGuild().owner
-            .send(`Could not save: ${err}`);
-        }
-      });
-
-      job.start();
-
       server.listen(PORT, () => {
         console.error("started server");
       });
     } catch (err) {
       console.error((err as Error).stack);
+      process.exit(0);
     }
   })
   .catch((err: Error) => {

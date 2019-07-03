@@ -84,13 +84,9 @@ Link.init({
 import { Room } from "./room";
 import { User } from "./user";
 
-Link.belongsTo(Room, {
-  as: "source"
-});
+Link.belongsTo(Room, { as: "source" });
 
-Link.belongsTo(Room, {
-  as: "target"
-});
+Link.belongsTo(Room, { as: "target" });
 
 Link.belongsToMany(User, {
   as: "visitors",

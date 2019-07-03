@@ -6,9 +6,7 @@ import {
   INTEGER,
   Model,
   STRING,
-  TEXT,
-  TINYINT,
-  NUMBER
+  TEXT
 } from "sequelize";
 
 import { sequelize } from "./connection";
@@ -20,9 +18,7 @@ export enum RequestStatus {
 }
 
 export class Request extends Model {
-  public static associations: {
-    user: BelongsTo;
-  };
+  public static associations: { user: BelongsTo };
 
   public id: number;
   public name: string;
@@ -66,9 +62,7 @@ Request.init({
     defaultValue: 1,
     type: INTEGER
   },
-  reason: {
-    type: TEXT
-  },
+  reason: { type: TEXT },
   status: {
     defaultValue: 0,
     type: INTEGER,

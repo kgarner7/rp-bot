@@ -4,7 +4,7 @@ import { DMChannel, GroupDMChannel, GuildMember, TextChannel, User } from "disco
 import { Dict } from "./base";
 import { isNone } from "./types";
 
-enum Result {
+export enum Result {
   LessThan = -1,
   Equal = 0,
   GreaterThan = 1
@@ -16,7 +16,7 @@ enum Result {
  * if a = b: returns 0
  * else: returns 1
  */
-type Comparator<T> = (a: T, b: T) => Result;
+export type Comparator<T> = (a: T, b: T) => Result;
 
 function compare<T>(a: T, b: T, comparator?: Comparator<T>): Result {
   if (comparator !== undefined) return comparator(a, b);
@@ -62,6 +62,29 @@ export class SortableArray<T> implements Iterable<T> {
 
   public addAll(elements: Iterable<T>): void {
     for (const elem of elements) this.add(elem);
+  }
+
+  public closest(elem: T): [T, T] {
+    const index = this.binSearch(elem),
+      value = this.values[index];
+
+    const difference = compare(elem, value, this.comparator);
+
+    if (difference === Result.Equal) {
+      return [value, value];
+    } else if (difference === Result.LessThan) {
+      if (index <= 0) {
+        return [value, value];
+      } else {
+        return [this.values[index - 1], value];
+      }
+    } else {
+      if (index >= this.values.length - 1) {
+        return [value, value];
+      } else {
+        return [value, this.values[index + 1]];
+      }
+    }
   }
 
   public has(elem: T): boolean {
@@ -137,7 +160,15 @@ export class SortableArray<T> implements Iterable<T> {
       }
     }
 
-    return Math.floor((start + end) / 2);
+    const result =  Math.floor((start + end) / 2);
+
+    if (result < 0) {
+      return 0;
+    } else if (result >= this.values.length) {
+      return this.values.length - 1;
+    } else {
+      return result;
+    }
   }
 }
 

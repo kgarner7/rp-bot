@@ -8,8 +8,7 @@ import {
   initUsers,
   lineEnd,
   requireAdmin,
-  roomManager,
-  initRooms
+  roomManager
 } from "../helpers/base";
 import { CustomMessage } from "../helpers/classes";
 import { globalLock } from "../helpers/locks";
@@ -299,8 +298,7 @@ export async function update(msg: CustomMessage): Promise<void> {
 }
 
 export async function handleUpdate(): Promise<void> {
-  const manager = await RoomManager.create("./data/rooms");
-  initRooms(manager);
+  await RoomManager.create("./data/rooms");
   await initUsers("./data/users");
 }
 

@@ -109,9 +109,7 @@ export class User extends Model {
           discordName: member.displayName,
           name: member.user.username
         },
-        where: {
-          id: member.id
-        }
+        where: { id: member.id }
       });
 
       if (user.discordName !== member.displayName) {
@@ -128,9 +126,7 @@ export class User extends Model {
 }
 
 User.init({
-  discordName: {
-    type: STRING
-  },
+  discordName: { type: STRING },
   id: {
     primaryKey: true,
     type: STRING
@@ -143,9 +139,7 @@ User.init({
     allowNull: false,
     type: TEXT
   },
-  password: {
-    type: TEXT
-  }
+  password: { type: TEXT }
 }, {
   sequelize
 });
@@ -160,12 +154,8 @@ User.belongsToMany(Link, {
   through: "Visitation"
 });
 
-User.hasMany(Message, {
-  as: "SentMessages"
-});
+User.hasMany(Message, { as: "SentMessages" });
 
-User.belongsToMany(Message, {
-  through: "UserMessage"
-});
+User.belongsToMany(Message, { through: "UserMessage" });
 
 User.hasMany(Request);

@@ -1,3 +1,7 @@
+process.env.NODE_ENV = "recovery";
+
+let previousTime = new Date();
+
 import {
   ChannelLogsQueryOptions,
   Client,
@@ -5,95 +9,265 @@ import {
   Guild,
   GuildAuditLogsEntry,
   GuildAuditLogsFetchOptions,
-  Message,
+  Message as DiscordMessage,
   TextChannel,
-  User
+  User as DiscordUser
 } from "discord.js";
+import { Op } from "sequelize";
 
 import { config } from "./config/config";
-
-export const client = new Client();
-export let guild: Guild;
-export let logs: AuditLog;
-export const messagesMap = new Map<string, Messages>();
+import { initGuild, initUsers } from "./helpers/base";
+import { Result, SortableArray } from "./helpers/classes";
+import { Undefined } from "./helpers/types";
+import {
+  Link,
+  Message,
+  Room,
+  sequelize
+} from "./models/models";
+import { RoomManager } from "./rooms/roomManager";
 
 type UserEntry = [Date, string];
 
-const usersRoles = new Map<string, UserEntry[]>();
+const client = new Client();
+let guild: Guild;
+
+const cachedRoomsById = new Collection<string, Room>();
+const cachedRoomsByName = new Collection<string, Room>();
+const usersRoles = new Map<string, SortableArray<UserEntry>>();
+const visitations = new Map<string, Map<string, Set<string>>>();
+
+client.login(config.botToken);
+
+let actionCount = 1;
+
+function compare(a: UserEntry, b: UserEntry): Result {
+  if (a[0] === b[0]) {
+    return Result.Equal;
+  } else if (a[0] > b[0]) {
+    return Result.GreaterThan;
+  } else {
+    return Result.LessThan;
+  }
+}
+
+function log(msg: string): void {
+  const now = new Date();
+  const elapsedTime = now.valueOf() - previousTime.valueOf();
+  const entry = `${actionCount}): ${msg}. Elapsed: ${elapsedTime}\n`;
+
+  process.stdout.write(entry);
+  actionCount++;
+  previousTime = new Date();
+}
+
+log("starting recovery");
 
 client.on("ready", async () => {
-  console.log("ready");
-  guild = client.guilds.find((g: Guild) => g.name === config.guildName);
+  log("ready");
 
-  for (const [, member] of guild.members) {
-    usersRoles.set(member.user.username, []);
+  await sequelize.sync({ force: true });
+  guild = client.guilds.find((g: Guild) => g.name === config.guildName);
+  initGuild(guild);
+
+  await RoomManager.create("./data/rooms");
+  await initUsers("./data/users");
+
+  log("recovered rooms and users");
+
+  const rooms = await Room.findAll();
+
+  for (const room of rooms) {
+    cachedRoomsById.set(room.id, room);
+    cachedRoomsByName.set(room.name, room);
   }
 
-  logs = (await fetchAuditLogs())
-    .filter(audit => audit.action === "MEMBER_ROLE_UPDATE")
-    .sort();
+  for (const [, member] of guild.members) {
+    usersRoles.set(member.user.id, new SortableArray());
+  }
 
-  console.log("got logs");
+  const logs = (await fetchAuditLogs())
+    .filter(audit => audit.action === "MEMBER_ROLE_UPDATE");
 
+  log("recovered logs");
+
+  parseAuditLogs(logs);
+  await restoreVisitors();
+
+  log("restored visitations");
+
+  for (const room of cachedRoomsByName.values()) {
+    const channel = guild.channels.get(room.id) as TextChannel;
+    await fetchMessages(channel);
+  }
+
+  log("restored messages");
+
+  process.exit(0);
+});
+
+function parseAuditLogs(logs: AuditLog): void {
   for (const [, entry] of logs) {
-    if (entry.target instanceof User) {
+    if (entry.target instanceof DiscordUser) {
       if (entry.target.bot || entry.target.username === "testing-account") continue;
 
-      const user = entry.target as User;
-      const change = entry.changes.find(c => c.key === "$add");
+      const user = entry.target as DiscordUser;
+      const addition = entry.changes.find(c => c.key === "$add");
+      const removal = entry.changes.find(c => c.key === "$remove");
 
-      if (change) {
-        const newRole = change.new[0].name;
+      if (addition) {
+        const newRole = addition.new[0].name;
 
-        if (newRole !== "blue floor resident") {
-          usersRoles.get(user.username)!.push([entry.createdAt, newRole]);
+        if (cachedRoomsByName.has(newRole)) {
+          usersRoles.get(user.id)!.add([
+            entry.createdAt,
+            cachedRoomsByName.get(newRole)!.id
+          ]);
+        }
+
+        if (removal) {
+          const oldRole = removal.new[0].name;
+
+          let sourceMap = visitations.get(oldRole);
+
+          if (!sourceMap) {
+            sourceMap = new Map();
+            visitations.set(oldRole, sourceMap);
+          }
+
+          let targetSet = sourceMap.get(newRole);
+
+          if (!targetSet) {
+            targetSet = new Set();
+            sourceMap.set(newRole, targetSet);
+          }
+
+          targetSet.add(user.id);
         }
       }
     }
   }
+}
 
-  console.log(usersRoles);
-});
+async function restoreVisitors(): Promise<void> {
+  const transaction = await sequelize.transaction();
 
-export type AuditLog = Collection<string, GuildAuditLogsEntry>;
-export type Messages = Collection<string, Message>;
+  try {
+    for (const [source, sourceMap] of visitations) {
+      for (const [target, targetSet] of sourceMap) {
+        const sourceId = cachedRoomsByName.get(source)!.id,
+          targetId = cachedRoomsByName.get(target)!.id;
 
-export async function fetchAuditLogs(before?: AuditLog): Promise<AuditLog> {
-  const options: GuildAuditLogsFetchOptions = { };
+        const links = await Link.findAll({
+          transaction,
+          where: {
+            [Op.or]: [
+              {
+                sourceId,
+                targetId
+              }, {
+                sourceId: targetId,
+                targetId: sourceId
+              }
+            ]
+          }
+        });
+
+        for (const link of links) {
+          await link.setVisitors(Array.from(targetSet), { transaction });
+        }
+      }
+    }
+    await transaction.commit();
+  } catch (err) {
+    console.error(err);
+    await transaction.rollback();
+  }
+}
+
+type AuditLog = Collection<string, GuildAuditLogsEntry>;
+
+let logCount = 0;
+const LOGS_PER_FETCH = 10;
+
+async function fetchAuditLogs(before?: AuditLog): Promise<AuditLog> {
+  const options: GuildAuditLogsFetchOptions = {
+    limit: LOGS_PER_FETCH
+  };
 
   if (before) {
     options.before = before.last();
   } else {
+    // tslint:disable-next-line:no-parameter-reassignment
     before = new Collection();
   }
 
+  process.stdout.write(`\rfetching logs ${logCount + 1} - ${logCount + LOGS_PER_FETCH}`);
+
   const nextLogs = await guild.fetchAuditLogs(options);
+  logCount += LOGS_PER_FETCH;
 
   if (nextLogs.entries.size === 0) {
+    process.stdout.write("\n");
     return before;
   } else {
     return fetchAuditLogs(before.concat(nextLogs.entries));
   }
 }
 
-export async function fetchMessages(channel: TextChannel, messages?: 
-                                    Messages): Promise<Messages> {
-  const options: ChannelLogsQueryOptions = { };
+async function fetchMessages(channel: TextChannel): Promise<void> {
+  let messageCount = 0;
 
-  if (messages) {
-    options.before = messages.last().id;
-  } else {
-    messages = new Collection();
-  }
+  let before: Undefined<DiscordMessage>;
+  const options: ChannelLogsQueryOptions = {
+    limit: LOGS_PER_FETCH
+  },
+    transaction = await sequelize.transaction();
 
-  const nextMessages = await channel.fetchMessages(options);
+  try {
+    while (true) {
+      if (before) options.before = before.id;
 
-  if (nextMessages.size === 0) {
-    return messages;
-  } else {
-    return fetchMessages(channel, messages.concat(nextMessages));
+      process.stdout.
+        write(`\rfetching logs ${messageCount + 1} - ${messageCount + LOGS_PER_FETCH}`);
+
+      const messages = await channel.fetchMessages(options);
+
+      messageCount += LOGS_PER_FETCH;
+
+      if (messages.size === 0) break;
+
+      for (const [, message] of messages) {
+        const messageModel = await Message.upsert({
+          id: message.id,
+          message: message.content,
+          RoomId: message.channel.id,
+          SenderId: message.author.id
+        }, { transaction });
+
+        console.log(getPresentMembers(message));
+        process.exit(0);
+      }
+
+      before = messages.first();
+    }
+  } catch (err) {
+    await transaction.rollback();
   }
 }
 
+function getPresentMembers(message: DiscordMessage): string[] {
+  const channel = (message.channel as TextChannel),
+    users: string[] = [];
 
-client.login(config.botToken);
+  for (const [userId, roleLog] of usersRoles) {
+    const currentRole = roleLog.closest([message.createdAt, ""])[0][1];
+
+    if (currentRole === channel.id) {
+      users.push(userId);
+    }
+  }
+
+  return users;
+}
+

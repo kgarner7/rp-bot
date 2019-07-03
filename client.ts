@@ -1,3 +1,4 @@
+import { CronJob } from "cron";
 import {
   Client,
   Guild,
@@ -8,11 +9,12 @@ import {
 import { Op } from "sequelize";
 
 import { config } from "./config/config";
-import { initGuild, initRooms, initUsers, roomManager } from "./helpers/base";
+import { initGuild, initUsers, mainGuild } from "./helpers/base";
 import { CustomMessage } from "./helpers/classes";
 import { globalLock } from "./helpers/locks";
 import { actions } from "./listeners/actions";
 import { sendMessage } from "./listeners/baseHelpers";
+import { handleSave } from "./listeners/state";
 import { Message, User } from "./models/models";
 import { RoomManager } from "./rooms/roomManager";
 import {
@@ -49,9 +51,19 @@ client.on("ready", async () => {
     }
   });
 
-  const manager = await RoomManager.create("./data/rooms");
-  initRooms(manager);
+  await RoomManager.create("./data/rooms");
   await initUsers("./data/users");
+
+  const job = new CronJob("0 * * * * *", async (): Promise<void> => {
+    try {
+      await handleSave();
+    } catch (err) {
+      mainGuild().owner
+        .send(`Could not save: ${err}`);
+    }
+  });
+
+  job.start();
 });
 
 client.on("messageDelete", (msg: DiscordMessage) => {

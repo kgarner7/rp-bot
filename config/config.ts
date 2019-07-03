@@ -29,6 +29,19 @@ export let database: Dict<{
       dialect: "postgres"
     }
   },
+  recovery: {
+    username: "postgres",
+    password: "postgres",
+    pool: {
+      max: MAX_POOLS,
+      min: 0,
+      idle: IDLE_TIME
+    },
+    options: {
+      dialect: "postgres",
+      logging: false
+    }
+  },
   test: {
     username: "discordo_testing",
     password: "discordo_testing",
