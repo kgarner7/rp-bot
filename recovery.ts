@@ -17,7 +17,7 @@ import { Op } from "sequelize";
 
 import { config } from "./config/config";
 import { initGuild, initUsers } from "./helpers/base";
-import { Result, SortableArray } from "./helpers/classes";
+import { SortableArray } from "./helpers/classes";
 import { Undefined } from "./helpers/types";
 import {
   Link,
@@ -27,7 +27,21 @@ import {
 } from "./models/models";
 import { RoomManager } from "./rooms/roomManager";
 
-type UserEntry = [Date, string];
+class Change {
+  public add?: string;
+  public remove?: string;
+
+  public constructor(add?: string, remove?: string) {
+    this.add = add;
+    this.remove = remove;
+  }
+
+  public toString(): string {
+    return (this.add ? `addition: ${this.add} ` : " ") +
+      (this.remove ? `removal: ${this.remove}` : "");
+  }
+}
+type UserEntry = [Date, Change];
 
 const client = new Client();
 let guild: Guild;
@@ -40,16 +54,6 @@ const visitations = new Map<string, Map<string, Set<string>>>();
 client.login(config.botToken);
 
 let actionCount = 1;
-
-function compare(a: UserEntry, b: UserEntry): Result {
-  if (a[0] === b[0]) {
-    return Result.Equal;
-  } else if (a[0] > b[0]) {
-    return Result.GreaterThan;
-  } else {
-    return Result.LessThan;
-  }
-}
 
 function log(msg: string): void {
   const now = new Date();
@@ -86,8 +90,7 @@ client.on("ready", async () => {
     usersRoles.set(member.user.id, new SortableArray());
   }
 
-  const logs = (await fetchAuditLogs())
-    .filter(audit => audit.action === "MEMBER_ROLE_UPDATE");
+  const logs = (await fetchAuditLogs());
 
   log("recovered logs");
 
@@ -114,19 +117,15 @@ function parseAuditLogs(logs: AuditLog): void {
       const user = entry.target as DiscordUser;
       const addition = entry.changes.find(c => c.key === "$add");
       const removal = entry.changes.find(c => c.key === "$remove");
+      const changes = new Change();
 
       if (addition) {
         const newRole = addition.new[0].name;
-
-        if (cachedRoomsByName.has(newRole)) {
-          usersRoles.get(user.id)!.add([
-            entry.createdAt,
-            cachedRoomsByName.get(newRole)!.id
-          ]);
-        }
+        changes.add = newRole;
 
         if (removal) {
           const oldRole = removal.new[0].name;
+          changes.remove = oldRole;
 
           let sourceMap = visitations.get(oldRole);
 
@@ -145,6 +144,11 @@ function parseAuditLogs(logs: AuditLog): void {
           targetSet.add(user.id);
         }
       }
+
+      usersRoles.get(user.id)!.add([
+        entry.createdAt,
+        changes
+      ]);
     }
   }
 }
@@ -192,7 +196,8 @@ const LOGS_PER_FETCH = 10;
 
 async function fetchAuditLogs(before?: AuditLog): Promise<AuditLog> {
   const options: GuildAuditLogsFetchOptions = {
-    limit: LOGS_PER_FETCH
+    limit: LOGS_PER_FETCH,
+    type: "MEMBER_ROLE_UPDATE"
   };
 
   if (before) {
@@ -228,8 +233,7 @@ async function fetchMessages(channel: TextChannel): Promise<void> {
     while (true) {
       if (before) options.before = before.id;
 
-      process.stdout.
-        write(`\rfetching logs ${messageCount + 1} - ${messageCount + LOGS_PER_FETCH}`);
+      process.stdout.write(`\rfetching messages for ${channel.name} ${messageCount + 1} - ${messageCount + LOGS_PER_FETCH}`);
 
       const messages = await channel.fetchMessages(options);
 
@@ -238,19 +242,20 @@ async function fetchMessages(channel: TextChannel): Promise<void> {
       if (messages.size === 0) break;
 
       for (const [, message] of messages) {
-        const messageModel = await Message.upsert({
+        await Message.upsert({
+          createdAt: message.createdAt,
           id: message.id,
           message: message.content,
           RoomId: message.channel.id,
           SenderId: message.author.id
         }, { transaction });
-
-        console.log(getPresentMembers(message));
-        process.exit(0);
       }
 
-      before = messages.first();
+      before = messages.last();
     }
+
+    console.log();
+    await transaction.commit();
   } catch (err) {
     await transaction.rollback();
   }
@@ -261,11 +266,11 @@ function getPresentMembers(message: DiscordMessage): string[] {
     users: string[] = [];
 
   for (const [userId, roleLog] of usersRoles) {
-    const currentRole = roleLog.closest([message.createdAt, ""])[0][1];
+    // const currentRole = roleLog.closest([message.createdAt, ""])[0][1];
 
-    if (currentRole === channel.id) {
-      users.push(userId);
-    }
+    // if (currentRole === channel.id) {
+    //   users.push(userId);
+    // }
   }
 
   return users;
