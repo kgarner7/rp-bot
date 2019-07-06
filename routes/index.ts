@@ -145,3 +145,12 @@ router.get("/button/admin", requireLogin, wrapper(async (req, res) => {
 
   res.render("button-admin");
 }));
+
+const robotsRule = `
+User-agent: *
+Disallow: /
+`;
+
+router.get("/robots.txt", (_req, res) => {
+  res.send(robotsRule);
+});
