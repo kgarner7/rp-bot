@@ -1,9 +1,11 @@
 import { Op } from "sequelize";
 
+import { guild } from "../client";
 import { ChannelNotFoundError } from "../config/errors";
-import { Dict, lineEnd, mainGuild, requireAdmin, roomManager } from "../helpers/base";
+import { Dict, lineEnd, requireAdmin } from "../helpers/base";
 import { CustomMessage } from "../helpers/classes";
 import { Link, Room as RoomModel } from "../models/models";
+import { manager } from "../rooms/roomManager";
 
 import { Action } from "./actions";
 import { Command, getRoom, getRoomModel, parseCommand, sendMessage } from "./baseHelpers";
@@ -134,8 +136,7 @@ export function handleLock(locked: boolean): (msg: CustomMessage) => Promise<voi
       sourceId?: string;
       targetId?: string;
     } & Dict<string> = { },
-      command = parseCommand(msg, ["from", "to"]),
-      manager = roomManager();
+      command = parseCommand(msg, ["from", "to"]);
 
     if (!command.args.has("from") && !command.args.has("to")) {
       throw new Error("You must provide a source and/or target room");
@@ -211,8 +212,7 @@ export function hide(hidden: boolean): (msg: CustomMessage) => Promise<void> {
       sourceId?: string;
       targetId?: string;
     } & Dict<string> = { },
-      command = parseCommand(msg, ["from", "to"]),
-      manager = roomManager();
+      command = parseCommand(msg, ["from", "to"]);
 
     if (!command.args.has("from") && !command.args.has("to")) {
       throw new Error("You must provide a source and/or target room");
@@ -288,8 +288,7 @@ export async function links(msg: CustomMessage): Promise<void> {
     sourceId?: string;
     targetId?: string;
   } & Dict<string | boolean> = { },
-    command = parseCommand(msg, ["locked", "unlocked", "from", "to"]),
-    manager = roomManager();
+    command = parseCommand(msg, ["locked", "unlocked", "from", "to"]);
 
   if (command.args.has("from")) {
     const source = await findRoomByCommand(command, "from");
@@ -341,8 +340,7 @@ export async function links(msg: CustomMessage): Promise<void> {
 }
 
 export async function doors(msg: CustomMessage): Promise<void> {
-  const manager = roomManager(),
-    roomModel = await getRoom(msg, true);
+  const roomModel = await getRoom(msg, true);
 
   if (roomModel === null) {
     throw new Error("Not in proper channel");
@@ -357,7 +355,7 @@ export async function doors(msg: CustomMessage): Promise<void> {
         messageString += neighbor.name;
 
         if (neighbor.visitors.has(msg.author.id) ||
-          msg.author.id === mainGuild().ownerID) {
+          msg.author.id === guild.ownerID) {
           messageString += ` => ${neighbor.to}`;
         } else {
           messageString += " => unknown";

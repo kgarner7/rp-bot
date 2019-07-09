@@ -1,11 +1,11 @@
-import { GuildMember, Role, TextChannel, User } from "discord.js";
+import { GuildMember, Role, TextChannel } from "discord.js";
 import { Op } from "sequelize";
 
-import { mainGuild, roomManager } from "../helpers/base";
+import { guild } from "../client";
 import { CustomMessage } from "../helpers/classes";
 import { Null } from "../helpers/types";
 import { Room as RoomModel } from "../models/models";
-import { RoomManager } from "../rooms/roomManager";
+import { manager, RoomManager } from "../rooms/roomManager";
 
 const MAX_MESSAGE_SIZE = 1900;
 
@@ -13,10 +13,9 @@ const MAX_MESSAGE_SIZE = 1900;
  * Gets the rooms adjacent to the target room
  */
 export function adjacentRooms(msg: CustomMessage): string[] {
-  const manager = roomManager(),
-    roomList: string[] = [];
+  const roomList: string[] = [];
 
-  const member = mainGuild().members
+  const member = guild.members
       .get(msg.author.id)!,
     room = member.roles.find(r => manager.roles.has(r.id));
 
@@ -124,8 +123,7 @@ export type RoomName = Null<{
  * @returns the current room of the author, or null
  */
 export function currentRoom(member: GuildMember): Null<string> {
-  const manager: RoomManager = roomManager(),
-    role: Role = member.roles.find(r => manager.roles.has(r.id));
+  const role: Role = member.roles.find(r => manager.roles.has(r.id));
 
   return role === null ? null : role.name;
 }
@@ -146,7 +144,7 @@ export function getRoomName(msg: CustomMessage, override: boolean = false): Room
         user: false
       };
     } else {
-      const name = currentRoom(mainGuild().members
+      const name = currentRoom(guild.members
         .get(msg.author.id)!);
 
       return name === null ? null : {
@@ -191,8 +189,6 @@ export async function getRoom(msg: CustomMessage,
   let channel = getRoomName(msg),
     roomModel: Null<RoomModel> = null;
 
-  const guild = mainGuild();
-
   if (channel === null) return null;
 
   roomModel = await getRoomModel(channel.name);
@@ -233,14 +229,14 @@ export async function getRoom(msg: CustomMessage,
 export function sendMessage(msg: CustomMessage, message: string,
                             isPrivate: boolean = false): void {
 
-  let target: User | TextChannel;
+  let target: GuildMember | TextChannel;
 
   if (msg.overridenSender !== undefined) {
     target = msg.overridenSender;
   } else if (!isPrivate && msg.channel instanceof TextChannel) {
     target = msg.channel;
   } else {
-    target = msg.author;
+    target = msg.member;
   }
 
   if (message.length < MAX_MESSAGE_SIZE) {

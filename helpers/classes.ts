@@ -148,9 +148,9 @@ export class SortableArray<T> implements Iterable<T> {
 
     while (start <= end) {
       const mid = Math.floor((start + end) / 2),
-        result = compare(elem, this.values[mid], this.comparator);
+        compareRes = compare(elem, this.values[mid], this.comparator);
 
-      switch (result) {
+      switch (compareRes) {
         case Result.LessThan:
           end = mid - 1; break;
         case Result.GreaterThan:
@@ -196,5 +196,5 @@ export class CustomMessage {
   public channel: TextChannel | DMChannel | GroupDMChannel;
   public content: string;
   public member: GuildMember;
-  public overridenSender?: User;
+  public overridenSender?: GuildMember;
 }

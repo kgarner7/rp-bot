@@ -7,8 +7,7 @@ import {
   Dict,
   initUsers,
   lineEnd,
-  requireAdmin,
-  roomManager
+  requireAdmin
 } from "../helpers/base";
 import { CustomMessage } from "../helpers/classes";
 import { globalLock } from "../helpers/locks";
@@ -16,7 +15,7 @@ import { isNone, isRoomAttribute, isUserResolvable, Undefined } from "../helpers
 import { User, UserResolvable } from "../models/user";
 import { ItemAttributes, ItemModel } from "../rooms/item";
 import { NeighborResolvable, RoomAttributes, RoomResolvable } from "../rooms/room";
-import { RoomManager } from "../rooms/roomManager";
+import { manager, RoomManager } from "../rooms/roomManager";
 
 import { Action } from "./actions";
 import { parseCommand, sendMessage } from "./baseHelpers";
@@ -205,8 +204,6 @@ export async function handleSave(): Promise<void> {
   await globalLock({ acquire: true, writer: true });
 
   try {
-    const manager = roomManager();
-
     for (const [, room] of manager.rooms) {
       const itemsList: ItemAttributes[] = [];
 

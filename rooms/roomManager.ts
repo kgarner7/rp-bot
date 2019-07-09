@@ -8,11 +8,13 @@ import { sync } from "glob";
 import { readFile } from "jsonfile";
 import { Op } from "sequelize";
 
-import { everyoneRole, initRooms, mainGuild } from "../helpers/base";
+import { everyone, guild } from "../client";
 import { isNone, isRoomAttribute } from "../helpers/types";
 import { Link, Room as RoomModel, sequelize, User } from "../models/models";
 
 import { Neighbor, Room } from "./room";
+
+export let manager: RoomManager;
 
 export class RoomManager {
   public links: Map<string, Map<string, Neighbor>> = new Map();
@@ -112,10 +114,9 @@ export class RoomManager {
 
   private async initialize(force: boolean): Promise<void> {
     const roomIds: string[] = [];
-    const guild = mainGuild();
 
     for (const room of this.rooms.values()) {
-      await room.init(this, force);
+      await room.init(force);
       this.roles.add((room.role as Role).id);
       roomIds.push((room.channel as TextChannel).id);
     }
@@ -223,8 +224,6 @@ export class RoomManager {
                              Promise<void> {
 
     const categories: Map<string, Room[]> = new Map(),
-      everyone = everyoneRole().id,
-      guild = mainGuild(),
       rooms: Room[] = [],
       status: Map<string, boolean> = new Map();
 
@@ -292,9 +291,8 @@ export class RoomManager {
       }
     }
 
-    const manager = new RoomManager(rooms);
+    manager = new RoomManager(rooms);
     manager.visibility = status;
-    initRooms(manager);
     await manager.initialize(force);
   }
 }

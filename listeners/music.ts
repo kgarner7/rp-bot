@@ -3,7 +3,8 @@ import { Guild, StreamDispatcher, VoiceChannel } from "discord.js";
 import { promises } from "fs";
 import ytdl from "ytdl-core";
 
-import { mainGuild, requireAdmin } from "../helpers/base";
+import { guild } from "../client";
+import { requireAdmin } from "../helpers/base";
 import { CustomMessage } from "../helpers/classes";
 import { isNone, None, Undefined } from "../helpers/types";
 
@@ -46,10 +47,8 @@ const musicQueue = queue(
     tube?: string; },
    callback: (err?: None<Error>) => void) => {
 
-  const guild = mainGuild();
-
   if (shouldPlay) {
-    startChannel(channel, guild, loop, path, tube)
+    startChannel(channel, loop, path, tube)
       .then(() => {
         callback(undefined);
       })
@@ -70,7 +69,7 @@ const musicQueue = queue(
   }
 }, 1);
 
-async function startChannel(channelName: string, guild: Guild, loop: boolean,
+async function startChannel(channelName: string, loop: boolean,
                             path: string, tube: string): Promise<void> {
   const channel = guild.channels.find(c =>
       c.type === "voice" && c.name === channelName) as None<VoiceChannel>;

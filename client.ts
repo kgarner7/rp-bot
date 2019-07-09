@@ -4,14 +4,16 @@ import {
   Guild,
   GuildMember,
   Message as DiscordMessage,
+  Role,
   TextChannel
 } from "discord.js";
 import { Op } from "sequelize";
 
 import { config } from "./config/config";
-import { initGuild, initUsers, mainGuild } from "./helpers/base";
+import { initUsers } from "./helpers/base";
 import { CustomMessage } from "./helpers/classes";
 import { globalLock } from "./helpers/locks";
+import { isNone } from "./helpers/types";
 import { actions } from "./listeners/actions";
 import { sendMessage } from "./listeners/baseHelpers";
 import { handleSave } from "./listeners/state";
@@ -26,7 +28,8 @@ import {
 import { getRooms, triggerRoom, triggerUser } from "./socket/helpers";
 
 export const client = new Client();
-let guild: Guild;
+export let guild: Guild;
+export let everyone: Role;
 
 function invalid(msg: DiscordMessage): boolean {
   return client.user.id === msg.author.id || (msg.guild !== guild && msg.guild !== null);
@@ -34,7 +37,7 @@ function invalid(msg: DiscordMessage): boolean {
 
 client.on("ready", async () => {
   guild = client.guilds.find((g: Guild) => g.name === config.guildName);
-  initGuild(guild);
+  everyone = guild.roles.find(r => r.name === "@everyone");
 
   const userIds: string[] = [];
   for (const [, member] of guild.members) {
@@ -54,16 +57,15 @@ client.on("ready", async () => {
   await RoomManager.create("./data/rooms");
   await initUsers("./data/users");
 
-  const job = new CronJob("0 * * * * *", async (): Promise<void> => {
-    try {
-      await handleSave();
-    } catch (err) {
-      mainGuild().owner
-        .send(`Could not save: ${err}`);
-    }
-  });
+  // const job = new CronJob("0 * * * * *", async (): Promise<void> => {
+  //   try {
+  //     await handleSave();
+  //   } catch (err) {
+  //     guild.owner.send(`Could not save: ${err}`);
+  //   }
+  // });
 
-  job.start();
+  // job.start();
 });
 
 client.on("messageDelete", (msg: DiscordMessage) => {
@@ -121,6 +123,10 @@ client.on("message", async (msg: DiscordMessage) => {
           .join(" ");
       }
 
+      if (isNone(mesg.member)) {
+        mesg.member = guild.members.get(mesg.author.id)!;
+      }
+
       if (message in actions) {
         if (username !== "" && msg.author.id === guild.ownerID) {
 
@@ -136,7 +142,7 @@ client.on("message", async (msg: DiscordMessage) => {
           if (user !== null) {
             const overrideUser = guild.members.get(user.id)!;
 
-            mesg.overridenSender = msg.author;
+            mesg.overridenSender = msg.member;
             mesg.author = overrideUser.user;
             mesg.member = overrideUser;
           }

@@ -7,13 +7,11 @@ import {
   TextChannel
 } from "discord.js";
 
+import { everyone, guild } from "../client";
 import { ChannelNotFoundError } from "../config/errors";
 import {
   Dict,
-  everyoneRole,
   FunctionResolvable,
-  mainGuild,
-  roomManager,
   toFunction
 } from "../helpers/base";
 import { SerializedMap } from "../helpers/classes";
@@ -21,7 +19,7 @@ import { isNone } from "../helpers/types";
 import { Link, Room as RoomModel, User } from "../models/models";
 
 import { Item, ItemModel, ItemResolvable } from "./item";
-import { RoomManager } from "./roomManager";
+import { manager, RoomManager } from "./roomManager";
 
 export interface Neighbor {
   hidden: boolean;
@@ -113,7 +111,7 @@ export class Room {
     if (fn !== undefined) fn(args);
   }
 
-  public async init(manager: RoomManager, force: boolean = false): Promise<void> {
+  public async init(force: boolean = false): Promise<void> {
     if (this.parentChannel === null) return;
 
     this.manager = manager;
@@ -135,8 +133,7 @@ export class Room {
       where: {
         name: this.name
       }
-    }),
-      guild = mainGuild();
+    });
 
     if (existingChannel !== null) {
       let channel = guild.channels.get(existingChannel.id) as TextChannel,
@@ -230,9 +227,6 @@ export class Room {
   }
 
   public initChannel(): void {
-    const everyone: string = everyoneRole().id,
-      manager = roomManager();
-
     if (this.channel === undefined ||
         this.role === undefined ||
         this.parentChannel === undefined) return;
@@ -291,8 +285,7 @@ export class Room {
   }
 
   public static async deleteRoom(name: string): Promise<void> {
-    const guild = mainGuild(),
-      channel = guild.channels.find(c => c.name === name);
+    const channel = guild.channels.find(c => c.name === name);
 
     if (channel === null || !(channel instanceof TextChannel) || !channel.deletable) {
       throw new ChannelNotFoundError(name);

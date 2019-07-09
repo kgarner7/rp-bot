@@ -1,7 +1,7 @@
 import moment from "moment";
 import socketio, { Server } from "socket.io";
 
-import { mainGuild } from "../helpers/base";
+import { guild } from "../client";
 import { lock } from "../helpers/locks";
 import { isNone } from "../helpers/types";
 import { client } from "../models/redis";
@@ -59,7 +59,7 @@ export function socket(app: any): Server {
     await lock({ release: true, room: LOCK_NAME });
 
     sock.on(COMMANDS, async () => {
-      const commands = getCommands(user.id === mainGuild().ownerID);
+      const commands = getCommands(user.id === guild.ownerID);
       sock.emit(COMMANDS, JSON.stringify(commands));
     });
 
@@ -90,7 +90,7 @@ export function socket(app: any): Server {
     sock.on(USER_NAME, async () => {
       await user.reload({ attributes: ["discordName"] });
       sock.emit(USER_NAME, JSON.stringify({
-        a: user.id === mainGuild().ownerID,
+        a: user.id === guild.ownerID,
         n: user.discordName
       }));
     });
@@ -163,7 +163,7 @@ export function socket(app: any): Server {
     });
 
     sock.on("set timer", timeInMillis => {
-      if (user.id !== mainGuild().ownerID) {
+      if (user.id !== guild.ownerID) {
         sock.emit("err", "Not an admin");
         return;
       }
@@ -190,7 +190,7 @@ export function socket(app: any): Server {
     });
 
     sock.on("start", () => {
-      if (user.id !== mainGuild().ownerID) {
+      if (user.id !== guild.ownerID) {
         sock.emit("err", "Not an admin");
         return;
       }
@@ -223,7 +223,7 @@ export function socket(app: any): Server {
     });
 
     sock.on("reset", () => {
-      if (user.id !== mainGuild().ownerID) {
+      if (user.id !== guild.ownerID) {
         sock.emit("err", "Not an admin");
         return;
       }
@@ -261,7 +261,7 @@ export function socket(app: any): Server {
     });
 
     sock.on("clear", () => {
-      if (user.id !== mainGuild().ownerID) {
+      if (user.id !== guild.ownerID) {
         sock.emit("err", "Not an admin"); return;
       }
 
@@ -289,7 +289,7 @@ export function socket(app: any): Server {
               sock.emit("err", error.message);
             } else {
               sock.emit("submit", "OK");
-              mainGuild().owner
+              guild.owner
                 .send(`${user.discordName} pressed at ${mesg}`);
             }
           });

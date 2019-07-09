@@ -1,19 +1,19 @@
 import { TextChannel } from "discord.js";
 import { Op } from "sequelize";
 
+import { guild } from "../client";
 import {
   Dict,
   isAdmin,
   lineEnd,
-  mainGuild,
-  requireAdmin,
-  roomManager
+  requireAdmin
 } from "../helpers/base";
 import { CustomMessage, SortableArray } from "../helpers/classes";
 import { lock } from "../helpers/locks";
 import { isNone, None, Undefined } from "../helpers/types";
 import { Room, sequelize, User } from "../models/models";
 import { Item, ItemModel } from "../rooms/item";
+import { manager } from "../rooms/roomManager";
 import { ROOM_INFORMATION, USER_INVENTORY_CHANGE } from "../socket/consts";
 import { inventoryToJson, roomToJson, triggerUser } from "../socket/helpers";
 
@@ -181,10 +181,8 @@ function notifyUserInventoryChange(user: User): void {
 }
 
 function notifyRoomInventoryChange(msg: CustomMessage, room: Room): void {
-  const guild = mainGuild();
-
   if (msg.channel instanceof TextChannel) {
-    const json = JSON.stringify([roomToJson(room, true, false, mainGuild())]);
+    const json = JSON.stringify([roomToJson(room, true, false)]);
 
     for (const member of msg.channel.members.values()) {
       if (member.id !== guild.ownerID) {
@@ -193,7 +191,7 @@ function notifyRoomInventoryChange(msg: CustomMessage, room: Room): void {
     }
   }
 
-  const adminJson = JSON.stringify([roomToJson(room, true, false, mainGuild())]);
+  const adminJson = JSON.stringify([roomToJson(room, true, false)]);
   triggerUser(guild.owner, ROOM_INFORMATION, adminJson);
 }
 
@@ -327,7 +325,7 @@ async function changeRoomItem(command: Command, target: string, name: string,
 
   await lock({ release: false, room: roomModel.id});
 
-  const room = roomManager().rooms
+  const room = manager.rooms
     .get(roomModel.name)!;
 
   try {
@@ -401,7 +399,7 @@ export async function dropItem(msg: CustomMessage): Promise<void> {
     throw new Error("Could not find a room");
   }
 
-  const room = roomManager().rooms
+  const room = manager.rooms
     .get(roomModel.name)!,
     user = await User.findOne({
     attributes: ["id"],
@@ -530,7 +528,6 @@ export async function editItem(msg: CustomMessage): Promise<void> {
 // tslint:disable-next-line:cyclomatic-complexity
 export async function giveItem(msg: CustomMessage): Promise<void> {
   const command = parseCommand(msg, ["of", "to"]),
-    guild = mainGuild(),
     targetName = command.args.get("to");
 
   if (targetName === undefined) throw new Error("Missing target user");
@@ -670,7 +667,7 @@ export async function giveItem(msg: CustomMessage): Promise<void> {
       throw err;
     }
 
-    const recipient = mainGuild().members
+    const recipient = guild.members
       .get(target.id)!;
 
     sendMessage(msg,
@@ -697,7 +694,7 @@ export async function items(msg: CustomMessage): Promise<void> {
     await lock({ release: false, room: roomModel.id });
 
     try {
-      const room = roomManager().rooms
+      const room = manager.rooms
       .get(roomModel.name)!;
 
       if (room.items.size === 0) {
@@ -744,7 +741,7 @@ export async function inspect(msg: CustomMessage): Promise<void> {
     const missingItems = new Set<string>(itemsList.params);
 
     if (!isNone(roomModel)) {
-      const room = roomManager().rooms
+      const room = manager.rooms
         .get(roomModel.name)!;
 
       for (const item of itemsList.params) {
@@ -836,7 +833,7 @@ export async function takeItem(msg: CustomMessage): Promise<void> {
   if (roomModel === null || user === null) return;
 
   const item = command.args.get("of"),
-    room = roomManager().rooms
+    room = manager.rooms
       .get(roomModel.name)!,
     joined = command.params.join();
 

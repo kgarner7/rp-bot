@@ -1,13 +1,14 @@
 import { GuildMember, Role } from "discord.js";
 
+import { guild } from "../client";
 import { ChannelNotFoundError } from "../config/errors";
-import { lineEnd, mainGuild, requireAdmin, roomManager } from "../helpers/base";
+import { lineEnd, requireAdmin } from "../helpers/base";
 import { CustomMessage } from "../helpers/classes";
 import { lock } from "../helpers/locks";
 import { Undefined } from "../helpers/types";
 import { Link, Room as RoomModel } from "../models/models";
 import { Neighbor } from "../rooms/room";
-import { RoomManager } from "../rooms/roomManager";
+import { manager } from "../rooms/roomManager";
 
 import { Action } from "./actions";
 import {
@@ -49,8 +50,7 @@ export const usage: Action = {
 async function moveMember(member: GuildMember, target: string, source: string = ""):
                           Promise<void> {
 
-  const manager: RoomManager = roomManager(),
-    roles: string[] = [];
+  const roles: string[] = [];
 
   async function linkHelper(from: string, to: string): Promise<void> {
     const link = await Link.findOne({
@@ -81,7 +81,7 @@ async function moveMember(member: GuildMember, target: string, source: string = 
     if (!manager.roles.has(role.id)) roles.push(role.id);
   }
 
-  const newRole: Role = mainGuild().roles
+  const newRole: Role = guild.roles
     .find(r => r.name === target);
   roles.push(newRole.id);
 
@@ -102,7 +102,6 @@ export async function move(msg: CustomMessage): Promise<void> {
 
   try {
     const command = parseCommand(msg, ["to"]),
-    guild = mainGuild(),
     targetName = (command.args.get("to") || []).join(lineEnd),
     targetRoom = await getRoomModel(targetName);
 
@@ -136,11 +135,9 @@ export async function userMove(msg: CustomMessage): Promise<void> {
 
   try {
     const command = parseCommand(msg, ["through"]),
-    guild = mainGuild(),
-    manager = roomManager(),
-    member = guild.members.get(msg.author.id)!,
-    name = command.params.join(),
-    roomModel = await getRoom(msg, true);
+      member = guild.members.get(msg.author.id)!,
+      name = command.params.join(),
+      roomModel = await getRoom(msg, true);
 
     if (roomModel === null) throw new ChannelNotFoundError(name);
 
@@ -187,6 +184,6 @@ export async function userMove(msg: CustomMessage): Promise<void> {
   } catch (err) {
     throw err;
   } finally {
-    await lock({ release: true, user: [msg.author.id ]});
+    await lock({ release: true, user: msg.author.id });
   }
 }

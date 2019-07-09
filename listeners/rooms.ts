@@ -1,7 +1,8 @@
-import { Guild, Role } from "discord.js";
+import { Role } from "discord.js";
 
+import { guild } from "../client";
 import { ChannelNotFoundError, ExistingChannelError } from "../config/errors";
-import { lineEnd, mainGuild, requireAdmin } from "../helpers/base";
+import { lineEnd, requireAdmin } from "../helpers/base";
 import { CustomMessage } from "../helpers/classes";
 
 import { Action } from "./actions";
@@ -24,8 +25,7 @@ export const usage: Action = {
 export async function createRoom(msg: CustomMessage): Promise<void> {
   requireAdmin(msg);
 
-  const guild: Guild = mainGuild(),
-    name: string = parseCommand(msg).params
+  const name: string = parseCommand(msg).params
       .join("");
 
   if (name === "" || guild.channels.find(c => c.name === name) !== null) {
@@ -61,8 +61,7 @@ export async function createRoom(msg: CustomMessage): Promise<void> {
 export async function deleteRoom(msg: CustomMessage): Promise<void> {
   requireAdmin(msg);
 
-  const guild = mainGuild(),
-    room = await getRoom(msg);
+  const room = await getRoom(msg);
 
   if (room !== null) {
     const channel = guild.channels.get(room.id)!,

@@ -6,7 +6,6 @@ import {
   ChannelLogsQueryOptions,
   Client,
   Collection,
-  Guild,
   GuildAuditLogsEntry,
   GuildAuditLogsFetchOptions,
   Message as DiscordMessage,
@@ -15,8 +14,9 @@ import {
 } from "discord.js";
 import { Op } from "sequelize";
 
+import { guild } from "./client";
 import { config } from "./config/config";
-import { initGuild, initUsers } from "./helpers/base";
+import { initUsers } from "./helpers/base";
 import { SortableArray } from "./helpers/classes";
 import { Undefined } from "./helpers/types";
 import {
@@ -44,7 +44,6 @@ class Change {
 type UserEntry = [Date, Change];
 
 const client = new Client();
-let guild: Guild;
 
 const cachedRoomsById = new Collection<string, Room>();
 const cachedRoomsByName = new Collection<string, Room>();
@@ -71,8 +70,6 @@ client.on("ready", async () => {
   log("ready");
 
   await sequelize.sync({ force: true });
-  guild = client.guilds.find((g: Guild) => g.name === config.guildName);
-  initGuild(guild);
 
   await RoomManager.create("./data/rooms");
   await initUsers("./data/users");
@@ -203,7 +200,6 @@ async function fetchAuditLogs(before?: AuditLog): Promise<AuditLog> {
   if (before) {
     options.before = before.last();
   } else {
-    // tslint:disable-next-line:no-parameter-reassignment
     before = new Collection();
   }
 
@@ -254,7 +250,6 @@ async function fetchMessages(channel: TextChannel): Promise<void> {
       before = messages.last();
     }
 
-    console.log();
     await transaction.commit();
   } catch (err) {
     await transaction.rollback();

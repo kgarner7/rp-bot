@@ -8,7 +8,8 @@ import {
 import { Op } from "sequelize";
 import { Server, Socket } from "socket.io";
 
-import { Dict, mainGuild } from "../helpers/base";
+import { guild } from "../client";
+import { Dict } from "../helpers/base";
 import { None } from "../helpers/types";
 import { usages } from "../listeners/actions";
 import { Link, Message, Room, sequelize, User } from "../models/models";
@@ -51,8 +52,7 @@ export function triggerUser(member: User | GuildMember | DiscordUser,
 const roomAttributes = ["discordName", "id", "inventory", "name", "updatedAt"];
 
 export async function getRooms(user: GuildMember | User): Promise<object[]> {
-  const guild = mainGuild(),
-    visibleRooms = new Set<String>();
+  const visibleRooms = new Set<String>();
 
   for (const [_, channel] of guild.channels) {
     if (channel instanceof TextChannel) {
@@ -126,13 +126,13 @@ export async function getRooms(user: GuildMember | User): Promise<object[]> {
 
   return messageRooms.map(room => {
     const present = visibleRooms.has(room.discordName);
-    return roomToJson(room, present, user.id === guild.ownerID, guild);
+    return roomToJson(room, present, user.id === guild.ownerID);
   });
 }
 
 // tslint:disable:no-any
 export function roomToJson(room: Room, present: boolean,
-                           isAdmin: boolean, guild: Guild): Dict<any> {
+                           isAdmin: boolean): Dict<any> {
   const json: Dict<any> = { n: room.name },
     channel = guild.channels.get(room.id) as TextChannel;
   // tslint:enable:no-any

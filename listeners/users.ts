@@ -4,8 +4,9 @@ import moment from "moment";
 import { Op } from "sequelize";
 import tmp from "tmp";
 
+import { guild } from "../client";
 import {  NoLogError } from "../config/errors";
-import { lineEnd, mainGuild, requireAdmin } from "../helpers/base";
+import { lineEnd, requireAdmin } from "../helpers/base";
 import { CustomMessage } from "../helpers/classes";
 import { Null } from "../helpers/types";
 import { Link, Message as MessageModel, Room as RoomModel, User } from "../models/models";
@@ -54,8 +55,7 @@ export const usage: Action = {
  * @param msg the message to be evaluated
  */
 export async function members(msg: CustomMessage): Promise<void> {
-  const guild = mainGuild(),
-    room = await getRoom(msg, true);
+  const room = await getRoom(msg, true);
 
   if (room === null) {
     msg.author
@@ -188,7 +188,6 @@ export async function showLogs(msg: CustomMessage): Promise<void> {
 export async function users(msg: CustomMessage): Promise<void> {
   requireAdmin(msg);
 
-  const guild = mainGuild();
   let message = "";
 
   const memberList = await User.findAll({

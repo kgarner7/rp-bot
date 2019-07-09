@@ -1,5 +1,5 @@
 import {
-  Guild,
+  GuildMember,
   Message,
   Role,
   TextChannel
@@ -8,24 +8,12 @@ import { sync } from "glob";
 import { readFile } from "jsonfile";
 import { NodeVM, VMScript } from "vm2";
 
+import { guild } from "../client";
 import { AccessError } from "../config/errors";
 import { User, UserResolvable } from "../models/user";
-import { RoomManager } from "../rooms/roomManager";
 
 import { CustomMessage } from "./classes";
 import { isNone, isUserResolvable, Undefined } from "./types";
-
-let everyone: Undefined<Role>,
-  guild: Guild,
-  manager: RoomManager;
-
-/**
- * Initializes the local server to be passed between modules
- * @param externalGuild the global server for this bot
- */
-export function initGuild(externalGuild: Guild): void {
-  guild = externalGuild;
-}
 
 export const lineEnd = "\r\n";
 
@@ -60,33 +48,6 @@ export async function initUsers(path: string): Promise<void> {
 }
 
 /**
- * Returns the shared guild.
- * Should only be called after initialization
- * @returns the shared guild instance
- */
-export function mainGuild(): Guild {
-  return guild;
-}
-
-export function initRooms(externalManager: RoomManager): void {
-  manager = externalManager;
-}
-
-export function roomManager(): RoomManager {
-  return manager;
-}
-
-export function everyoneRole(): Role {
-  if (everyone !== undefined) {
-    return everyone;
-  } else {
-    everyone = guild.roles.find(r => r.name === "@everyone");
-
-    return everyone;
-  }
-}
-
-/**
  * Gets the IDs of all members currently present in a channel
  * @param msg the message to be parsed
  * @returns an array of the member of IDS when a message is sent
@@ -113,10 +74,12 @@ export function requireAdmin(msg: CustomMessage): void {
 }
 
 export function isAdmin(msg: CustomMessage): boolean {
-  const owner = mainGuild().ownerID;
+  return userIsAdmin(msg.member) ||
+    !isNone(msg.overridenSender) && userIsAdmin(msg.overridenSender);
+}
 
-  return msg.author.id === owner ||
-    !isNone(msg.overridenSender) && msg.overridenSender.id === owner;
+export function userIsAdmin(user: GuildMember): boolean {
+  return user.hasPermission("ADMINISTRATOR");
 }
 
 export interface Dict<T> {

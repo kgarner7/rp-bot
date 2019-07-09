@@ -1,4 +1,5 @@
-import { Dict, lineEnd, mainGuild } from "../helpers/base";
+import { guild } from "../client";
+import { Dict, lineEnd } from "../helpers/base";
 import { CustomMessage } from "../helpers/classes";
 
 import { parseCommand, sendMessage } from "./baseHelpers";
@@ -66,7 +67,7 @@ for (const [command, usage] of Object.entries(usages)) {
 async function help(msg: CustomMessage): Promise<void> {
   const command = parseCommand(msg),
     commandName = command.params.join(""),
-    isAdmin = msg.author.id === mainGuild().ownerID;
+    isAdmin = msg.author.id === guild.ownerID;
 
   const availableUsages: Action = isAdmin ? usages : userUsages;
 
