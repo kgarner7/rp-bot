@@ -25,12 +25,9 @@ import {
 } from "./helpers";
 
 const LOCK_NAME = "socket-disconnect";
-const sockets: Map<string, Set<string>> = new Map();
 const TIME_FORMAT = "Y-MM-DDTHH:mm:ss.SSSSZZ";
 
-export function socketsMap(): Map<string, Set<string>> {
-  return sockets;
-}
+export const sockets: Map<string, Set<string>> = new Map();
 
 // tslint:disable-next-line:no-any
 export function socket(app: any): Server {

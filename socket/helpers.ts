@@ -15,7 +15,7 @@ import { usages } from "../listeners/actions";
 import { Link, Message, Room, sequelize, User } from "../models/models";
 import { ItemModel } from "../rooms/item";
 
-import { socketsMap } from "./socket";
+import { sockets } from "./socket";
 
 let serverSocket: Server;
 
@@ -38,8 +38,7 @@ export async function getUser(sock: Socket): Promise<None<User>> {
 export function triggerUser(member: User | GuildMember | DiscordUser,
                             // tslint:disable-next-line:no-any
                             event: string, message: any): void {
-  const notifiers = socketsMap()
-    .get(member.id);
+  const notifiers = sockets.get(member.id);
 
   if (notifiers) {
     for (const socketId of notifiers) {

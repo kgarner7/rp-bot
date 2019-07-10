@@ -31,6 +31,10 @@ export const client = new Client();
 export let guild: Guild;
 export let everyone: Role;
 
+/**
+ * Determines whether the message belongs to this guild and was not sent by the bot
+ * @returns true if the author is a bot or the message was in a different guild
+ */
 function invalid(msg: DiscordMessage): boolean {
   return client.user.id === msg.author.id || (msg.guild !== guild && msg.guild !== null);
 }
@@ -57,15 +61,15 @@ client.on("ready", async () => {
   await RoomManager.create("./data/rooms");
   await initUsers("./data/users");
 
-  // const job = new CronJob("0 * * * * *", async (): Promise<void> => {
-  //   try {
-  //     await handleSave();
-  //   } catch (err) {
-  //     guild.owner.send(`Could not save: ${err}`);
-  //   }
-  // });
+  const job = new CronJob("0 * * * * *", async (): Promise<void> => {
+    try {
+      await handleSave();
+    } catch (err) {
+      guild.owner.send(`Could not save: ${err}`);
+    }
+  });
 
-  // job.start();
+  job.start();
 });
 
 client.on("messageDelete", (msg: DiscordMessage) => {
