@@ -1,5 +1,4 @@
 import {
-  Guild,
   GuildMember,
   Message as DiscordMessage,
   TextChannel,
@@ -9,7 +8,7 @@ import { Op } from "sequelize";
 import { Server, Socket } from "socket.io";
 
 import { guild } from "../client";
-import { Dict } from "../helpers/base";
+import { Dict, idIsAdmin } from "../helpers/base";
 import { None } from "../helpers/types";
 import { usages } from "../listeners/actions";
 import { Link, Message, Room, sequelize, User } from "../models/models";
@@ -61,7 +60,7 @@ export async function getRooms(user: GuildMember | User): Promise<object[]> {
 
   let messageRooms: Room[];
 
-  if (user.id === guild.ownerID) {
+  if (idIsAdmin(user.id)) {
     messageRooms = await Room.findAll({ attributes: roomAttributes });
   } else {
     const transaction = await sequelize.transaction();
@@ -125,7 +124,7 @@ export async function getRooms(user: GuildMember | User): Promise<object[]> {
 
   return messageRooms.map(room => {
     const present = visibleRooms.has(room.discordName);
-    return roomToJson(room, present, user.id === guild.ownerID);
+    return roomToJson(room, present, idIsAdmin(user.id));
   });
 }
 

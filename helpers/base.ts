@@ -74,12 +74,16 @@ export function requireAdmin(msg: CustomMessage): void {
 }
 
 export function isAdmin(msg: CustomMessage): boolean {
-  return userIsAdmin(msg.member) ||
-    !isNone(msg.overridenSender) && userIsAdmin(msg.overridenSender);
+  return userIsAdmin(msg.member);
 }
 
 export function userIsAdmin(user: GuildMember): boolean {
   return user.hasPermission("ADMINISTRATOR");
+}
+
+export function idIsAdmin(id: string): boolean {
+  const member = guild.members.get(id);
+  return member !== undefined && userIsAdmin(member);
 }
 
 export interface Dict<T> {

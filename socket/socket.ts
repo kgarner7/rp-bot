@@ -23,6 +23,7 @@ import {
   inventoryToJson,
   setServer
 } from "./helpers";
+import { idIsAdmin } from "../helpers/base";
 
 const LOCK_NAME = "socket-disconnect";
 const TIME_FORMAT = "Y-MM-DDTHH:mm:ss.SSSSZZ";
@@ -56,7 +57,7 @@ export function socket(app: any): Server {
     await lock({ release: true, room: LOCK_NAME });
 
     sock.on(COMMANDS, async () => {
-      const commands = getCommands(user.id === guild.ownerID);
+      const commands = getCommands(idIsAdmin(user.id));
       sock.emit(COMMANDS, JSON.stringify(commands));
     });
 
@@ -87,7 +88,7 @@ export function socket(app: any): Server {
     sock.on(USER_NAME, async () => {
       await user.reload({ attributes: ["discordName"] });
       sock.emit(USER_NAME, JSON.stringify({
-        a: user.id === guild.ownerID,
+        a: idIsAdmin(user.id),
         n: user.discordName
       }));
     });
@@ -160,7 +161,7 @@ export function socket(app: any): Server {
     });
 
     sock.on("set timer", timeInMillis => {
-      if (user.id !== guild.ownerID) {
+      if (!idIsAdmin(user.id)) {
         sock.emit("err", "Not an admin");
         return;
       }
@@ -187,7 +188,7 @@ export function socket(app: any): Server {
     });
 
     sock.on("start", () => {
-      if (user.id !== guild.ownerID) {
+      if (!idIsAdmin(user.id)) {
         sock.emit("err", "Not an admin");
         return;
       }
@@ -220,7 +221,7 @@ export function socket(app: any): Server {
     });
 
     sock.on("reset", () => {
-      if (user.id !== guild.ownerID) {
+      if (!idIsAdmin(user.id)) {
         sock.emit("err", "Not an admin");
         return;
       }
@@ -258,7 +259,7 @@ export function socket(app: any): Server {
     });
 
     sock.on("clear", () => {
-      if (user.id !== guild.ownerID) {
+      if (!idIsAdmin(user.id)) {
         sock.emit("err", "Not an admin"); return;
       }
 

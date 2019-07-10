@@ -6,6 +6,7 @@ import { CustomMessage } from "../helpers/classes";
 import { Null } from "../helpers/types";
 import { Room as RoomModel } from "../models/models";
 import { manager, RoomManager } from "../rooms/roomManager";
+import { isAdmin } from "../helpers/base";
 
 const MAX_MESSAGE_SIZE = 1900;
 
@@ -209,7 +210,7 @@ export async function getRoom(msg: CustomMessage,
   const member = guild.members.get(msg.author.id)!;
 
   if (requirePresence && member.roles.find(r => r.name === roomModel!.name) === null
-    && msg.author.id !== guild.ownerID) {
+    && !isAdmin(msg)) {
 
     sendMessage(msg, "You are not currently in that room", true);
 

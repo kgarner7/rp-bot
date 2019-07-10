@@ -1,7 +1,7 @@
 import { compare, hash } from "bcrypt";
 import express, { NextFunction, Request , Response } from "express";
 
-import { guild } from "../client";
+import { idIsAdmin } from "../helpers/base";
 import { isNone, None } from "../helpers/types";
 import { User } from "../models/models";
 
@@ -130,13 +130,13 @@ router.get("/button", requireLogin, wrapper(async (req, res) => {
   }
 
   res.render("button", {
-    admin: user.id === guild.ownerID,
+    admin: idIsAdmin(user.id),
     user: user.discordName
   });
 }));
 
 router.get("/button/admin", requireLogin, wrapper(async (req, res) => {
-  if (req.session!.userId !== guild.ownerID) {
+  if (!idIsAdmin(req.session!.userId)) {
     res.redirect("/button");
     return;
   }

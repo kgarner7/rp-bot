@@ -6,7 +6,8 @@ import {
   Dict,
   isAdmin,
   lineEnd,
-  requireAdmin
+  requireAdmin,
+  userIsAdmin
 } from "../helpers/base";
 import { CustomMessage, SortableArray } from "../helpers/classes";
 import { lock } from "../helpers/locks";
@@ -185,7 +186,7 @@ function notifyRoomInventoryChange(msg: CustomMessage, room: Room): void {
     const json = JSON.stringify([roomToJson(room, true, false)]);
 
     for (const member of msg.channel.members.values()) {
-      if (member.id !== guild.ownerID) {
+      if (!userIsAdmin(member)) {
         triggerUser(member, ROOM_INFORMATION, json);
       }
     }

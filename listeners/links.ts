@@ -2,7 +2,7 @@ import { Op } from "sequelize";
 
 import { guild } from "../client";
 import { ChannelNotFoundError } from "../config/errors";
-import { Dict, lineEnd, requireAdmin } from "../helpers/base";
+import { Dict, lineEnd, requireAdmin, isAdmin } from "../helpers/base";
 import { CustomMessage } from "../helpers/classes";
 import { Link, Room as RoomModel } from "../models/models";
 import { manager } from "../rooms/roomManager";
@@ -354,8 +354,7 @@ export async function doors(msg: CustomMessage): Promise<void> {
       if (!neighbor.hidden) {
         messageString += neighbor.name;
 
-        if (neighbor.visitors.has(msg.author.id) ||
-          msg.author.id === guild.ownerID) {
+        if (neighbor.visitors.has(msg.author.id) || isAdmin(msg)) {
           messageString += ` => ${neighbor.to}`;
         } else {
           messageString += " => unknown";

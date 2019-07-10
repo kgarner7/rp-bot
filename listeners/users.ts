@@ -6,7 +6,7 @@ import tmp from "tmp";
 
 import { guild } from "../client";
 import {  NoLogError } from "../config/errors";
-import { lineEnd, requireAdmin } from "../helpers/base";
+import { lineEnd, requireAdmin, isAdmin, userIsAdmin } from "../helpers/base";
 import { CustomMessage } from "../helpers/classes";
 import { Null } from "../helpers/types";
 import { Link, Message as MessageModel, Room as RoomModel, User } from "../models/models";
@@ -71,7 +71,7 @@ export async function members(msg: CustomMessage): Promise<void> {
     }
 
     for (const [, member] of memberList.sort()) {
-      if (member.user.bot || member.id === guild.ownerID) continue;
+      if (member.user.bot || userIsAdmin(member)) continue;
 
       memberString += `${member}, `;
     }

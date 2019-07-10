@@ -10,7 +10,7 @@ import {
 import { Op } from "sequelize";
 
 import { config } from "./config/config";
-import { initUsers } from "./helpers/base";
+import { initUsers, isAdmin } from "./helpers/base";
 import { CustomMessage } from "./helpers/classes";
 import { globalLock } from "./helpers/locks";
 import { isNone } from "./helpers/types";
@@ -132,7 +132,7 @@ client.on("message", async (msg: DiscordMessage) => {
       }
 
       if (message in actions) {
-        if (username !== "" && msg.author.id === guild.ownerID) {
+        if (username !== "" && isAdmin(msg)) {
 
           const user = await User.findOne({
             where: {
