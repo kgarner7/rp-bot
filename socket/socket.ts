@@ -2,6 +2,7 @@ import moment from "moment";
 import socketio, { Server } from "socket.io";
 
 import { guild } from "../client";
+import { idIsAdmin } from "../helpers/base";
 import { lock } from "../helpers/locks";
 import { isNone } from "../helpers/types";
 import { client } from "../models/redis";
@@ -23,7 +24,6 @@ import {
   inventoryToJson,
   setServer
 } from "./helpers";
-import { idIsAdmin } from "../helpers/base";
 
 const LOCK_NAME = "socket-disconnect";
 const TIME_FORMAT = "Y-MM-DDTHH:mm:ss.SSSSZZ";

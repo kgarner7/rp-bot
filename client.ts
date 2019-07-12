@@ -16,6 +16,7 @@ import { globalLock } from "./helpers/locks";
 import { isNone } from "./helpers/types";
 import { actions } from "./listeners/actions";
 import { sendMessage } from "./listeners/baseHelpers";
+import { toHaiku } from "./listeners/haiku";
 import { handleSave } from "./listeners/state";
 import { Message, User } from "./models/models";
 import { RoomManager } from "./rooms/roomManager";
@@ -94,6 +95,10 @@ client.on("messageUpdate", async (_old: DiscordMessage, msg: DiscordMessage) => 
 
 client.on("message", async (msg: DiscordMessage) => {
   if (invalid(msg)) return;
+
+  const haiku = toHaiku(msg.content);
+
+  if (haiku)  msg.reply(haiku);
 
   const mesg = msg as CustomMessage,
     content: string = msg.content;
