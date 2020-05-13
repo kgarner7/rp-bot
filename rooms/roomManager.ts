@@ -262,13 +262,13 @@ export class RoomManager {
       let existing: CategoryChannel | null = guild.channels.cache
         .find(c => c.name === category && c.type === "category") as CategoryChannel;
 
-      if (existing !== null && force) {
+      if (existing && force) {
         await existing.delete();
         existing = null;
       }
 
-      if (existing === null) {
-        await guild.channels.create(category, {
+      if (!existing) {
+        existing = await guild.channels.create(category, {
           permissionOverwrites: [{
             deny: status.get(category) === true ? [
               "VIEW_CHANNEL"

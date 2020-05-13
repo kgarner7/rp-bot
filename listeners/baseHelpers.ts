@@ -5,7 +5,7 @@ import { guild } from "../client";
 import { CustomMessage } from "../helpers/classes";
 import { Null } from "../helpers/types";
 import { Room as RoomModel } from "../models/models";
-import { manager, RoomManager } from "../rooms/roomManager";
+import { manager } from "../rooms/roomManager";
 import { isAdmin } from "../helpers/base";
 
 const MAX_MESSAGE_SIZE = 1900;
