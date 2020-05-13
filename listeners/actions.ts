@@ -1,4 +1,3 @@
-import { guild } from "../client";
 import { Dict, lineEnd, isAdmin } from "../helpers/base";
 import { CustomMessage } from "../helpers/classes";
 

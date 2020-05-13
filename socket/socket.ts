@@ -2,7 +2,7 @@ import moment from "moment";
 import socketio, { Server } from "socket.io";
 
 import { guild } from "../client";
-import { idIsAdmin } from "../helpers/base";
+import { idIsAdmin, sentToAdmins } from "../helpers/base";
 import { lock } from "../helpers/locks";
 import { isNone } from "../helpers/types";
 import { client } from "../models/redis";
@@ -287,8 +287,9 @@ export function socket(app: any): Server {
               sock.emit("err", error.message);
             } else {
               sock.emit("submit", "OK");
-              guild.owner
-                .send(`${user.discordName} pressed at ${mesg}`);
+
+              sentToAdmins(guild, `${user.discordName} pressed at ${mesg}`)
+                .catch(error => console.error(error));
             }
           });
         }

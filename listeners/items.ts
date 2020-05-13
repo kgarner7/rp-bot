@@ -7,7 +7,8 @@ import {
   isAdmin,
   lineEnd,
   requireAdmin,
-  userIsAdmin
+  userIsAdmin,
+  getAdministrators
 } from "../helpers/base";
 import { CustomMessage, SortableArray } from "../helpers/classes";
 import { lock } from "../helpers/locks";
@@ -193,7 +194,16 @@ function notifyRoomInventoryChange(msg: CustomMessage, room: Room): void {
   }
 
   const adminJson = JSON.stringify([roomToJson(room, true, false)]);
-  triggerUser(guild.owner, ROOM_INFORMATION, adminJson);
+
+  getAdministrators(guild)
+    .then(admins => {
+      for (const admin of admins) {
+        triggerUser(admin, ROOM_INFORMATION, adminJson);
+      }
+    })
+    .catch(error => {
+      console.error(error);
+    });
 }
 
 export async function consume(msg: CustomMessage): Promise<void> {
@@ -565,14 +575,14 @@ export async function giveItem(msg: CustomMessage): Promise<void> {
 
   if (target === undefined) throw new Error(`Could not find user "${targetJoined}"`);
 
-  const senderUser = guild.members.get(sender.id)!,
-    targetUser = guild.members.get(target.id)!;
+  const senderUser = guild.members.resolve(sender.id)!,
+    targetUser = guild.members.resolve(target.id)!;
 
-  const senderSet: Set<string> = new Set(senderUser.roles
+  const senderSet: Set<string> = new Set(senderUser.roles.cache
       .map(r => r.name)),
     unionSet: Set<string> = new Set();
 
-  for (const role of targetUser.roles.values()) {
+  for (const role of targetUser.roles.cache.values()) {
     if (senderSet.has(role.name)) {
       unionSet.add(role.name);
     }
@@ -668,8 +678,7 @@ export async function giveItem(msg: CustomMessage): Promise<void> {
       throw err;
     }
 
-    const recipient = guild.members
-      .get(target.id)!;
+    const recipient = guild.members.resolve(target.id)!;
 
     sendMessage(msg,
       `${senderName(msg)} gave ${recipient} ${quantity} of ${itemName}`);

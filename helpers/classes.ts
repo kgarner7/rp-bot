@@ -1,5 +1,5 @@
 // tslint:disable:max-classes-per-file
-import { DMChannel, GroupDMChannel, GuildMember, TextChannel, User } from "discord.js";
+import { DMChannel, GuildMember, TextChannel, User, NewsChannel } from "discord.js";
 
 import { Dict } from "./base";
 import { isNone } from "./types";
@@ -193,7 +193,7 @@ export class SerializedMap<T extends Serializable<S>, S>
 
 export class CustomMessage {
   public author: User;
-  public channel: TextChannel | DMChannel | GroupDMChannel;
+  public channel: TextChannel | DMChannel | NewsChannel;
   public content: string;
   public member: GuildMember;
   public overridenSender?: GuildMember;

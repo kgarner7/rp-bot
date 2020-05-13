@@ -52,7 +52,7 @@ const roomAttributes = ["discordName", "id", "inventory", "name", "updatedAt"];
 export async function getRooms(user: GuildMember | User): Promise<object[]> {
   const visibleRooms = new Set<String>();
 
-  for (const [_, channel] of guild.channels) {
+  for (const [_, channel] of guild.channels.cache) {
     if (channel instanceof TextChannel) {
       if (channel.members.has(user.id)) visibleRooms.add(channel.name);
     }
@@ -132,7 +132,7 @@ export async function getRooms(user: GuildMember | User): Promise<object[]> {
 export function roomToJson(room: Room, present: boolean,
                            isAdmin: boolean): Dict<any> {
   const json: Dict<any> = { n: room.name },
-    channel = guild.channels.get(room.id) as TextChannel;
+    channel = guild.channels.resolve(room.id) as TextChannel;
   // tslint:enable:no-any
 
   if (present) {
@@ -145,7 +145,7 @@ export function roomToJson(room: Room, present: boolean,
   json.d = channel.topic;
   json.i = channel.id;
   json.n = room.name;
-  json.s = channel.parent.name;
+  json.s = channel.parent?.name;
 
   return json;
 }
@@ -227,7 +227,7 @@ export function triggerRoom(msg: DiscordMessage, action: string): void {
 
 function msgToJson(msg: DiscordMessage): object {
   return {
-    a: msg.member.displayName,
+    a: msg.member?.displayName,
     c: msg.channel.id,
     d: msg.editedTimestamp || msg.createdTimestamp,
     i: msg.id,

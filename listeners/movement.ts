@@ -77,12 +77,12 @@ async function moveMember(member: GuildMember, target: string, source: string = 
     }
   }
 
-  for (const [, role] of member.roles) {
+  for (const [, role] of member.roles.cache) {
     if (!manager.roles.has(role.id)) roles.push(role.id);
   }
 
-  const newRole: Role = guild.roles
-    .find(r => r.name === target);
+  const newRole: Role = guild.roles.cache
+    .find(r => r.name === target)!;
   roles.push(newRole.id);
 
   if (source !== "") {
@@ -90,7 +90,7 @@ async function moveMember(member: GuildMember, target: string, source: string = 
     await linkHelper(target, source);
   }
 
-  await member.setRoles(roles);
+  await member.roles.set(roles);
 
   if (!member.user.bot) member.send(`You were moved to ${target}`);
 }
@@ -112,8 +112,8 @@ export async function move(msg: CustomMessage): Promise<void> {
     }
 
     for (const name of command.params) {
-      const member = guild.members.find(m =>
-        m.displayName === name || m.toString() === name || m.user.username === name);
+      const member = guild.members.cache.find(m =>
+        m.displayName === name || m.toString() === name || m.user.username === name)!;
 
       if (member !== null) {
         await moveMember(member, targetRoom.name);
@@ -135,7 +135,7 @@ export async function userMove(msg: CustomMessage): Promise<void> {
 
   try {
     const command = parseCommand(msg, ["through"]),
-      member = guild.members.get(msg.author.id)!,
+      member = guild.members.resolve(msg.author.id)!,
       name = command.params.join(),
       roomModel = await getRoom(msg, true);
 

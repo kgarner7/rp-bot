@@ -62,9 +62,9 @@ export async function members(msg: CustomMessage): Promise<void> {
       .send("Either you do not have access to this room, or that room does not exist");
   } else {
     let memberString = "";
-    const memberList = guild.roles.find(r => r.name === room.name).members;
+    const memberList = guild.roles.cache.find(r => r.name === room.name)?.members;
 
-    if (memberList.size === 0) {
+    if (!memberList || memberList.size === 0) {
       msg.channel.send(`There is no one in the ${room.name}`);
 
       return;
@@ -212,11 +212,11 @@ export async function users(msg: CustomMessage): Promise<void> {
   });
 
   for (const member of memberList) {
-    if (member.id === guild.owner.id) {
+    const guildMember = guild.members.resolve(member.id)!;
+
+    if (guildMember.permissions.has("ADMINISTRATOR") && !guildMember.user.bot) {
       continue;
     }
-
-    const guildMember = guild.members.get(member.id)!;
 
     const room = currentRoom(guildMember),
       visitedRooms: Set<string> = new Set(room === null ? [] : [room]);

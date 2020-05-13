@@ -7,6 +7,7 @@ import express, { NextFunction, Request, Response } from "express";
 import session from "express-session";
 import helmet from "helmet";
 import { createServer } from "http";
+import { createClient } from "redis";
 
 import { client } from "./client";
 import { config } from "./config/config";
@@ -25,6 +26,8 @@ const PORT = process.env.PORT || 443;
 const DEFAULT_ERROR_CODE = 500;
 const SECRET_LENGTH = 100;
 
+const redisClient = createClient();
+
 const sessionMiddleware = session({
   cookie: {
     httpOnly: true,
@@ -36,7 +39,9 @@ const sessionMiddleware = session({
   saveUninitialized: false,
   secret: randomBytes(SECRET_LENGTH)
     .toString("binary"),
-  store: new RedisStore({ })
+  store: new RedisStore({
+    client: redisClient
+  })
 });
 
 const options = {

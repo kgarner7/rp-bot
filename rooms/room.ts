@@ -12,7 +12,8 @@ import { ChannelNotFoundError } from "../config/errors";
 import {
   Dict,
   FunctionResolvable,
-  toFunction
+  toFunction,
+  sentToAdmins
 } from "../helpers/base";
 import { SerializedMap } from "../helpers/classes";
 import { isNone } from "../helpers/types";
@@ -136,25 +137,27 @@ export class Room {
     });
 
     if (existingChannel !== null) {
-      let channel = guild.channels.get(existingChannel.id) as TextChannel,
-        role: Role = guild.roles.find(r => r.name === this.name);
+      let channel = guild.channels.resolve(existingChannel.id) as TextChannel,
+        role = guild.roles.cache.find(r => r.name === this.name);
 
       if (force) {
         if (channel !== null) await channel.delete();
-        if (role !== null) await role.delete();
+        if (role) await role.delete();
         await existingChannel.destroy();
       } else {
-        if (role === null) {
-          role = await guild.createRole({
-            color: this.color,
-            name: this.name
+        if (!role) {
+          role = await guild.roles.create({
+            data: {
+              color: this.color,
+              name: this.name
+            }
           });
         } else {
           role.setColor(this.color);
         }
 
         if (isNone(channel)) {
-          channel = await guild.createChannel(this.name, {
+          channel = await guild.channels.create(this.name, {
             topic: this.description,
             type: "text"
           }) as TextChannel;
@@ -183,24 +186,26 @@ export class Room {
     }
 
     try {
-      const role = guild.roles.find(r => r.name === this.name);
+      const role = guild.roles.cache.find(r => r.name === this.name);
 
-      if (role !== null) {
+      if (role) {
         this.role = role;
         role.setColor(this.color);
       } else {
-        this.role = await guild.createRole({
-          color: this.color,
-          name: this.name
+        this.role = await guild.roles.create({
+          data: {
+            color: this.color,
+            name: this.name
+          }
         });
       }
 
-      const channel = guild.channels
+      const channel = guild.channels.cache
         .find(c => c.name === Room.discordChannelName(this.name));
 
       this.channel = channel !== null && channel instanceof TextChannel ?
         channel :
-        await guild.createChannel(this.name, {
+        await guild.channels.create(this.name, {
           topic: this.description,
           type: "text"
         }) as TextChannel;
@@ -222,7 +227,7 @@ export class Room {
         this.role = undefined;
       }
 
-      guild.owner.send(`Could not create room ${this.name}: ${(err as Error).message}`);
+      await sentToAdmins(guild, `Could not create room ${this.name}: ${(err as Error).message}`);
     }
   }
 
@@ -231,14 +236,15 @@ export class Room {
         this.role === undefined ||
         this.parentChannel === undefined) return;
 
-    const denyPermission: PermissionResolvable = ["READ_MESSAGES", "SEND_MESSAGES"];
+    // const denyPermission: PermissionResolvable = ["READ_MESSAGES", "SEND_MESSAGES"];
+    const denyPermission: PermissionResolvable = ["VIEW_CHANNEL", "SEND_MESSAGES"];
 
     if (!this.history) {
       denyPermission.push("READ_MESSAGE_HISTORY");
     }
 
     const overwrites: Array<ChannelCreationOverwrites | PermissionOverwrites> = [{
-      allow: ["READ_MESSAGES", "SEND_MESSAGES"],
+      allow: ["VIEW_CHANNEL", "SEND_MESSAGES"],
       id: this.role.id
     }, {
       deny: denyPermission,
@@ -249,7 +255,7 @@ export class Room {
 
     if (manager.visibility.get(this.parent) !== true &&
       (!this.isPrivate || this.isPublic)) {
-      const allowed: PermissionResolvable = ["READ_MESSAGES"];
+      const allowed: PermissionResolvable = ["VIEW_CHANNEL"];
 
       if (this.isPublic) allowed.push("SEND_MESSAGES");
 
@@ -276,33 +282,31 @@ export class Room {
       }
     }
 
-    this.channel.replacePermissionOverwrites({
-      overwrites
-    });
+    this.channel.overwritePermissions(overwrites);
 
     this.channel.setTopic(this.description);
     this.channel.setParent(this.parentChannel);
   }
 
   public static async deleteRoom(name: string): Promise<void> {
-    const channel = guild.channels.find(c => c.name === name);
+    const channel = guild.channels.cache.find(c => c.name === name);
 
     if (channel === null || !(channel instanceof TextChannel) || !channel.deletable) {
       throw new ChannelNotFoundError(name);
     }
 
     const role = guild.roles
-      .get(channel.permissionOverwrites
-      .find(p => p.deny === 0).id);
+      .resolve(channel.permissionOverwrites
+      .find(p => p.deny.bitfield === 0)!.id);
 
-    if (role === undefined) throw new ChannelNotFoundError(name);
+    if (!role) throw new ChannelNotFoundError(name);
 
     try {
       await channel.delete();
       await role.delete();
-      guild.owner.send(`Room ${name} successfully deleted`);
+      await sentToAdmins(guild, `Room ${name} successfully deleted`);
     } catch (err) {
-      guild.owner.send(`Could not delete room ${name}: ${((err as Error).message)}`);
+      await sentToAdmins(guild, `Could not delete room ${name}: ${((err as Error).message)}`);
     }
   }
 
