@@ -138,7 +138,7 @@ client.on("message", async (msg: DiscordMessage) => {
         username = username.substr(1);
 
         message = split[index].substr(1);
-        msg.content = split.splice(index)
+        mesg.content = split.splice(index)
           .join(" ");
       }
 
@@ -158,7 +158,8 @@ client.on("message", async (msg: DiscordMessage) => {
             const overrideUser = guild.members.resolve(user.id);
 
             if (overrideUser) {
-              mesg.overridenSender = msg.member || undefined;
+              const sender = guild.members.resolve(msg.author.id);
+              mesg.overridenSender = sender!;
               mesg.author = overrideUser.user;
               mesg.member = overrideUser;
             } else {
@@ -176,9 +177,9 @@ client.on("message", async (msg: DiscordMessage) => {
     } finally {
       await globalLock({ acquire: false, writer: false });
     }
-  } else if (msg.channel instanceof TextChannel) {
-    await Message.createFromMsg(msg);
-  }
+  } 
+
+  await Message.createFromMsg(msg);
 });
 
 client.on("guildMemberAdd", async (member) => {

@@ -415,7 +415,7 @@ export async function dropItem(msg: CustomMessage): Promise<void> {
     user = await User.findOne({
     attributes: ["id"],
     where: {
-      id: (msg.overridenSender ? msg.overridenSender : msg.author).id
+      id: msg.author.id
     }
   });
 

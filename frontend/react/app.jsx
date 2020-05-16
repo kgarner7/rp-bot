@@ -18,7 +18,7 @@ import {
   COMMANDS
 } from "../../dist/socket/consts";
 
-const USER_OPS = ["Inventory", "Rooms", "Current room(s)", "Commands"];
+const USER_OPS = ["Inventory", "Rooms", "Current room(s)", "Commands", "Map"];
 const ADMIN_OPS = ["View users"];
 
 const converter = new showdown.Converter();
@@ -269,7 +269,12 @@ export class App extends Component{
     const wrapperClass = "d-flex" + (this.state.sidebar ? "": " toggled");
     return(
       <div id="wrapper" className={wrapperClass}>
-        <Sidebar admin={this.state.admin} options={USER_OPS} adminOps={ADMIN_OPS} handleSelect={this.handleToggleMode}/>
+        <Sidebar
+          admin={this.state.admin}
+          options={USER_OPS}
+          adminOps={ADMIN_OPS}
+          handleSelect={this.handleToggleMode}
+        />
         <div id="page-content-wrapper">
           <Header handleToggle={this.handleToggleSidebar} username={this.state.username}/>
           <Inventory inventory={this.state.inventory} name="inventory" selected={this.state.selected === "Inventory"} sidebar={this.state.sidebar} width={this.state.width}/>
