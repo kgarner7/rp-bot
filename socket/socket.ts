@@ -3,11 +3,7 @@ import socketio, { Server } from "socket.io";
 
 import { guild } from "../client";
 import { idIsAdmin, sentToAdmins } from "../helpers/base";
-<<<<<<< HEAD
 import { lock, unlock } from "../helpers/locks";
-=======
-import { lock } from "../helpers/locks";
->>>>>>> master
 import { isNone } from "../helpers/types";
 import { client } from "../models/redis";
 
