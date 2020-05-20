@@ -1,6 +1,6 @@
 {
   "name": "summer-mistakes-bot",
-  "version": "1.0.1",
+  "version": "1.0.3",
   "description": "a bot for discord rp",
   "main": "index.ts",
   "dependencies": {
@@ -95,13 +95,15 @@
     "webpack-dev-server": "^3.11.0"
   },
   "scripts": {
-    "build": "tsc",
+    "build:backend": "tsc --project server.tsconfig.json",
+    "build:frontend": "webpack --progress",
     "log": "pm2 log",
     "restart": "pm2 restart index.config.js",
     "start": "pm2 startOrReload index.config.js",
     "stop": "pm2 stop index.config.js",
     "test": "mocha -r ts-node/register tests/*spec.ts --exit",
-    "watch": "tsc --watch"
+    "watch:backend": "yarn build:backend --watch",
+    "watch:frontend": "webpack --progress --watch"
   },
   "author": "Kendall Garner",
   "license": "MIT",

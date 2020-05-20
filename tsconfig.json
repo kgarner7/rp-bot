@@ -24,5 +24,18 @@
     "strictPropertyInitialization": false,
     "strictNullChecks": true,
     "target": "es2017"
-  }
+  },
+  "include": [
+    "config",
+    "frontend",
+    "helpers",
+    "listeners",
+    "models",
+    "rooms",
+    "socket"
+  ],
+  "exclude": [
+    "data",
+    "dist"
+  ]
 }
