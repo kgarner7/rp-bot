@@ -35,7 +35,7 @@ const sessionMiddleware = session({
   cookie: {
     httpOnly: true,
     maxAge: MAX_AGE,
-    // secure: true
+    secure: process.env.NODE_ENV === "production"
   },
   resave: true,
   rolling: true,
