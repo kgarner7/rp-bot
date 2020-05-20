@@ -442,7 +442,6 @@ export async function createMap(user: GuildMember | User): Promise<MinimalRoomWi
   }
 
   return rooms.map(room => {
-    console.log(room.sources);
     const links = room.sources.map(source => {
       const link: MinimalLink = {
         n: source.name,
