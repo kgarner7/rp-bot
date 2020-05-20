@@ -2,7 +2,9 @@ import {
   GuildMember,
   Message,
   Role,
-  TextChannel
+  TextChannel,
+  Guild,
+  PartialMessage
 } from "discord.js";
 import { sync } from "glob";
 import { readFile } from "jsonfile";
@@ -52,7 +54,7 @@ export async function initUsers(path: string): Promise<void> {
  * @param msg the message to be parsed
  * @returns an array of the member of IDS when a message is sent
  */
-export function getMembers(msg: Message): string[] {
+export function getMembers(msg: Message | PartialMessage): string[] {
   const users: string[] = [];
 
   if (msg.channel instanceof TextChannel) {
@@ -82,8 +84,21 @@ export function userIsAdmin(user: GuildMember): boolean {
 }
 
 export function idIsAdmin(id: string): boolean {
-  const member = guild.members.get(id);
-  return member !== undefined && userIsAdmin(member);
+  const member = guild.members.resolve(id);
+  return member !== null && userIsAdmin(member);
+}
+
+export async function getAdministrators(guild: Guild): Promise<IterableIterator<GuildMember>> {
+  return await guild.members.cache.filter(member => 
+    member.permissions.has("ADMINISTRATOR") && !member.user.bot
+  )
+    .values();
+}
+
+export async function sentToAdmins(guild: Guild, message: string): Promise<void> {
+  for (const admin of await getAdministrators(guild)) {
+    await admin.send(message);
+  }
 }
 
 export interface Dict<T> {

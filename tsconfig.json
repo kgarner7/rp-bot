@@ -5,6 +5,7 @@
     "declaration": true,
     "esModuleInterop": true,
     "forceConsistentCasingInFileNames": true,
+    "jsx": "react",
     "lib": ["es5", "es6", "dom", "es2017"],
     "listEmittedFiles": true,
     "module": "commonjs",
@@ -23,5 +24,20 @@
     "strictPropertyInitialization": false,
     "strictNullChecks": true,
     "target": "es2017"
-  }
+  },
+  "include": [
+    "client.ts",
+    "index.ts",
+    "config",
+    "frontend",
+    "helpers",
+    "listeners",
+    "models",
+    "rooms",
+    "socket"
+  ],
+  "exclude": [
+    "data",
+    "dist"
+  ]
 }

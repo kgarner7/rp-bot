@@ -1,7 +1,7 @@
 import { Op, WhereAttributeHash } from "sequelize";
 
 import { guild } from "../client";
-import { requireAdmin } from "../helpers/base";
+import { requireAdmin, sentToAdmins } from "../helpers/base";
 import { CustomMessage } from "../helpers/classes";
 import { lock } from "../helpers/locks";
 import { Undefined } from "../helpers/types";
@@ -82,9 +82,11 @@ export async function createItem(msg: CustomMessage): Promise<void> {
 
   sendMessage(msg,
     `Created request for new item ${itemName} with description ${description}`);
-  guild.owner
-    .send(`New request from ${user.discordName} (#${request.id}): ` +
-          `${quantity} of ${itemName}`);
+
+  const message = `New request from ${user.discordName} (#${request.id}): ` +
+  `${quantity} of ${itemName}`;
+  
+  await sentToAdmins(guild, message);
 }
 
 const REQUEST_OPTIONS = [
@@ -182,7 +184,7 @@ async function changeRequestStatus(msg: CustomMessage,
     throw new Error(`Request ${requestId} is not pending`);
   }
 
-  const requester = guild.members.get(request.UserId)!;
+  const requester = guild.members.resolve(request.UserId)!;
 
   if (command.args.has("deny")) {
     const reason = command.args.get("reason");

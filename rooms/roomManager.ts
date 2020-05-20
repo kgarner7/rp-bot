@@ -1,8 +1,8 @@
 import {
   CategoryChannel,
-  PermissionObject,
   Role,
-  TextChannel
+  TextChannel,
+  OverwriteResolvable
 } from "discord.js";
 import { sync } from "glob";
 import { readFile } from "jsonfile";
@@ -13,6 +13,7 @@ import { isNone, isRoomAttribute } from "../helpers/types";
 import { Link, Room as RoomModel, sequelize, User } from "../models/models";
 
 import { Neighbor, Room } from "./room";
+import { sentToAdmins } from "../helpers/base";
 
 export let manager: RoomManager;
 
@@ -138,20 +139,20 @@ export class RoomManager {
 
     for (const model of models) {
       await model.destroy({ transaction });
-      const channel = guild.channels.get(model.id);
+      const channel = guild.channels.resolve(model.id);
 
       if (!isNone(channel)) await channel.delete();
     }
-
-    await transaction.commit();
 
     const ids: number[] = [];
 
     const links = await Link.findAll({
       include: [{
         as: "visitors",
-        model: User
-      }]
+        model: User,
+        required: false
+      }],
+      transaction
     });
 
     const linkMap = new Map<string, Map<string, Link>>();
@@ -166,6 +167,7 @@ export class RoomManager {
 
       sourceMap.set(link.targetId, link);
     }
+
 
     for (const [, source] of this.rooms) {
       for (const [target, neighbor] of source.neighborMap) {
@@ -182,19 +184,24 @@ export class RoomManager {
           link = linkMap.get(sourceId)!
             .get(targetId)!;
 
-          if (link.locked !== neighbor.locked || link.hidden !== neighbor.hidden) {
+          if (link.locked !== neighbor.locked || 
+              link.hidden !== neighbor.hidden ||
+              link.name !== neighbor.name) {
+
             await link.update({
               hidden: neighbor.hidden,
-              locked: neighbor.locked
-            });
+              locked: neighbor.locked,
+              name: neighbor.name
+            }, { transaction });
           }
         } else {
           link = await Link.create({
             hidden: neighbor.hidden,
             locked: neighbor.locked,
+            name: neighbor.name,
             sourceId,
             targetId
-          });
+          }, { transaction });
 
           link.visitors = [];
         }
@@ -218,6 +225,8 @@ export class RoomManager {
         }
       }
     }
+
+    await transaction.commit();
   }
 
   public static async create(directory: string, force: boolean = false):
@@ -236,7 +245,8 @@ export class RoomManager {
         room = new Room(json);
       } else {
         const error = `Not valid room JSON file ${file}: ${JSON.stringify(json)}`;
-        guild.owner.send(error);
+
+        await sentToAdmins(guild, error);
         console.error(error);
         continue;
       }
@@ -257,37 +267,40 @@ export class RoomManager {
     }
 
     for (const category of categories.keys()) {
-      let existing: CategoryChannel | null = guild.channels
+      let existing: CategoryChannel | null = guild.channels.cache
         .find(c => c.name === category && c.type === "category") as CategoryChannel;
 
-      if (existing !== null && force) {
+      if (existing && force) {
         await existing.delete();
         existing = null;
       }
 
-      if (existing === null) {
-        existing = await guild.createChannel(category, {
+      if (!existing) {
+        existing = await guild.channels.create(category, {
           permissionOverwrites: [{
-            deny: status.get(category) === true ? ["READ_MESSAGES", "VIEW_CHANNEL"] : [],
+            deny: status.get(category) === true ? [
+              "VIEW_CHANNEL"
+            ] : [],
+            // deny: status.get(category) === true ? ["READ_MESSAGES", "VIEW_CHANNEL"] : [],
             id: everyone
           }],
           type: "category"
         }) as CategoryChannel;
       } else {
-        let overwrites: PermissionObject = { };
+        let overwrites: OverwriteResolvable[] = [];
 
         if (status.get(category) === true) {
-          overwrites = {
-            READ_MESSAGES: false,
-            VIEW_CHANNEL: false
-          };
+          overwrites = [{
+            deny: ["VIEW_CHANNEL"],
+            id: everyone
+          }];
         }
 
-        await existing.overwritePermissions(everyone, overwrites);
+        await existing.overwritePermissions(overwrites);
       }
 
       for (const room of categories.get(category) as Room[]) {
-        room.parentChannel = existing;
+        room.parentChannel = existing || undefined;
       }
     }
 

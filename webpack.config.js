@@ -1,20 +1,27 @@
 const path = require("path");
-const webpack = require("webpack");
 
 module.exports = {
   entry: "./frontend/react/index.js",
   externals: {
+    "dompurify": "DOMPurify",
+    "mermaid": "mermaid",
     "react": "React",
-    "react-dom": "ReactDOM"
+    "react-dom": "ReactDOM",
+    "showdown": "showdown",
+    "socket.io-client": "io",
   },
   mode: "production",
   module: {
     rules: [
       {
-        test: /\.(js|jsx)$/,
-        exclude: /(node_modules|bower_components)/,
-        loader: "babel-loader",
-        options: { presets: ["@babel/env"] }
+        test: /\.(js|jsx|ts|tsx)$/,
+        exclude: [/node_modules/],
+        use: [
+          "thread-loader", 
+          {
+            loader: "babel-loader"
+          }
+        ]
       },
       {
         test: /\.css$/,
@@ -22,11 +29,10 @@ module.exports = {
       }
     ]
   },
-  resolve: { extensions: ["*", ".js", ".jsx"] },
+  resolve: { extensions: ["*", ".js", ".jsx", ".ts", ".tsx"] },
   output: {
     path: path.resolve(__dirname, "frontend/scripts/"),
     publicPath: "/frontend/scripts/",
     filename: "bundle.js"
-  },
-  plugins: [new webpack.HotModuleReplacementPlugin()]
+  }
 };

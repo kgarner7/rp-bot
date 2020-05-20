@@ -83,7 +83,7 @@ client.on("ready", async () => {
     cachedRoomsByName.set(room.name, room);
   }
 
-  for (const [, member] of guild.members) {
+  for (const [, member] of await guild.members.fetch()) {
     usersRoles.set(member.user.id, new SortableArray());
   }
 
@@ -97,7 +97,8 @@ client.on("ready", async () => {
   log("restored visitations");
 
   for (const room of cachedRoomsByName.values()) {
-    const channel = guild.channels.get(room.id) as TextChannel;
+    guild.channels.resolve
+    const channel = guild.channels.resolve(room.id) as TextChannel;
     await fetchMessages(channel);
   }
 
@@ -112,8 +113,8 @@ function parseAuditLogs(logs: AuditLog): void {
       if (entry.target.bot || entry.target.username === "testing-account") continue;
 
       const user = entry.target as DiscordUser;
-      const addition = entry.changes.find(c => c.key === "$add");
-      const removal = entry.changes.find(c => c.key === "$remove");
+      const addition = entry.changes?.find(c => c.key === "$add");
+      const removal = entry.changes?.find(c => c.key === "$remove");
       const changes = new Change();
 
       if (addition) {
@@ -231,7 +232,7 @@ async function fetchMessages(channel: TextChannel): Promise<void> {
 
       process.stdout.write(`\rfetching messages for ${channel.name} ${messageCount + 1} - ${messageCount + LOGS_PER_FETCH}`);
 
-      const messages = await channel.fetchMessages(options);
+      const messages = await channel.messages.fetch(options);
 
       messageCount += LOGS_PER_FETCH;
 

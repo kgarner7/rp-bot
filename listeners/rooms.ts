@@ -28,23 +28,34 @@ export async function createRoom(msg: CustomMessage): Promise<void> {
   const name: string = parseCommand(msg).params
       .join("");
 
-  if (name === "" || guild.channels.find(c => c.name === name) !== null) {
+  if (name === "" || guild.channels.cache.find(c => c.name === name) !== null) {
     throw new ExistingChannelError(name);
   }
 
-  const role: Role = await guild.createRole({
-    color: "RANDOM",
-    name
+  const role: Role = await guild.roles.create({
+    data: {
+      color: "RANDOM",
+      name
+    }
   });
 
-  const everyone: string = guild.roles.find(r => r.name === "@everyone").id;
+  const everyone: string = guild.roles.everyone.id;
 
-  await guild.createChannel(name, {
+  await guild.channels.create(name, {
     permissionOverwrites: [{
-      allow: ["READ_MESSAGES", "SEND_MESSAGES"],
+      allow: [
+        "SEND_MESSAGES",
+        "VIEW_CHANNEL"
+      ],
+      // allow: ["READ_MESSAGES", "SEND_MESSAGES"],
       id: role.id
     }, {
-      deny: ["READ_MESSAGES", "READ_MESSAGE_HISTORY", "SEND_MESSAGES"],
+      allow: [
+        "READ_MESSAGE_HISTORY",
+        "SEND_MESSAGES",
+        "VIEW_CHANNEL"
+       ],
+      // deny: ["READ_MESSAGES", "READ_MESSAGE_HISTORY", "SEND_MESSAGES"],
       id: everyone
     }],
     type: "text"
@@ -64,8 +75,8 @@ export async function deleteRoom(msg: CustomMessage): Promise<void> {
   const room = await getRoom(msg);
 
   if (room !== null) {
-    const channel = guild.channels.get(room.id)!,
-      role: Role = guild.roles.find(r => r.name === name);
+    const channel = guild.channels.resolve(room.id)!,
+      role: Role = guild.roles.cache.find(r => r.name === name)!;
 
     if (channel !== null || role !== null) {
       if (channel !== null) await channel.delete();

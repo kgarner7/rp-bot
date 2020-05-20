@@ -1,4 +1,3 @@
-import { guild } from "../client";
 import { Dict, lineEnd, isAdmin } from "../helpers/base";
 import { CustomMessage } from "../helpers/classes";
 
@@ -71,8 +70,9 @@ async function help(msg: CustomMessage): Promise<void> {
   const availableUsages: Action = isAdmin(msg) ? usages : userUsages;
 
   if (commandName === "") {
-    const commands = Object.keys(availableUsages)
+    const commands = Object.entries(availableUsages)
       .sort()
+      .map(([name, data]) => `${name}: ${data.description}`)
       .join(lineEnd);
 
     sendMessage(msg, commands, true);

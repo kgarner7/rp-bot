@@ -1,5 +1,5 @@
 import { queue } from "async";
-import { Guild, StreamDispatcher, VoiceChannel } from "discord.js";
+import { StreamDispatcher, VoiceChannel } from "discord.js";
 import { promises } from "fs";
 import ytdl from "ytdl-core";
 
@@ -71,22 +71,23 @@ const musicQueue = queue(
 
 async function startChannel(channelName: string, loop: boolean,
                             path: string, tube: string): Promise<void> {
-  const channel = guild.channels.find(c =>
+  const channel = guild.channels.cache.find(c =>
       c.type === "voice" && c.name === channelName) as None<VoiceChannel>;
 
   if (isNone(channel)) {
     throw new Error(`Could not find channel ${channelName}`);
   } else {
     try {
-      const connection = channel.connection || await channel.join();
+      // const connection = channel.connection || await channel.join();
+      const connection = await channel.join();
       activeChannel = channel;
 
-      activeDispatch = isNone(tube) ? connection.playFile(path) :
-        connection.playStream(ytdl(path, { filter: "audioonly" }));
+      activeDispatch = isNone(tube) ? connection.play(path) :
+        connection.play(ytdl(path, { filter: "audioonly" }));
 
       activeDispatch.on("end", reason => {
         if (loop && isNone(reason)) {
-          connection.playFile(path);
+          connection.play(path);
         } else {
           channel.leave();
         }

@@ -1,6 +1,5 @@
 import { Op } from "sequelize";
 
-import { guild } from "../client";
 import { ChannelNotFoundError } from "../config/errors";
 import { Dict, lineEnd, requireAdmin, isAdmin } from "../helpers/base";
 import { CustomMessage } from "../helpers/classes";

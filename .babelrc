@@ -1,3 +1,21 @@
 {
-  "presets": ["@babel/env", "@babel/preset-react"]
+  "presets": [
+    [
+      "@babel/env", {
+        "corejs": 3,
+        "useBuiltIns": "usage",
+        "targets": {
+          "android": "4.2",
+          "chrome": "29",
+          "edge": "14",
+          "firefox": "48",
+          "ie": "9",
+          "ios": "7",
+          "safari": "9.1"
+        }
+      }
+    ],
+    "@babel/react",
+    "@babel/typescript"
+  ]
 }

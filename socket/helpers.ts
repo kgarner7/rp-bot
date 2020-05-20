@@ -9,7 +9,7 @@ import { Server, Socket } from "socket.io";
 
 import { guild } from "../client";
 import { Dict, idIsAdmin } from "../helpers/base";
-import { None } from "../helpers/types";
+import { None, Null } from "../helpers/types";
 import { usages } from "../listeners/actions";
 import { Link, Message, Room, sequelize, User } from "../models/models";
 import { ItemModel } from "../rooms/item";
@@ -49,10 +49,10 @@ export function triggerUser(member: User | GuildMember | DiscordUser,
 
 const roomAttributes = ["discordName", "id", "inventory", "name", "updatedAt"];
 
-export async function getRooms(user: GuildMember | User): Promise<object[]> {
+export async function getRooms(user: GuildMember | User): Promise<RoomJson[]> {
   const visibleRooms = new Set<String>();
 
-  for (const [_, channel] of guild.channels) {
+  for (const [_, channel] of guild.channels.cache) {
     if (channel instanceof TextChannel) {
       if (channel.members.has(user.id)) visibleRooms.add(channel.name);
     }
@@ -64,23 +64,22 @@ export async function getRooms(user: GuildMember | User): Promise<object[]> {
     messageRooms = await Room.findAll({ attributes: roomAttributes });
   } else {
     const transaction = await sequelize.transaction();
-
-    messageRooms = await Room.findAll({
-      attributes: roomAttributes,
+    
+    const userModel = await User.findOne({
+      attributes: ["id"],
       include: [{
-        attributes: ["id"],
-        include: [{
-          attributes: ["id"],
-          model: User,
-          where: {
-            id: user.id
-          }
-        }],
-        model: Message,
-        required: true
+        as: "visitedRooms",
+        attributes: roomAttributes,
+        model: Room,
+        required: false
       }],
-      transaction
-    });
+      transaction,
+      where: {
+        id: user.id
+      }
+    })
+    
+    messageRooms = userModel?.visitedRooms || [];
 
     const messageRoomNames = new Set<string>(messageRooms.map(room => room.name));
 
@@ -128,12 +127,26 @@ export async function getRooms(user: GuildMember | User): Promise<object[]> {
   });
 }
 
-// tslint:disable:no-any
+export interface RoomJson {
+  c?: MinimalItem[];
+  d: string;
+  i: string;
+  n: string;
+  p?: boolean;
+  s?: string;
+}
+
 export function roomToJson(room: Room, present: boolean,
-                           isAdmin: boolean): Dict<any> {
-  const json: Dict<any> = { n: room.name },
-    channel = guild.channels.get(room.id) as TextChannel;
-  // tslint:enable:no-any
+                           isAdmin: boolean): RoomJson {
+  
+  const channel = guild.channels.resolve(room.id) as TextChannel;
+
+  const json: RoomJson = {
+    d: channel.topic || "",
+    i: channel.id,
+    n: room.name,
+    s: channel.parent?.name
+  }
 
   if (present) {
     json.c = inventoryToJson(room.inventory)
@@ -142,16 +155,11 @@ export function roomToJson(room: Room, present: boolean,
     json.p = true;
   }
 
-  json.d = channel.topic;
-  json.i = channel.id;
-  json.n = room.name;
-  json.s = channel.parent.name;
-
   return json;
 }
 
 export async function getArchivedRoomLogs(roomId: string, user: User, time: Date):
-  Promise<object[]> {
+  Promise<MinimalMessageWithoutChannel[]> {
 
   const room = await Room.findOne({
     attributes: ["id"],
@@ -182,23 +190,26 @@ export async function getArchivedRoomLogs(roomId: string, user: User, time: Date
   });
 
   if (room) {
-    return room.Messages.map(message => ({
-      a: message.Sender.discordName,
-      d: message.createdAt,
-      i: message.id,
-      t: message.message
-    }));
+    return room.Messages.map(message => {
+      return {
+        a: message.Sender.discordName,
+        d: message.createdAt!,
+        i: message.id,
+        t: message.message
+      };
+    });
+    
   } else {
     return [];
   }
 }
 
-class MinimalItem {
-  public d: string;
-  public h?: boolean;
-  public l?: boolean;
-  public n: string;
-  public q?: number;
+export interface MinimalItem {
+  d: string;
+  h?: boolean;
+  l?: boolean;
+  n: string;
+  q?: number;
 }
 
 export function itemToJson(item: ItemModel): MinimalItem {
@@ -225,9 +236,17 @@ export function triggerRoom(msg: DiscordMessage, action: string): void {
   }
 }
 
-function msgToJson(msg: DiscordMessage): object {
+export interface MinimalMessageWithChannel {
+  a: string;
+  c: string;
+  d: number;
+  i: string;
+  t: string;
+}
+
+function msgToJson(msg: DiscordMessage): MinimalMessageWithChannel {
   return {
-    a: msg.member.displayName,
+    a: msg.member?.displayName || "",
     c: msg.channel.id,
     d: msg.editedTimestamp || msg.createdTimestamp,
     i: msg.id,
@@ -235,12 +254,26 @@ function msgToJson(msg: DiscordMessage): object {
   };
 }
 
+export interface MinimalMessageWithoutChannel {
+  a: string;
+  d: Date;
+  i: string;
+  t: string;
+}
+
+export interface ChannelWithMinimalMessages {
+  d: string;
+  n: string;
+  m: MinimalMessageWithoutChannel[];
+  s: string;
+}
+
 export async function getMessages(user: User | GuildMember | DiscordUser,
-                                  time: Date): Promise<Dict<object[]>> {
+                                  time: Date): Promise<Dict<ChannelWithMinimalMessages>> {
 
   const messages = await Message.findAll({
     include: [{
-      attributes: ["id"],
+      attributes: ["id", "name"],
       model: Room
     }, {
       attributes: ["id"],
@@ -262,41 +295,65 @@ export async function getMessages(user: User | GuildMember | DiscordUser,
     }
   });
 
-  const response: Dict<object[]> = { };
+  const response: Dict<ChannelWithMinimalMessages> = { };
 
   for (const message of messages) {
     const messageJson = {
       a: message.Sender.discordName,
-      d: message.createdAt,
+      d: message.createdAt!,
       i: message.id,
       t: message.message
-    }, room = response[message.Room.id];
+    }
+    
+    const room = response[message.Room.id];
 
     if (room) {
-      room.push(messageJson);
+      room.m.push(messageJson);
     } else {
-      response[message.Room.id] = [messageJson];
+      const channel = guild.channels.resolve(message.Room.id) as TextChannel;
+
+      response[message.Room.id] = {
+        d: channel.topic || "",
+        m: [messageJson],
+        n: message.Room.name,
+        s: channel!.parent!.name
+      }
     }
   }
 
   return response;
 }
 
-export function getCommands(isAdmin: boolean): Dict<object> {
-  const commands: Dict<object> = { };
+export interface MinimalCommand {
+  a?: boolean;
+  d: string;
+  u: MinimalUsage[];
+}
+
+export interface MinimalUsage {
+  a?: boolean;
+  e?: string;
+  u: string;
+  x?: string;
+}
+
+export function getCommands(isAdmin: boolean): Dict<MinimalCommand> {
+  const commands: Dict<MinimalCommand> = { };
 
   for (const [name, description] of Object.entries(usages)) {
     if (description.adminOnly && !isAdmin) continue;
 
-    // tslint:disable-next-line:no-any
-    const command: Dict<any> = { d: description.description, u: [] };
+    const command: MinimalCommand = {
+      d: description.description,
+      u: []
+    };
 
     if (description.adminOnly) command.a = true;
 
     for (const use of description.uses) {
       if (use.admin && !isAdmin) continue;
 
-      const usage: Dict<boolean | string> = { u: use.use };
+      const usage: MinimalUsage = { u: use.use };
       if (use.admin) usage.a = true;
       if (use.example) usage.x = use.example;
       if (use.explanation) usage.e = use.explanation;
@@ -310,4 +367,126 @@ export function getCommands(isAdmin: boolean): Dict<object> {
   }
 
   return commands;
+}
+
+export interface MinimalRoomWithLink {
+  l: MinimalLink[];
+  n: string;
+}
+
+export interface MinimalLink {
+  h?: boolean;
+  l?: boolean;
+  n: string;
+  t: string;
+}
+
+export async function createMap(user: GuildMember | User): Promise<MinimalRoomWithLink[]> {
+  let rooms: Room[];
+
+  if (idIsAdmin(user.id)) {
+    rooms = await Room.findAll({
+      attributes: ["name"],
+      include: [{
+        as: "sources",
+        include: [{
+          as: "target",
+          attributes: ["name"],
+          model: Room
+        }],
+        model: Link,
+        required: false
+      }]
+    });
+
+
+  } else {
+    const userModel = await User.findOne({
+      attributes: ["id"],
+      include: [{
+        as: "visitedRooms",
+        attributes: roomAttributes,
+        include: [{
+          as: "sources",
+          include: [{
+            as: "target",
+            attributes: ["name"],
+            model: Room
+          }],
+          model: Link,
+          where: {
+            hidden: false
+          },
+          required: false
+        }],
+        model: Room
+      }],
+      where: {
+        id: user.id
+      }
+    });
+
+    rooms = userModel?.visitedRooms || [];
+
+    if (userModel && rooms) {
+      const linkIds = new Set((await userModel.getVisitedLinks()).map(link => link.id));
+
+      for (const room of rooms) {
+        for (const link of room.sources) {
+          if (!linkIds.has(link.id)) {
+            link.target.name = `${ link.name}??`
+          }
+        }
+      }
+    }
+  }
+
+  return rooms.map(room => {
+    const links = room.sources.map(source => {
+      const link: MinimalLink = {
+        n: source.name,
+        t: source.target.name
+      };
+
+      if (source.hidden) link.h = true;
+      if (source.locked) link.l = true;
+
+      return link;
+    });
+
+    return {
+      l: links,
+      n: room.name
+    };
+  });
+}
+
+export interface ChannelInfo {
+  d: string;
+  n: string;
+  s: string;
+}
+
+export async function getChannelInfo(roomId: string, userId: string): 
+  Promise<ChannelInfo | undefined> {
+
+  const channel = guild.channels.resolve(roomId);
+
+  if (channel && channel instanceof TextChannel) {
+    if (idIsAdmin(userId) || channel.members.has(userId)) {
+      const room = await Room.findOne({
+        where: {
+          id: roomId
+        }
+      });
+
+      return {
+        d: channel.topic || "",
+        n: room?.name || "",
+        s: channel.parent?.name || ""
+      }
+    }
+  }
+
+  return undefined;
 }

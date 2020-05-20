@@ -84,6 +84,7 @@ export class Message extends Model {
       await message.addUsers(users, { transaction });
       await transaction.commit();
     } catch (err) {
+      console.error(err);
       await transaction.rollback();
     }
   }

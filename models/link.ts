@@ -14,7 +14,8 @@ import {
   BelongsToSetAssociationMixin,
   BOOLEAN,
   INTEGER,
-  Model
+  Model,
+  STRING
 } from "sequelize";
 
 import { sequelize } from "./connection";
@@ -38,6 +39,7 @@ export class Link extends Model {
   /** whether the connection is locked or not */
   public hidden: boolean;
   public locked: boolean;
+  public name: string;
   public createdAt?: Date;
   public updatedAt?: Date;
 
@@ -77,6 +79,10 @@ Link.init({
   locked: {
     allowNull: false,
     type: BOOLEAN
+  },
+  name: {
+    allowNull: false,
+    type: STRING
   }
 }, { sequelize });
 
@@ -84,9 +90,15 @@ Link.init({
 import { Room } from "./room";
 import { User } from "./user";
 
-Link.belongsTo(Room, { as: "source" });
+Link.belongsTo(Room, {
+  as: "source",
+  foreignKey: "sourceId"
+});
 
-Link.belongsTo(Room, { as: "target" });
+Link.belongsTo(Room, {
+  as: "target",
+  foreignKey: "targetId"
+});
 
 Link.belongsToMany(User, {
   as: "visitors",

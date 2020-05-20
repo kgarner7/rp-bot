@@ -22,3 +22,15 @@ input[type=number] {
 .col-8.h3 {
   margin-bottom: 0px;
 }
+.arrowheadPath {
+  fill: white !important;
+}
+.path {
+  stroke: white !important; 
+}
+.poll {
+  padding: 0.25rem 1.5rem;
+}
+.poll > .dropdown-item {
+  display: initial;
+}

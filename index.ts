@@ -7,6 +7,7 @@ import express, { NextFunction, Request, Response } from "express";
 import session from "express-session";
 import helmet from "helmet";
 import { createServer } from "http";
+import { createClient } from "redis";
 
 import { client } from "./client";
 import { config } from "./config/config";
@@ -18,25 +19,31 @@ import { socket } from "./socket/socket";
 const RedisStore = connectRedis(session);
 
 // tslint:disable:no-magic-numbers
-const MAX_AGE = 1000 * 3600;
+const MAX_AGE = 1000 * 3600 * 4;
 const PORT = process.env.PORT || 443;
 // tslint:enable:no-magic-numbers
 
 const DEFAULT_ERROR_CODE = 500;
 const SECRET_LENGTH = 100;
 
+const redisClient = createClient();
+
+const cookieSecret = process.env.COOKIE_SECRET
+  || randomBytes(SECRET_LENGTH).toString("binary");
+
 const sessionMiddleware = session({
   cookie: {
     httpOnly: true,
     maxAge: MAX_AGE,
-    secure: true
+    secure: process.env.NODE_ENV === "production"
   },
   resave: true,
   rolling: true,
   saveUninitialized: false,
-  secret: randomBytes(SECRET_LENGTH)
-    .toString("binary"),
-  store: new RedisStore({ })
+  secret: cookieSecret,
+  store: new RedisStore({
+    client: redisClient
+  })
 });
 
 const options = {

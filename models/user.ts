@@ -96,6 +96,16 @@ export class User extends Model {
   public removeRequests: BelongsToManyRemoveAssociationsMixin<Request, number>;
   public setRequests: BelongsToManySetAssociationsMixin<Request, number>;
 
+  public visitedRooms: Room[];
+  public addVisitedRoom: BelongsToManyAddAssociationMixin<Room, string>;
+  public addVisitedRooms: BelongsToManyAddAssociationsMixin<Room, string>;
+  public countVisitedRooms: BelongsToManyCountAssociationsMixin;
+  public createVisitedRoom: BelongsToManyCreateAssociationMixin<Room>;
+  public getVisitedRooms: BelongsToManyGetAssociationsMixin<Room>;
+  public removeVisitedRoom: BelongsToManyRemoveAssociationMixin<Room, string>;
+  public removeVisitedRooms: BelongsToManyRemoveAssociationsMixin<Room, string>;
+  public setVisitedRooms: BelongsToManySetAssociationsMixin<Room, string>;
+
   /**
    * Creates a User model from a Discord GuildMember
    * @param member the guild member corresponding to this User
@@ -148,6 +158,8 @@ User.init({
 import { Link } from "./link";
 import { Message } from "./message";
 import { Request } from "./request";
+import { Room } from "./room";
+import { RoomVisitation } from "./roomVisitation";
 
 User.belongsToMany(Link, {
   as: "visitedLinks",
@@ -157,5 +169,10 @@ User.belongsToMany(Link, {
 User.hasMany(Message, { as: "SentMessages" });
 
 User.belongsToMany(Message, { through: "UserMessage" });
+
+User.belongsToMany(Room, { 
+  as: "visitedRooms",
+  through: RoomVisitation
+})
 
 User.hasMany(Request);
