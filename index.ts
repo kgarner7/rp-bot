@@ -94,7 +94,7 @@ app.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {
 initDB()
   .then(async () => {
     try {
-      await sequelize.sync({ force: true });
+      await sequelize.sync();
       await client.login(config.botToken);
 
       server.listen(PORT, () => {
