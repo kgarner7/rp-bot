@@ -3,7 +3,7 @@ import socketio, { Server } from "socket.io";
 
 import { guild } from "../client";
 import { idIsAdmin, sentToAdmins } from "../helpers/base";
-import { lock } from "../helpers/locks";
+import { lock, unlock } from "../helpers/locks";
 import { isNone } from "../helpers/types";
 import { client } from "../models/redis";
 
@@ -56,15 +56,11 @@ export function socket(app: any): Server {
       return;
     }
 
-    await lock({ release: false, room: LOCK_NAME });
-
     if (sockets.has(user.id)) {
       sockets.get(user.id)!.add(sock.id);
     } else {
       sockets.set(user.id, new Set([sock.id]));
     }
-
-    await lock({ release: true, room: LOCK_NAME });
 
     sock.on(CHANNEL_UPDATE, 
       async (roomId: string, callback: (data: ChannelInfo | undefined) => void) => {
@@ -101,9 +97,12 @@ export function socket(app: any): Server {
     });
 
     sock.on(USER_INVENTORY_CHANGE, async () => {
-      await lock({ release: false, user: user.id });
+      const redlock = await lock({ user: user.id });
+
       await user.reload({ attributes: ["inventory" ]});
-      await lock({ release: true, user: user.id });
+
+      await unlock(redlock);
+
       const json = inventoryToJson(user.inventory);
       sock.emit(USER_INVENTORY_CHANGE, json);
     });
@@ -117,7 +116,6 @@ export function socket(app: any): Server {
     });
 
     sock.on("disconnect", async () => {
-      await lock({ release: false, room: LOCK_NAME });
       const userSet = sockets.get(user.id);
 
       if (userSet) {
@@ -129,8 +127,6 @@ export function socket(app: any): Server {
           sockets.set(user.id, userSet);
         }
       }
-
-      await lock({ release: true, room: LOCK_NAME });
     });
 
     sock.on("error", err => {

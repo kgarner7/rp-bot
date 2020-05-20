@@ -5,7 +5,7 @@ import { guild } from "../client";
 import { ChannelNotFoundError } from "../config/errors";
 import { lineEnd, requireAdmin } from "../helpers/base";
 import { CustomMessage } from "../helpers/classes";
-import { lock } from "../helpers/locks";
+import { lock, unlock } from "../helpers/locks";
 import { Undefined } from "../helpers/types";
 import { Link, Room as RoomModel, User as UserModel, RoomVisitation } from "../models/models";
 import { Neighbor } from "../rooms/room";
@@ -135,7 +135,7 @@ async function moveMember(member: GuildMember, target: string, source: string = 
 export async function move(msg: CustomMessage): Promise<void> {
   requireAdmin(msg);
 
-  await lock({ release: false, user: [msg.author.id ]});
+  const redlock = await lock({ user: [msg.author.id ]});
 
   try {
     const command = parseCommand(msg, ["to"]),
@@ -163,12 +163,12 @@ export async function move(msg: CustomMessage): Promise<void> {
   } catch (err) {
     throw err;
   } finally {
-    await lock({ release: true, user: [msg.author.id ]});
+    await unlock(redlock);
   }
 }
 
 export async function userMove(msg: CustomMessage): Promise<void> {
-  await lock({ release: false, user: [msg.author.id ]});
+  const redlock = await lock({ user: [msg.author.id ]});
 
   try {
     const command = parseCommand(msg, ["through"]),
@@ -221,6 +221,6 @@ export async function userMove(msg: CustomMessage): Promise<void> {
   } catch (err) {
     throw err;
   } finally {
-    await lock({ release: true, user: msg.author.id });
+    await unlock(redlock);
   }
 }
