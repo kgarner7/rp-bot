@@ -8,7 +8,9 @@ import { isNone } from "../helpers/types";
 import { client } from "../models/redis";
 
 import {
+  CHANNEL_UPDATE,
   COMMANDS,
+  MAPS,
   MESSAGES_GET,
   ROOM_INFORMATION,
   ROOM_LOGS,
@@ -22,13 +24,21 @@ import {
   getRooms,
   getUser,
   inventoryToJson,
-  setServer
+  setServer,
+  createMap,
+  getChannelInfo,
+  ChannelInfo
 } from "./helpers";
 
 const LOCK_NAME = "socket-disconnect";
 const TIME_FORMAT = "Y-MM-DDTHH:mm:ss.SSSSZZ";
 
 export const sockets: Map<string, Set<string>> = new Map();
+
+export interface UserData {
+  a: boolean; 
+  n: string;
+}
 
 // tslint:disable-next-line:no-any
 export function socket(app: any): Server {
@@ -56,41 +66,54 @@ export function socket(app: any): Server {
 
     await lock({ release: true, room: LOCK_NAME });
 
+    sock.on(CHANNEL_UPDATE, 
+      async (roomId: string, callback: (data: ChannelInfo | undefined) => void) => {
+
+      const data = await getChannelInfo(roomId, user.id);
+
+      callback(data);
+    });
+
     sock.on(COMMANDS, async () => {
       const commands = getCommands(idIsAdmin(user.id));
-      sock.emit(COMMANDS, JSON.stringify(commands));
+      sock.emit(COMMANDS, commands);
+    });
+
+    sock.on(MAPS, async () => {
+      const map = await createMap(user);
+      sock.emit(MAPS, map);
     });
 
     sock.on(MESSAGES_GET, async () => {
       const messages = await getMessages(user, sock.request.session.loginTime);
-      sock.emit(MESSAGES_GET, JSON.stringify(messages));
+      sock.emit(MESSAGES_GET, messages);
     });
 
     sock.on(ROOM_INFORMATION, async () => {
       const rooms = await getRooms(user);
-      sock.emit(ROOM_INFORMATION, JSON.stringify(rooms));
+      sock.emit(ROOM_INFORMATION, rooms);
     });
 
     sock.on(ROOM_LOGS, async (roomId: string) => {
       const messages = await getArchivedRoomLogs(roomId, user,
         sock.request.session.loginTime);
-      sock.emit(ROOM_LOGS, JSON.stringify(messages), roomId);
+      sock.emit(ROOM_LOGS, messages, roomId);
     });
 
     sock.on(USER_INVENTORY_CHANGE, async () => {
       await lock({ release: false, user: user.id });
       await user.reload({ attributes: ["inventory" ]});
       await lock({ release: true, user: user.id });
-      const json = JSON.stringify(inventoryToJson(user.inventory));
+      const json = inventoryToJson(user.inventory);
       sock.emit(USER_INVENTORY_CHANGE, json);
     });
 
     sock.on(USER_NAME, async () => {
       await user.reload({ attributes: ["discordName"] });
-      sock.emit(USER_NAME, JSON.stringify({
+      sock.emit(USER_NAME, {
         a: idIsAdmin(user.id),
         n: user.discordName
-      }));
+      } as UserData);
     });
 
     sock.on("disconnect", async () => {

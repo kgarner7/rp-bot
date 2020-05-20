@@ -1,4 +1,5 @@
-import { GuildMember, Role } from "discord.js";
+import { GuildMember, Role, TextChannel, User } from "discord.js";
+import { Op } from "sequelize";
 
 import { guild } from "../client";
 import { ChannelNotFoundError } from "../config/errors";
@@ -6,7 +7,7 @@ import { lineEnd, requireAdmin } from "../helpers/base";
 import { CustomMessage } from "../helpers/classes";
 import { lock } from "../helpers/locks";
 import { Undefined } from "../helpers/types";
-import { Link, Room as RoomModel } from "../models/models";
+import { Link, Room as RoomModel, User as UserModel, RoomVisitation } from "../models/models";
 import { Neighbor } from "../rooms/room";
 import { manager } from "../rooms/roomManager";
 
@@ -40,8 +41,8 @@ export const usage: Action = {
     description: "Forceably moves a user to another room",
     uses: [
       {
-        example: "!move user 1 to room a",
-        use: "!move **user** to **room**"
+        example: "!mv user 1 to room a",
+        use: "!mv **user** to **room**"
       }
     ]
   }
@@ -56,18 +57,18 @@ async function moveMember(member: GuildMember, target: string, source: string = 
     const link = await Link.findOne({
       include: [{
         as: "source",
-        attributes: ["name"],
+        attributes: ["id", "name"],
         model: RoomModel,
         where: { name: from }
       }, {
         as: "target",
-        attributes: ["name"],
+        attributes: ["id", "name"],
         model: RoomModel,
         where: { name: to }
       }]
     });
 
-    if (link !== null) {
+    if (link) {
       try {
         await link.addVisitor(member.id);
         manager.links.get(from)!.get(to)!.visitors.add(member.id);
@@ -91,6 +92,42 @@ async function moveMember(member: GuildMember, target: string, source: string = 
   }
 
   await member.roles.set(roles);
+
+  const channelIds: string[] = [];
+
+  for (const [, channel] of guild.channels.cache) {
+    if (channel instanceof TextChannel && channel.members.has(member.id)) {
+      channelIds.push(channel.id);
+    }
+  }
+
+  const possibleRooms = await RoomModel.findAll({
+    attributes: ["id"],
+    include: [{
+      as: "visitors",
+      model: UserModel,
+      required: false,
+      where: {
+        id: member.id
+      }
+    }],
+    where: {
+      id: {
+        [Op.or]: channelIds
+      }
+    }
+  });
+
+  for (const room of possibleRooms) {
+    if (room.visitors.length === 0) {
+      await RoomVisitation.findOrCreate({
+        where: {
+          RoomId: room.id,
+          UserId: member.id
+        }
+      });
+    }
+  }
 
   if (!member.user.bot) member.send(`You were moved to ${target}`);
 }

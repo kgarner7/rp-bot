@@ -19,7 +19,7 @@ import { socket } from "./socket/socket";
 const RedisStore = connectRedis(session);
 
 // tslint:disable:no-magic-numbers
-const MAX_AGE = 1000 * 3600;
+const MAX_AGE = 1000 * 3600 * 4;
 const PORT = process.env.PORT || 443;
 // tslint:enable:no-magic-numbers
 
@@ -28,17 +28,19 @@ const SECRET_LENGTH = 100;
 
 const redisClient = createClient();
 
+const cookieSecret = process.env.COOKIE_SECRET
+  || randomBytes(SECRET_LENGTH).toString("binary");
+
 const sessionMiddleware = session({
   cookie: {
     httpOnly: true,
     maxAge: MAX_AGE,
-    secure: true
+    // secure: true
   },
   resave: true,
   rolling: true,
   saveUninitialized: false,
-  secret: randomBytes(SECRET_LENGTH)
-    .toString("binary"),
+  secret: cookieSecret,
   store: new RedisStore({
     client: redisClient
   })
@@ -92,7 +94,7 @@ app.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {
 initDB()
   .then(async () => {
     try {
-      await sequelize.sync();
+      await sequelize.sync({ force: true });
       await client.login(config.botToken);
 
       server.listen(PORT, () => {

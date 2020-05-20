@@ -6,7 +6,7 @@ import tmp from "tmp";
 
 import { guild } from "../client";
 import {  NoLogError } from "../config/errors";
-import { lineEnd, requireAdmin, isAdmin, userIsAdmin } from "../helpers/base";
+import { lineEnd, requireAdmin, userIsAdmin } from "../helpers/base";
 import { CustomMessage } from "../helpers/classes";
 import { Null } from "../helpers/types";
 import { Link, Message as MessageModel, Room as RoomModel, User } from "../models/models";

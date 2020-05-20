@@ -179,7 +179,9 @@ client.on("message", async (msg: DiscordMessage) => {
     }
   } 
 
-  await Message.createFromMsg(msg);
+  if (msg.channel instanceof TextChannel) {
+    await Message.createFromMsg(msg);
+  }
 });
 
 client.on("guildMemberAdd", async (member) => {

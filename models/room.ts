@@ -11,7 +11,15 @@ import {
   JSON,
   Model,
   STRING,
-  TEXT
+  TEXT,
+  BelongsToManyAddAssociationMixin,
+  BelongsToManyAddAssociationsMixin,
+  BelongsToManyCountAssociationsMixin,
+  BelongsToManyCreateAssociationMixin,
+  BelongsToManyGetAssociationsMixin,
+  BelongsToManyRemoveAssociationMixin,
+  BelongsToManyRemoveAssociationsMixin,
+  BelongsToManySetAssociationsMixin
 } from "sequelize";
 
 import { Dict } from "../helpers/base";
@@ -69,6 +77,16 @@ export class Room extends Model {
   public removeTargets: HasManyRemoveAssociationsMixin<Link, string>;
   public setTargets: HasManySetAssociationsMixin<Link, string>;
 
+  public visitors: User[];
+  public addVisitor: BelongsToManyAddAssociationMixin<User, string>;
+  public addVisitors: BelongsToManyAddAssociationsMixin<User, string>;
+  public countVisitors: BelongsToManyCountAssociationsMixin;
+  public createVisitor: BelongsToManyCreateAssociationMixin<User>;
+  public getVisitors: BelongsToManyGetAssociationsMixin<User>;
+  public removeVisitor: BelongsToManyRemoveAssociationMixin<User, string>;
+  public removeVisitors: BelongsToManyRemoveAssociationsMixin<User, string>;
+  public setVisitors: BelongsToManySetAssociationsMixin<User, string>;
+
   /**
    * Creates a Room model from a Discord channel
    * @param channel the discord channel corresponding to this room
@@ -99,9 +117,22 @@ Room.init({
 // tslint:disable-next-line:ordered-imports
 import { Link } from "./link";
 import { Message } from "./message";
+import { RoomVisitation } from "./roomVisitation";
+import { User } from "./user";
 
 Room.hasMany(Message);
 
-Room.hasMany(Link, { as: "sources" });
+Room.hasMany(Link, {
+  as: "sources",
+  foreignKey: "sourceId"
+});
 
-Room.hasMany(Link, { as: "targets" });
+Room.hasMany(Link, {
+  as: "targets",
+  foreignKey: "targetId"
+});
+
+Room.belongsToMany(User, {
+  as: "visitors",
+  through: RoomVisitation
+});

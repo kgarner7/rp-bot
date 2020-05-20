@@ -177,7 +177,7 @@ function missing(msg: CustomMessage, item: None<ItemModel>): boolean {
   return isNone(item) || (item.hidden && !isAdmin(msg));
 }
 
-function notifyUserInventoryChange(user: User): void {
+/*function notifyUserInventoryChange(user: User): void {
   const json = JSON.stringify(inventoryToJson(user.inventory));
   triggerUser(user, USER_INVENTORY_CHANGE, json);
 }
@@ -204,7 +204,7 @@ function notifyRoomInventoryChange(msg: CustomMessage, room: Room): void {
     .catch(error => {
       console.error(error);
     });
-}
+}*/
 
 export async function consume(msg: CustomMessage): Promise<void> {
   const command = parseCommand(msg, ["of"]),
@@ -243,7 +243,7 @@ export async function consume(msg: CustomMessage): Promise<void> {
       inventory: user.inventory
     });
 
-    notifyUserInventoryChange(user);
+    // notifyUserInventoryChange(user);
 
     sendMessage(msg, `You consumed ${quantity} of ${itemName}`);
   } finally {
@@ -322,14 +322,14 @@ async function changeUserItem(command: Command, target: string, name: string):
     }
 
     await user.update({ inventory: user.inventory });
-    notifyUserInventoryChange(user);
+    // notifyUserInventoryChange(user);
   } finally {
     await lock({ release: true, user: user.id });
   }
 }
 
 async function changeRoomItem(command: Command, target: string, name: string,
-                              msg: CustomMessage): Promise<void> {
+                              _msg: CustomMessage): Promise<void> {
   const roomModel = await getRoomModel(target);
 
   if (!roomModel) throw new Error(`Could not find room ${target}`);
@@ -353,7 +353,7 @@ async function changeRoomItem(command: Command, target: string, name: string,
     }
 
     await roomModel.update({ inventory: roomModel.inventory });
-    notifyRoomInventoryChange(msg, roomModel);
+    // notifyRoomInventoryChange(msg, roomModel);
   } finally {
     await lock({ release: true, room: roomModel.id});
   }
@@ -480,8 +480,8 @@ export async function dropItem(msg: CustomMessage): Promise<void> {
       }, { transaction });
 
       transaction.commit();
-      notifyUserInventoryChange(user);
-      notifyRoomInventoryChange(msg, roomModel);
+      // notifyUserInventoryChange(user);
+      // notifyRoomInventoryChange(msg, roomModel);
     } catch (err) {
       roomItem.quantity -= quantity;
 
@@ -529,7 +529,7 @@ export async function editItem(msg: CustomMessage): Promise<void> {
     item.description = text;
 
     await user.update({ inventory: user.inventory });
-    notifyUserInventoryChange(user);
+    // notifyUserInventoryChange(user);
     sendMessage(msg, `Successfully updated ${itemName}`, true);
   } finally {
     await lock({ release: true, user: user.id });
@@ -669,8 +669,8 @@ export async function giveItem(msg: CustomMessage): Promise<void> {
         transaction
       });
 
-      notifyUserInventoryChange(sender);
-      notifyUserInventoryChange(target);
+      // notifyUserInventoryChange(sender);
+      // notifyUserInventoryChange(target);
 
       transaction.commit();
     } catch (err) {
@@ -911,8 +911,8 @@ export async function takeItem(msg: CustomMessage): Promise<void> {
       });
 
       await transaction.commit();
-      notifyUserInventoryChange(user);
-      notifyRoomInventoryChange(msg, roomModel);
+      // notifyUserInventoryChange(user);
+      // notifyRoomInventoryChange(msg, roomModel);
 
       sendMessage(msg, `${senderName(msg)} took ${quantity} of ${itemName}`);
     } catch (err) {

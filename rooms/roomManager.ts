@@ -144,15 +144,15 @@ export class RoomManager {
       if (!isNone(channel)) await channel.delete();
     }
 
-    await transaction.commit();
-
     const ids: number[] = [];
 
     const links = await Link.findAll({
       include: [{
         as: "visitors",
-        model: User
-      }]
+        model: User,
+        required: false
+      }],
+      transaction
     });
 
     const linkMap = new Map<string, Map<string, Link>>();
@@ -167,6 +167,7 @@ export class RoomManager {
 
       sourceMap.set(link.targetId, link);
     }
+
 
     for (const [, source] of this.rooms) {
       for (const [target, neighbor] of source.neighborMap) {
@@ -183,19 +184,24 @@ export class RoomManager {
           link = linkMap.get(sourceId)!
             .get(targetId)!;
 
-          if (link.locked !== neighbor.locked || link.hidden !== neighbor.hidden) {
+          if (link.locked !== neighbor.locked || 
+              link.hidden !== neighbor.hidden ||
+              link.name !== neighbor.name) {
+
             await link.update({
               hidden: neighbor.hidden,
-              locked: neighbor.locked
-            });
+              locked: neighbor.locked,
+              name: neighbor.name
+            }, { transaction });
           }
         } else {
           link = await Link.create({
             hidden: neighbor.hidden,
             locked: neighbor.locked,
+            name: neighbor.name,
             sourceId,
             targetId
-          });
+          }, { transaction });
 
           link.visitors = [];
         }
@@ -219,6 +225,8 @@ export class RoomManager {
         }
       }
     }
+
+    await transaction.commit();
   }
 
   public static async create(directory: string, force: boolean = false):

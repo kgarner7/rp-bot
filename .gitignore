@@ -1,8 +1,9 @@
+data/rooms/*
+data/users/*
+
 dist/*
-node_modules
-testing.ts
-!.gitkeep
-notes/*
-.stversions
-.stignore
+
 certs
+node_modules
+
+!.gitkeep
