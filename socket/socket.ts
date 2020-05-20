@@ -3,7 +3,11 @@ import socketio, { Server } from "socket.io";
 
 import { guild } from "../client";
 import { idIsAdmin, sentToAdmins } from "../helpers/base";
+<<<<<<< HEAD
 import { lock, unlock } from "../helpers/locks";
+=======
+import { lock } from "../helpers/locks";
+>>>>>>> master
 import { isNone } from "../helpers/types";
 import { client } from "../models/redis";
 
@@ -61,6 +65,14 @@ export function socket(app: any): Server {
     } else {
       sockets.set(user.id, new Set([sock.id]));
     }
+
+    sock.on(CHANNEL_UPDATE, 
+      async (roomId: string, callback: (data: ChannelInfo | undefined) => void) => {
+
+      const data = await getChannelInfo(roomId, user.id);
+
+      callback(data);
+    });
 
     sock.on(CHANNEL_UPDATE, 
       async (roomId: string, callback: (data: ChannelInfo | undefined) => void) => {
