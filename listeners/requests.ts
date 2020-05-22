@@ -3,7 +3,7 @@ import { Op, WhereAttributeHash } from "sequelize";
 import { guild } from "../client";
 import { requireAdmin, sentToAdmins } from "../helpers/base";
 import { CustomMessage } from "../helpers/classes";
-import { lock } from "../helpers/locks";
+import { lock, unlock } from "../helpers/locks";
 import { Undefined } from "../helpers/types";
 import { Request, User } from "../models/models";
 import { RequestStatus } from "../models/request";
@@ -217,7 +217,7 @@ async function changeRequestStatus(msg: CustomMessage,
       changedMessage += `\ndescription ${request.description} => ${description}`;
     }
 
-    await lock({ release: false, user: requester.id });
+    const redlock = await lock({ user: requester.id });
 
     try {
       const user = request.User;
@@ -250,7 +250,7 @@ async function changeRequestStatus(msg: CustomMessage,
       requester.send(message + changedMessage);
       sendMessage(msg, `Created ${quantity} of ${name} for ${user.discordName}`);
     } finally {
-      await lock({ release: true, user: requester.id });
+      await unlock(redlock);
     }
   }
 }
