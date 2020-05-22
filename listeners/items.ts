@@ -381,6 +381,10 @@ function createOrUpdateItem(command: Command, item: None<ItemModel>,
       item.description = command.args.get("text")!.join();
     }
 
+    if (command.args.has("count")) {
+      item.quantity = getInt(command.args.get("count")!.join());
+    }
+
     return item;
   } else {
     const description = command.args.get("text");

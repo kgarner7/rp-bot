@@ -1,16 +1,17 @@
 import React from "react";
 
+import { VisibleStates } from "./visibleStates";
 import Poll from "./poll";
 
 interface HeaderProps {
-  selected: string;
+  selected: VisibleStates;
   socket: SocketIOClient.Socket;
   username: string;
 
   handleToggle(): void;
 }
 
-function Header(props: HeaderProps) {
+const Header = React.memo((props: HeaderProps) => {
   return(
     <nav className="navbar navbar-expand-lg border-bottom mb-3">
       <a className="navbar-brand" onClick={props.handleToggle} href="#">Toggle Sidebar</a>
@@ -25,13 +26,12 @@ function Header(props: HeaderProps) {
           <li>
             <Poll selected={ props.selected } socket={ props.socket }/>
           </li>
-          {/* <li><a className="dropdown-item" href="/button">The button</a></li> */}
           <li><a className="dropdown-item" href="/logout">Logout</a></li>
         </ul>
       </div>
     </nav>
   );
-}
+});
 
 
 export default Header;

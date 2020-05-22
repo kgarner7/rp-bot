@@ -51,7 +51,7 @@ interface MessageProps {
   time: Date;
 }
 
-function Message(props: MessageProps): JSX.Element {
+const Message = React.memo((props: MessageProps) => {
   const className = (props.isAuthor ? "right": "left") + " alert alert-primary";
   const name = props.isAuthor ? "You" : props.author;
   const time = new Date(props.time).toLocaleString("en-US");
@@ -62,7 +62,7 @@ function Message(props: MessageProps): JSX.Element {
       <div>{props.content}</div>
     </div>
   );
-}
+});
 
 export interface MessageData {
   author: string;
@@ -71,8 +71,8 @@ export interface MessageData {
   time: Date;
 }
 
-
 interface RoomProps {
+  archive: MessageData[];
   description: string;
   id: string;
   messages: MessageData[];
@@ -83,36 +83,36 @@ interface RoomProps {
   toggleModal(id: string): void;
 }
 
-interface RoomState {
-  scroll: number;
-}
-
-class Room extends React.Component<RoomProps, RoomState> {
+class Room extends React.PureComponent<RoomProps> {
   private messages: React.RefObject<any>;
+  private scroll: number;
 
   public constructor(props: RoomProps) {
     super(props)
-    this.state = { scroll: -1 };
+    this.state = {};
 
     this.messages = React.createRef();
     this.handleScroll = this.handleScroll.bind(this);
+    this.scroll = -1;
   }
 
   public componentDidMount() {
-    const scrollTarget = this.state.scroll === -1 ?
-      this.messages.current!.scrollHeight : this.state.scroll;
+    const scrollTarget = this.scroll === -1 ?
+      this.messages.current!.scrollHeight : this.scroll;
 
     this.messages.current!.scrollTo(0, scrollTarget);
   }
 
   public componentDidUpdate() {
-    if (this.state.scroll === -1) {
+    if (this.scroll === -1) {
       this.messages.current!.scrollTo(0, this.messages.current!.scrollHeight);
     }
   }
 
   public render() {
-    const messages = this.props.messages.map(message => {
+    const allMessages = this.props.archive.concat(this.props.messages);
+
+    const messages = allMessages.map(message => {
       const isAuthor = this.props.username === message.author;
 
       return (<div key={message.id}>
@@ -136,11 +136,8 @@ class Room extends React.Component<RoomProps, RoomState> {
   }
 
   private handleScroll() {
-    const elem = this.messages.current!
-    const scroll = elem.scrollTop === elem.scrollTopMax ? 
-        -1 : elem.scrollTop;;
-
-    this.setState({ scroll });
+    const elem = this.messages.current!;
+    this.scroll = elem.scrollTop === elem.scrollTopMax ? -1 : elem.scrollTop;
   }
 }
 
@@ -163,7 +160,7 @@ function matchMessageToFilters(filters: string[], message: MessageData) {
   return false;
 }
 
-export interface RoomMessagesData {
+export interface RoomData {
   archive: MessageData[];
   description: string;
   hasArchive?: boolean;
@@ -175,7 +172,7 @@ export interface RoomMessagesData {
 
 interface RoomModalProps {
   roomId: string;
-  rooms: Map<string, RoomMessagesData>;
+  rooms: Map<string, RoomData>;
   username: string;
 
   getLogs(roomId: string): void;
@@ -185,8 +182,10 @@ interface RoomModalState {
   filter: string;
 }
 
-class RoomModal extends React.Component<RoomModalProps, RoomModalState> {
-  constructor(props: RoomModalProps) {
+const EMPTY_LIST: Array<[string, string]> = [];
+
+class RoomModal extends React.PureComponent<RoomModalProps, RoomModalState> {
+  public constructor(props: RoomModalProps) {
     super(props);
 
     this.state = {
@@ -259,7 +258,7 @@ class RoomModal extends React.Component<RoomModalProps, RoomModalState> {
         name={this.props.roomId}
         filter={this.state.filter}
         handleFilter={this.handleFilter}
-        options={[]}
+        options={EMPTY_LIST}
         placeholder={"Enter text to search, or a: to find a sender"}
       />; 
     }
@@ -299,7 +298,7 @@ class RoomModal extends React.Component<RoomModalProps, RoomModalState> {
 }
 
 interface RoomsProps {
-  rooms: Map<string, RoomMessagesData>;
+  rooms: Map<string, RoomData>;
   selected: boolean;
   sidebar: boolean;
   width: number;
@@ -318,7 +317,7 @@ interface RoomsState {
 
 type LayoutMap = Map<string, [number, number]>;
 
-class Rooms extends React.Component<RoomsProps, RoomsState> {
+class Rooms extends React.PureComponent<RoomsProps, RoomsState> {
   public constructor(props: RoomsProps) {
     super(props);
 
@@ -403,17 +402,15 @@ class Rooms extends React.Component<RoomsProps, RoomsState> {
         y++;
       }
 
-      const messages = room[1].archive
-        .concat(room[1].messages);
-
       return (
         <div key={name}>
           <Room
+            archive={room[1].archive}
             id={room[0]}
             section={room[1].section}
             description={room[1].description}
             name={name} 
-            messages={messages} 
+            messages={room[1].messages} 
             username={this.props.username}
             toggleModal={this.toggleModal}
           />
@@ -461,25 +458,30 @@ class Rooms extends React.Component<RoomsProps, RoomsState> {
       return;
     }
 
-    const currentMap = this.state.sizes;
-    const layoutMap = new Map();
-
-    let changed = false;
-
-    for(const item of layout) {
-      const currentLayout = currentMap.get(item.i),
-        layoutChange = currentLayout === undefined ||
-          currentLayout[0] !== item.w || currentLayout[1] !== item.h;
-
-      if (layoutChange) {
-        layoutMap.set(item.i, [item.w, item.h]);
-        changed = true;
+    this.setState(state => {
+      const currentMap = state.sizes;
+      const layoutMap = new Map();
+  
+      let changed = false;
+  
+      for (const item of layout) {
+        const currentLayout = currentMap.get(item.i);
+        const layoutChange = currentLayout === undefined
+          || currentLayout[0] !== item.w
+          || currentLayout[1] !== item.h;
+  
+        if (layoutChange) {
+          layoutMap.set(item.i, [item.w, item.h]);
+          changed = true;
+        }
       }
-    }
-
-    if (changed) {
-      this.setState({ sizes: layoutMap })
-    }
+  
+      if (changed) {
+        return { sizes: layoutMap };
+      } else {
+        return { sizes: currentMap };
+      }
+    })
   }
 
   private toggleModal(roomId: string) {

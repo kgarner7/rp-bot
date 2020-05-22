@@ -8,13 +8,14 @@ import { Op } from "sequelize";
 import { Server, Socket } from "socket.io";
 
 import { guild } from "../client";
-import { Dict, idIsAdmin } from "../helpers/base";
+import { Dict, idIsAdmin, userIsAdmin } from "../helpers/base";
 import { None, Null } from "../helpers/types";
 import { usages } from "../listeners/actions";
 import { Link, Message, Room, sequelize, User } from "../models/models";
 import { ItemModel } from "../rooms/item";
 
 import { sockets } from "./socket";
+import { currentRoom } from "../listeners/baseHelpers";
 
 let serverSocket: Server;
 
@@ -321,6 +322,39 @@ export async function getMessages(user: User | GuildMember | DiscordUser,
     }
   }
 
+  let rooms: Room[] = [];
+
+  if (idIsAdmin(user.id)) {
+    rooms = await Room.findAll({})
+  } else {
+    const visitor = await User.findOne({
+      include: [{
+        as: "visitedRooms",
+        model: Room,
+      }],
+      where: {
+        id: user.id
+      }
+    });
+
+    if (visitor) {
+      rooms = visitor.visitedRooms;
+    }
+  }
+
+  for (const room of rooms) {
+    if (!(room.id in response)) {
+      const channel = guild.channels.resolve(room.id) as TextChannel;
+
+      response[room.id] = {
+        d: channel.topic || "",
+        m: [],
+        n: room.name,
+        s: channel!.parent!.name
+      }
+    }
+  }
+
   return response;
 }
 
@@ -489,4 +523,53 @@ export async function getChannelInfo(roomId: string, userId: string):
   }
 
   return undefined;
+}
+
+export interface UserInfo {
+  i: MinimalItem[];
+  l: string;
+  n: string;
+}
+
+export async function getUsersInfo(): Promise<UserInfo[]> {
+  return (await User.findAll())
+    .filter(user => !idIsAdmin(user.id))
+    .map(user => {
+      const inventory = inventoryToJson(user.inventory);
+      const member = guild.members.resolve(user.id);
+
+      let location: string = "";
+
+      if (member) {
+        location = currentRoom(member) || "";
+      }
+
+      return {
+        i: inventory,
+        l: location,
+        n: user.name
+      }
+    });
+}
+
+export interface UserItemChange {
+  n: MinimalItem;
+  o?: MinimalItem;
+  u: string;
+}
+
+export async function handleUserItemChange(data: UserItemChange): 
+  Promise<UserItemChange | undefined> {
+
+  const user = await User.findOne({
+    where: {
+      discordName: data.u 
+    }
+  });
+
+  if (user) {
+    
+  } else {
+    return undefined;
+  }
 }

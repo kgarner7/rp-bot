@@ -4,29 +4,49 @@ import {
   MAPS,
   ROOM_INFORMATION,
   USER_INVENTORY_CHANGE,
+  USERS_INFO,
 } from "../../socket/consts";
+import { VisibleStates } from "./visibleStates";
 
-const COMMAND_MAPPING = {
-  Inventory: USER_INVENTORY_CHANGE,
-  "Current room(s)": ROOM_INFORMATION,
-  Map: MAPS
+const COMMAND_MAPPING: {
+  [key in VisibleStates]?: string;
+} = {
+  [VisibleStates.Inventory]: USER_INVENTORY_CHANGE,
+  [VisibleStates.CurrentRooms]: ROOM_INFORMATION,
+  [VisibleStates.Map]: MAPS,
+  [VisibleStates.ViewUsers]: USERS_INFO
 }
 
 const POLL_TIMING = 120000; // 2 minutes
 
 interface PollProps {
-  selected: string;
+  selected: VisibleStates;
   socket: SocketIOClient.Socket;
 }
 
-type PollOp = "Inventory" | "Current room(s)" | "Map";
-
-interface PollState {
-  Inventory: Date;
-  "Current room(s)"?: Date;
-  Map?: Date;
+type PollState = {
+  [key in VisibleStates]?: Date;
+} & {
   now: Date;
 }
+
+function sameDate(a?: Date, b?: Date): boolean {
+  if (!a && !b) {
+    return true;
+  } else if (a && b) {
+    return a.getTime() === b.getTime();
+  } else {
+    return false;
+  }
+}
+
+const TIMERS: Array<keyof PollState> = [
+  VisibleStates.CurrentRooms,
+  VisibleStates.Inventory,
+  VisibleStates.Map,
+  VisibleStates.ViewUsers,
+  "now"
+];
 
 class Poll extends React.Component<PollProps, PollState> {
   private pollingId: NodeJS.Timeout;
@@ -35,19 +55,36 @@ class Poll extends React.Component<PollProps, PollState> {
     super(props);
 
     this.state = {
-      Inventory: new Date(),
-      "Current room(s)": undefined,
-      Map: undefined,
+      [VisibleStates.Inventory]: new Date(),
+      [VisibleStates.CurrentRooms]: undefined,
+      [VisibleStates.Map]: undefined,
+      [VisibleStates.ViewUsers]: undefined,
       now: new Date()
     }
 
     this.handleRefresh = this.handleRefresh.bind(this);
   }
 
+  public shouldComponentUpdate(nextProps: PollProps, nextState: PollState): boolean {
+    if (this.props.selected !== nextProps.selected) {
+      return true;
+    } else if (COMMAND_MAPPING[nextProps.selected] === undefined) {
+      return false;
+    }
+
+    for (const timer of TIMERS) {
+      if (!sameDate(this.state[timer], nextState[timer])) {
+        return true;
+      }
+    }
+
+    return false;
+  }
+
   public componentDidMount() {
     this.pollingId = setInterval(() => {
       if (this.props.selected in COMMAND_MAPPING) {
-        this.conditionallyRefreshState(this.props.selected as PollOp);
+        this.conditionallyRefreshState(this.props.selected);
       }
       
       this.setState({ 
@@ -64,17 +101,17 @@ class Poll extends React.Component<PollProps, PollState> {
     const selected = this.props.selected;
 
     if (oldProps.selected !== selected && selected in COMMAND_MAPPING) {
-      this.conditionallyRefreshState(selected as PollOp);
+      this.conditionallyRefreshState(selected);
     }
   }
   
   public render() {
-    if (this.props.selected in this.state) {
+    if (this.props.selected in COMMAND_MAPPING) {
       let lastRefreshTime;
 
-      if (this.props.selected in COMMAND_MAPPING && this.state[this.props.selected as PollOp]) {
+      if (this.state[this.props.selected]) {
         const timeDiffInMs = this.state.now.valueOf() - 
-          this.state[this.props.selected as PollOp]!.valueOf();
+          this.state[this.props.selected]!.valueOf();
           
         const nextRefresh = Math.round((POLL_TIMING - timeDiffInMs) / 1000);
 
@@ -98,26 +135,35 @@ class Poll extends React.Component<PollProps, PollState> {
     }
   }
 
-  private conditionallyRefreshState(selected: PollOp) {
-    const previousUpdate = this.state[selected];
-    const now = new Date();
+  private conditionallyRefreshState(selected: VisibleStates) {
+    const command = COMMAND_MAPPING[selected];
 
-    if (!previousUpdate || now.valueOf() - previousUpdate.valueOf() > POLL_TIMING) {
-      this.props.socket.emit(COMMAND_MAPPING[selected]);
-      this.setState({
-        [selected]: now
-      } as Pick<PollState, keyof PollState>);
+    if (command) {
+      this.setState(state => {
+        const previousUpdate = state[selected];
+        const now = new Date();
+  
+        if (!previousUpdate || now.valueOf() - previousUpdate.valueOf() > POLL_TIMING) {
+          this.props.socket.emit(command);
+
+          return { [selected]: now } as Pick<PollState, keyof PollState>;
+        } else {
+          return { [selected]: previousUpdate } as Pick<PollState, keyof PollState>;
+        }
+      });
     }
   }
 
   private handleRefresh() {
     const selected = this.props.selected;
 
-    if (selected in COMMAND_MAPPING) {
+    const command = COMMAND_MAPPING[selected];
+
+    if (command) {
       const now = new Date();
-      this.props.socket.emit(COMMAND_MAPPING[selected as PollOp]);
+      this.props.socket.emit(command);
       this.setState({
-        [selected as PollOp]: now,
+        [selected]: now,
         now
       } as Pick<PollState, keyof PollState>);
     }

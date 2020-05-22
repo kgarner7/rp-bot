@@ -7,12 +7,8 @@ interface MapProps {
   selected: boolean;
 }
 
-class Maps extends React.Component<MapProps> {
-  constructor(props: MapProps) {
-    super(props);
-  }
-  
-  render() {
+class Maps extends React.PureComponent<MapProps> {
+  public render() {
     const className = this.props.selected ? "visible": "invisible";
 
     let html = "";
@@ -66,11 +62,7 @@ class Maps extends React.Component<MapProps> {
       html = mermaid.render("id", roomString, () => {});
     }
 
-
-    return <div className={ className }>
-      <div dangerouslySetInnerHTML={{ __html: html}}>
-      </div>
-    </div>;
+    return <div className={ className } dangerouslySetInnerHTML={{ __html: html}}></div>;
   }
 }
 

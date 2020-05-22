@@ -3,7 +3,7 @@ import socketio, { Server } from "socket.io";
 
 import { guild } from "../client";
 import { idIsAdmin, sentToAdmins } from "../helpers/base";
-import { lock } from "../helpers/locks";
+import { lock, globalLock } from "../helpers/locks";
 import { isNone } from "../helpers/types";
 import { client } from "../models/redis";
 
@@ -15,7 +15,9 @@ import {
   ROOM_INFORMATION,
   ROOM_LOGS,
   USER_INVENTORY_CHANGE,
-  USER_NAME
+  USER_NAME,
+  USERS_INFO,
+  USER_ITEM_CHANGE
 } from "./consts";
 import {
   getArchivedRoomLogs,
@@ -27,7 +29,9 @@ import {
   setServer,
   createMap,
   getChannelInfo,
-  ChannelInfo
+  ChannelInfo,
+  getUsersInfo,
+  UserItemChange
 } from "./helpers";
 
 const LOCK_NAME = "socket-disconnect";
@@ -114,6 +118,18 @@ export function socket(app: any): Server {
         a: idIsAdmin(user.id),
         n: user.discordName
       } as UserData);
+    });
+
+    sock.on(USERS_INFO, async () => {
+      if (idIsAdmin(user.id)) {
+        const usersInfo = await getUsersInfo();
+        sock.emit(USERS_INFO, usersInfo);
+      }
+    });
+
+    sock.on(USER_ITEM_CHANGE, async (data: UserItemChange) => {
+      if (idIsAdmin(user.id)) {
+      }
     });
 
     sock.on("disconnect", async () => {

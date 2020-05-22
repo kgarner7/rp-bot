@@ -21,7 +21,7 @@ export interface CommandProps {
   name: string;
 }
 
-function Command(props: CommandProps): JSX.Element {
+const Command = React.memo((props: CommandProps) => {
   const command = props.command;
   const title = props.name + (command.admin ? " (admin)" : "");
 
@@ -50,7 +50,7 @@ function Command(props: CommandProps): JSX.Element {
       </div>
     </div>
   );
-}
+})
 
 export interface CommandsProps {
   commands: Dict<CommandData>;
@@ -61,7 +61,9 @@ export interface CommandsState {
   filter: string;
 }
 
-class Commands extends React.Component<CommandsProps, CommandsState> {
+const EMPTY_LIST: Array<[string, string]> = [];
+
+class Commands extends React.PureComponent<CommandsProps, CommandsState> {
   public constructor(props: CommandsProps) {
     super(props);
 
@@ -71,7 +73,7 @@ class Commands extends React.Component<CommandsProps, CommandsState> {
 
     this.handleFilter = this.handleFilter.bind(this);
   }
-
+  
   public render() {
     const className = this.props.selected ? "visible": "invisible";
     let commands = Object.entries(this.props.commands)
@@ -92,7 +94,7 @@ class Commands extends React.Component<CommandsProps, CommandsState> {
         <SearchBar
           filter={this.state.filter}
           handleFilter={this.handleFilter}
-          options={[]}
+          options={EMPTY_LIST}
           placeholder="a command"
           name="commands"
         />

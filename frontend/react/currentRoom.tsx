@@ -46,7 +46,7 @@ class CurrentRooms extends React.Component<CurrentRoomsProps, CurrentRoomsState>
     this.handleChange = this.handleChange.bind(this);
   }
 
-  render() {
+  public render() {
     const options = Array.from(this.props.rooms.entries())
       .filter(room => room[1].present)
       .sort((a, b) => compareString(a[1].name, b[1].name, 1))
@@ -55,14 +55,19 @@ class CurrentRooms extends React.Component<CurrentRoomsProps, CurrentRoomsState>
         value: room[0],
       }));
 
-    const className = this.props.selected ? "visible": "invisible";
     const room = this.props.rooms.get(this.state.roomId || "");
 
-    return (<div className={className}>
-      <Select options={options} onChange={this.handleChange} styles={style} className="col-12"/>
-      <Inventory inventory={room?.inventory || []} name="room" selected={true} sidebar={this.props.sidebar} width={this.props.width}/>
+    const className = this.props.selected ? "visible": "invisible";
 
-    </div>);
+    return <div className={ className }>
+      <Select options={options} onChange={this.handleChange} styles={style} className="col-12"/>
+      <Inventory
+        inventory={room?.inventory || []}
+        name="room" selected={ true }
+        sidebar={this.props.sidebar}
+        width={this.props.width}
+      />
+    </div>;
   }
 
   private handleChange(value: any) {

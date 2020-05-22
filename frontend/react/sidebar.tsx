@@ -1,23 +1,17 @@
 import React, { MouseEventHandler } from "react";
-import { VisibleStates } from "./app";
+import { VisibleStates } from "./visibleStates";
 
 interface GroupProps {
   name: string;
   onClick: MouseEventHandler;
 }
 
-class Group extends React.Component<GroupProps> {
-  public constructor(props: GroupProps) {
-    super(props);
-  }
-
-  public render() {
-    return <a 
-      href="#" 
-      className="list-group-item list-group-item-action"
-      onClick={ this.props.onClick }>{ this.props.name }</a>
-  }
-}
+const Group = React.memo((props: GroupProps) =>  {
+  return <a 
+    href="#" 
+    className="list-group-item list-group-item-action"
+    onClick={ props.onClick }>{ props.name }</a>
+});
 
 interface SidebarProps {
   admin: boolean;
@@ -31,24 +25,12 @@ interface SidebarState {
   selected?: VisibleStates;
 }
 
-class Sidebar extends React.Component<SidebarProps, SidebarState> {
-  public constructor(props: SidebarProps) {
-    super(props);
-  }
-
-  private handleSelect(value: VisibleStates) {
-    this.setState(() => ({
-      selected: value
-    }));
-
-    this.props.handleSelect(value);
-  }
-
-  render(){
-    const options = this.props.options;
+class Sidebar extends React.PureComponent<SidebarProps, SidebarState> {
+  public render(){
+    let options = this.props.options;
 
     if (this.props.admin) {
-      options.concat(this.props.adminOps);
+      options = options.concat(this.props.adminOps);
     }
 
     const items = options.map(value => {
@@ -63,6 +45,15 @@ class Sidebar extends React.Component<SidebarProps, SidebarState> {
         </div>
       </div>
     );
+  }
+
+
+  private handleSelect(value: VisibleStates) {
+    this.setState(() => ({
+      selected: value
+    }));
+
+    this.props.handleSelect(value);
   }
 }
 

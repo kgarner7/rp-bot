@@ -12,10 +12,12 @@ import io from "socket.io-client";
 import Sidebar from "./sidebar";
 import Header from "./header";
 import Inventory from "./inventory";
-import Rooms, { RoomMessagesData, MessageData } from "./rooms";
+import Rooms, { RoomData as RoomMessagesData, MessageData } from "./rooms";
 import CurrentRoom, { RoomData } from "./currentRoom";
 import Commands, { CommandData, CommandUse } from "./commands";
 import Maps from "./maps";
+import UsersView from "./usersView";
+
 import { 
   CHANNEL_UPDATE,
   MAPS,
@@ -27,20 +29,15 @@ import {
   ROOM_LOGS,
   USER_INVENTORY_CHANGE,
   USER_NAME,
-  COMMANDS
+  COMMANDS,
+  USERS_INFO
 } from "../../socket/consts";
 import { Dict } from "../../helpers/base";
-import { MinimalCommand, MinimalRoomWithLink, MinimalItem, MinimalMessageWithChannel, MinimalMessageWithoutChannel, ChannelWithMinimalMessages, RoomJson, ChannelInfo } from "../../socket/helpers";
+import { MinimalCommand, MinimalRoomWithLink, MinimalItem, MinimalMessageWithChannel, MinimalMessageWithoutChannel, ChannelWithMinimalMessages, RoomJson, ChannelInfo, UserInfo } from "../../socket/helpers";
 import { UserData } from "../../socket/socket";
+import { VisibleStates } from "./visibleStates";
 
-export enum VisibleStates {
-  Commands = "Commands",
-  CurrentRooms = "Current room(s)",
-  Inventory = "Inventory",
-  RoomLogs = "Rooms",
-  Map = "Map",
-  ViewUsers = "View users"
-}
+
 
 const USER_OPS = [
   VisibleStates.Inventory, 
@@ -77,6 +74,7 @@ interface AppState {
   sidebar: boolean;
   socket: SocketIOClient.Socket;
   username: string;
+  users?: UserInfo[];
   width: number;
 }
 
@@ -160,7 +158,7 @@ export class App extends React.Component<{}, AppState>{
       const nextState = produce(this.state, state => {
         const room = state.roomMessages.get(roomId);
 
-        if (room !== undefined) {
+        if (room) {
           if (messages.length > 0) {
             room.archive = messages.map(msg => ({      
               author: msg.a,
@@ -171,10 +169,9 @@ export class App extends React.Component<{}, AppState>{
 
             const lastUpdate = room.archive[room.archive.length - 1].time;
             room.updatedAt = Math.max(new Date(lastUpdate).getTime(), room.updatedAt || 0);
-            room.hasArchive = true;
-
-            state.roomMessages.set(roomId, room);
           } 
+
+          room.hasArchive = true;
         }
       });
 
@@ -184,7 +181,13 @@ export class App extends React.Component<{}, AppState>{
     socket.on(MESSAGES_GET, (data: Dict<ChannelWithMinimalMessages>) => {
       const nextState = produce(this.state, state => {
         for (const [roomId, roomData] of Object.entries(data)) {
-          let updateTime = roomData.m[0].d;
+          let updateTime: Date;
+          
+          if (roomData.m.length > 0) {
+            updateTime = roomData.m[0].d;
+          } else {
+            updateTime = new Date(0);
+          }
 
           const roomMessages = roomData.m.map(msg => {
             if (msg.d > updateTime) updateTime = msg.d;
@@ -285,11 +288,15 @@ export class App extends React.Component<{}, AppState>{
     });
 
     socket.on(USER_NAME, (info: UserData) => {
-      const data = info;
-
       this.setState({ 
-        admin: data.a,  
-        username: data.n
+        admin: info.a,  
+        username: info.n
+      });
+    });
+
+    socket.on(USERS_INFO, (users: UserInfo[]) => {
+      this.setState({
+        users
       });
     });
 
@@ -308,6 +315,7 @@ export class App extends React.Component<{}, AppState>{
 
   public render(){
     const wrapperClass = "d-flex" + (this.state.sidebar ? "": " toggled");
+
     return(
       <div id="wrapper" className={wrapperClass}>
         <Sidebar
@@ -326,31 +334,38 @@ export class App extends React.Component<{}, AppState>{
           <Inventory
             inventory={this.state.inventory}
             name="inventory"
-            selected={this.state.selected === "Inventory"}
+            selected={ this.state.selected == VisibleStates.Inventory}
             sidebar={this.state.sidebar}
             width={this.state.width}
           />
           <Rooms
-            rooms={this.state.roomMessages}
-            selected={this.state.selected === "Rooms"}
-            sidebar={this.state.sidebar}
-            width={this.state.width}
-            username={this.state.username}
             getLogs={this.getLogs}
+            rooms={this.state.roomMessages}
+            selected={this.state.selected === VisibleStates.RoomLogs}
+            sidebar={this.state.sidebar}
+            username={this.state.username}
+            width={this.state.width}
           />
           <CurrentRoom
             rooms={this.state.rooms}
-            selected={this.state.selected === "Current room(s)"}
+            selected={this.state.selected === VisibleStates.CurrentRooms}
             sidebar={this.state.sidebar}
             width={this.state.width}
           />
           <Maps
-            selected={ this.state.selected === "Map" }
-            map={ this.state.roomsMap }
+            map={this.state.roomsMap }
+            selected={this.state.selected === VisibleStates.Map}
           />
           <Commands
             commands={this.state.commands}
-            selected={this.state.selected === "Commands"}
+            selected={this.state.selected === VisibleStates.Commands}  
+          />
+          <UsersView
+            selected={this.state.selected === VisibleStates.ViewUsers}
+            sidebar={this.state.sidebar}
+            socket={this.state.socket}
+            users={ this.state.users }
+            width={this.state.width}
           />
         </div>
       </div>
