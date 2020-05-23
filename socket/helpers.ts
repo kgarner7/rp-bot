@@ -8,13 +8,15 @@ import { Op } from "sequelize";
 import { Server, Socket } from "socket.io";
 
 import { guild } from "../client";
-import { Dict, idIsAdmin } from "../helpers/base";
+import { Dict, idIsAdmin, userIsAdmin } from "../helpers/base";
 import { None, Null } from "../helpers/types";
 import { usages } from "../listeners/actions";
 import { Link, Message, Room, sequelize, User } from "../models/models";
 import { ItemModel } from "../rooms/item";
 
 import { sockets } from "./socket";
+import { currentRoom } from "../listeners/baseHelpers";
+import { lock, unlock } from "../helpers/locks";
 
 let serverSocket: Server;
 
@@ -206,6 +208,7 @@ export async function getArchivedRoomLogs(roomId: string, user: User, time: Date
 
 export interface MinimalItem {
   d: string;
+  e?: boolean;
   h?: boolean;
   l?: boolean;
   n: string;
@@ -218,6 +221,7 @@ export function itemToJson(item: ItemModel): MinimalItem {
     n: item.name
   };
 
+  if (item.editable) itemJson.e = true;
   if (item.hidden) itemJson.h = true;
   if (item.locked) itemJson.l = true;
   if (item.quantity !== 1) itemJson.q = item.quantity;
@@ -316,6 +320,39 @@ export async function getMessages(user: User | GuildMember | DiscordUser,
         d: channel.topic || "",
         m: [messageJson],
         n: message.Room.name,
+        s: channel!.parent!.name
+      }
+    }
+  }
+
+  let rooms: Room[] = [];
+
+  if (idIsAdmin(user.id)) {
+    rooms = await Room.findAll({})
+  } else {
+    const visitor = await User.findOne({
+      include: [{
+        as: "visitedRooms",
+        model: Room,
+      }],
+      where: {
+        id: user.id
+      }
+    });
+
+    if (visitor) {
+      rooms = visitor.visitedRooms;
+    }
+  }
+
+  for (const room of rooms) {
+    if (!(room.id in response)) {
+      const channel = guild.channels.resolve(room.id) as TextChannel;
+
+      response[room.id] = {
+        d: channel.topic || "",
+        m: [],
+        n: room.name,
         s: channel!.parent!.name
       }
     }
@@ -489,4 +526,128 @@ export async function getChannelInfo(roomId: string, userId: string):
   }
 
   return undefined;
+}
+
+export interface UserInfo {
+  i: MinimalItem[];
+  l: string;
+  n: string;
+}
+
+export async function getUsersInfo(): Promise<UserInfo[]> {
+  return (await User.findAll())
+    .filter(user => !idIsAdmin(user.id))
+    .map(user => {
+      const inventory = inventoryToJson(user.inventory);
+      const member = guild.members.resolve(user.id);
+
+      let location: string = "";
+
+      if (member) {
+        location = currentRoom(member) || "";
+      }
+
+      return {
+        i: inventory,
+        l: location,
+        n: user.name
+      }
+    });
+}
+
+export interface UserItemChange {
+  n?: MinimalItem;
+  o?: MinimalItem;
+  u: string;
+}
+
+function defaultValue<T>(value: T | undefined, ifNot: T): T{
+  return value === undefined ? ifNot : value;
+}
+
+function sameItem(item: MinimalItem, existing: ItemModel): boolean {
+  return item.d === existing.description 
+    && defaultValue(item.e, false) === defaultValue(existing.editable, false)
+    && defaultValue(item.h, false) === defaultValue(existing.hidden, false)
+    && defaultValue(item.l, false) === defaultValue(existing.locked, false)
+    && defaultValue(item.q, 1) === defaultValue(existing.quantity, 1);
+}
+
+export async function handleUserItemChange(data: UserItemChange): 
+  Promise<UserItemChange | string> {
+
+  if (!data.o && !data.n) {
+    return "Must provide an old and/or new item";
+  }
+
+  const user = await User.findOne({
+    where: {
+      name: data.u 
+    }
+  });
+
+  if (user) {
+    const redlock = await lock({ user: user.id });
+
+    try {
+      await user.reload({
+        attributes: ["inventory"]
+      });
+
+      let existingItem: ItemModel | undefined;
+
+      if (data.o) {
+        existingItem = user.inventory[data.o.n];
+
+        if (!existingItem) {
+          return `User ${user.name} does not have`
+        } else if (!sameItem(data.o, existingItem)) {
+          return `The item ${data.o.n} for ${data.u} has changed`;
+        }
+      }
+
+      let oldItem: MinimalItem | undefined;
+      let newItem: MinimalItem | undefined;
+
+      if (data.n) {
+        if (!data.o && data.n.n in user.inventory) {
+          return `User ${data.u} already has item ${data.n.n}`;
+        } else if (!data.n.n) {
+          return "Must provide a name for the new item";
+        }
+
+        const changedItem = existingItem || {} as ItemModel;
+
+        changedItem.description  = defaultValue(data.n.d, "");
+        changedItem.editable     = defaultValue(data.n.e, false);
+        changedItem.hidden       = defaultValue(data.n.h, false);
+        changedItem.locked       = defaultValue(data.n.l, false);
+        changedItem.name         = data.n.n;
+        changedItem.quantity     = defaultValue(data.n.q, 1);
+
+        user.inventory[data.n.n] = changedItem;
+
+        newItem = data.n;
+      } else {
+        delete user.inventory[data.o!.n];
+
+        oldItem = data.o;
+      }
+
+      await user.update({
+        inventory: user.inventory
+      });
+
+
+      return {
+        n: newItem,
+        o: oldItem,
+        u: data.u
+      }
+    } finally {
+      await unlock(redlock);
+    }
+  } else {
+    return `Could not find ${data.u}`;
+  }
 }

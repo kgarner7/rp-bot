@@ -10,7 +10,7 @@ const MAX_POOLS = 15;
  * Database configurations
  */
 // tslint:disable:object-literal-sort-keys
-export let database: Dict<{
+export const database: Dict<{
   username: string;
   password: string;
   pool?: Dict<string | number>;
@@ -72,7 +72,7 @@ export let database: Dict<{
 /**
  * General environment configurations
  */
-export let config: {
+export const config: {
   botToken: string;
   guildName: string;
   prefix: string;

@@ -11,7 +11,7 @@ import {
   getAdministrators
 } from "../helpers/base";
 import { CustomMessage, SortableArray } from "../helpers/classes";
-import { lock } from "../helpers/locks";
+import { lock, unlock } from "../helpers/locks";
 import { isNone, None, Undefined } from "../helpers/types";
 import { Room, sequelize, User } from "../models/models";
 import { Item, ItemModel } from "../rooms/item";
@@ -224,7 +224,7 @@ export async function consume(msg: CustomMessage): Promise<void> {
     itemName = command.args.get("of")!.join();
   }
 
-  await lock({ release: false, user: user.id});
+  const redlock = await lock({ user: user.id});
 
   try {
     const item: Undefined<ItemModel> = user.inventory[itemName];
@@ -247,7 +247,7 @@ export async function consume(msg: CustomMessage): Promise<void> {
 
     sendMessage(msg, `You consumed ${quantity} of ${itemName}`);
   } finally {
-    await lock({ release: true, user: user.id });
+    await unlock(redlock);
   }
 }
 
@@ -309,7 +309,7 @@ async function changeUserItem(command: Command, target: string, name: string):
 
   if (!user) throw new Error(`Could not find user ${user}`);
 
-  await lock({ release: false, user: user.id });
+  const redlock = await lock({ user: user.id });
 
   await user.reload({ attributes: ["inventory"] });
 
@@ -324,7 +324,7 @@ async function changeUserItem(command: Command, target: string, name: string):
     await user.update({ inventory: user.inventory });
     // notifyUserInventoryChange(user);
   } finally {
-    await lock({ release: true, user: user.id });
+    await unlock(redlock);
   }
 }
 
@@ -334,7 +334,7 @@ async function changeRoomItem(command: Command, target: string, name: string,
 
   if (!roomModel) throw new Error(`Could not find room ${target}`);
 
-  await lock({ release: false, room: roomModel.id});
+  const redlock = await lock({ room: roomModel.id });
 
   const room = manager.rooms
     .get(roomModel.name)!;
@@ -355,7 +355,7 @@ async function changeRoomItem(command: Command, target: string, name: string,
     await roomModel.update({ inventory: roomModel.inventory });
     // notifyRoomInventoryChange(msg, roomModel);
   } finally {
-    await lock({ release: true, room: roomModel.id});
+    await unlock(redlock);
   }
 }
 
@@ -379,6 +379,10 @@ function createOrUpdateItem(command: Command, item: None<ItemModel>,
 
     if (command.args.has("text")) {
       item.description = command.args.get("text")!.join();
+    }
+
+    if (command.args.has("count")) {
+      item.quantity = getInt(command.args.get("count")!.join());
     }
 
     return item;
@@ -432,7 +436,7 @@ export async function dropItem(msg: CustomMessage): Promise<void> {
     itemName = command.args.get("of")!.join();
   }
 
-  await lock({ release: false, room: roomModel.id, user: user.id });
+  const redlock = await lock({ room: roomModel.id, user: user.id });
 
   try {
     await roomModel.reload({ attributes: ["inventory"] });
@@ -496,7 +500,7 @@ export async function dropItem(msg: CustomMessage): Promise<void> {
   } catch (err) {
     throw err;
   } finally {
-    await lock({ release: true, room: roomModel.id, user: user.id });
+    await unlock(redlock);
   }
 }
 
@@ -513,7 +517,7 @@ export async function editItem(msg: CustomMessage): Promise<void> {
   if (isNone(user)) throw new Error(`Could not find user with id ${msg.author.id}`);
   if (!command.args.has("text")) throw new Error("You must provide text");
 
-  await lock({ release: false, user: user.id });
+  const redlock = await lock({ user: user.id });
 
   try {
     await user.reload({ attributes: ["inventory" ]});
@@ -532,7 +536,7 @@ export async function editItem(msg: CustomMessage): Promise<void> {
     // notifyUserInventoryChange(user);
     sendMessage(msg, `Successfully updated ${itemName}`, true);
   } finally {
-    await lock({ release: true, user: user.id });
+    await unlock(redlock);
   }
 }
 
@@ -607,7 +611,7 @@ export async function giveItem(msg: CustomMessage): Promise<void> {
     itemName = ofArg.join();
   }
 
-  await lock({ release: false, user: [sender.id, target.id]});
+  const redlock = await lock({ user: [sender.id, target.id]});
 
   try {
     users = await User.findAll({
@@ -689,7 +693,7 @@ export async function giveItem(msg: CustomMessage): Promise<void> {
   } catch (err) {
     throw err;
   } finally {
-    await lock({ release: true, user: [sender.id, target.id]});
+    await unlock(redlock);
   }
 }
 
@@ -700,8 +704,8 @@ export async function giveItem(msg: CustomMessage): Promise<void> {
 export async function items(msg: CustomMessage): Promise<void> {
   const roomModel = await getRoom(msg, true);
 
-  if (roomModel !== null) {
-    await lock({ release: false, room: roomModel.id });
+  if (roomModel) {
+    const redlock = await lock({ room: roomModel.id });
 
     try {
       const room = manager.rooms
@@ -727,7 +731,7 @@ export async function items(msg: CustomMessage): Promise<void> {
     } catch (err) {
       throw err;
     } finally {
-      await lock({ release: true, room: roomModel.id });
+      await unlock(redlock);
     }
   }
 }
@@ -737,7 +741,7 @@ export async function inspect(msg: CustomMessage): Promise<void> {
     itemsList = parseCommand(msg),
     roomId = isNone(roomModel) ? undefined : roomModel.id;
 
-  await lock({ release: false, room: roomId, user: msg.author.id });
+  const redlock = await lock({ room: roomId, user: msg.author.id });
 
   try {
     const user = await User.findOne({
@@ -790,7 +794,7 @@ export async function inspect(msg: CustomMessage): Promise<void> {
 
     sendMessage(msg, message, privateMessage);
   } finally {
-    await lock({ release: true, room: roomId, user: msg.author.id});
+    await unlock(redlock);
   }
 }
 
@@ -805,7 +809,7 @@ export async function inventory(msg: CustomMessage): Promise<void> {
 
   if (user === null) throw new Error("Invalid user");
 
-  await lock({ release: false, user: user.id });
+  const redlock = await lock({ user: user.id });
 
   try {
     await user.reload({
@@ -826,7 +830,7 @@ export async function inventory(msg: CustomMessage): Promise<void> {
   } catch (err) {
     throw err;
   } finally {
-    await lock({ release: true, user: user.id });
+    await unlock(redlock);
   }
 }
 
@@ -840,7 +844,7 @@ export async function takeItem(msg: CustomMessage): Promise<void> {
       }
     });
 
-  if (roomModel === null || user === null) return;
+  if (!roomModel || !user) return;
 
   const item = command.args.get("of"),
     room = manager.rooms
@@ -858,7 +862,7 @@ export async function takeItem(msg: CustomMessage): Promise<void> {
     itemName = item.join();
   }
 
-  await lock({ release: false, room: roomModel.id, user: user.id });
+  const redlock = await lock({ room: roomModel.id, user: user.id });
 
   try {
     await roomModel.reload({
@@ -924,6 +928,6 @@ export async function takeItem(msg: CustomMessage): Promise<void> {
   } catch (err) {
     throw err;
   } finally {
-    await lock({ release: true, room: roomModel.id, user: user.id });
+    await unlock(redlock);
   }
 }

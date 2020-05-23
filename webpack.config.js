@@ -1,4 +1,6 @@
+const { CleanWebpackPlugin } = require('clean-webpack-plugin');
 const path = require("path");
+const TerserPlugin = require('terser-webpack-plugin');
 
 module.exports = {
   entry: "./frontend/react/index.js",
@@ -25,14 +27,26 @@ module.exports = {
       },
       {
         test: /\.css$/,
-        use: ["style-loader", "css-loader"]
+        use: [
+          "style-loader", 
+          "css-loader"
+        ]
       }
     ]
   },
   resolve: { extensions: ["*", ".js", ".jsx", ".ts", ".tsx"] },
   output: {
     path: path.resolve(__dirname, "frontend/scripts/"),
-    publicPath: "/frontend/scripts/",
-    filename: "bundle.js"
+    publicPath: "/",
+    filename: "bundle.js",
+    chunkFilename: "[name].[contenthash].js",
+  },
+  plugins: [
+    new CleanWebpackPlugin()
+  ],
+  optimization: {
+    minimizer: [
+      new TerserPlugin({})
+    ]
   }
 };

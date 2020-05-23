@@ -1,22 +1,28 @@
+/* eslint-disable @typescript-eslint/unbound-method */
 import React from "react";
 
 import Poll from "./poll";
+import { VisibleStates } from "./util";
 
 interface HeaderProps {
-  selected: string;
+  selected: VisibleStates;
   socket: SocketIOClient.Socket;
   username: string;
 
   handleToggle(): void;
 }
 
-function Header(props: HeaderProps) {
+const Header = React.memo(function Header(props: HeaderProps) {
   return(
     <nav className="navbar navbar-expand-lg border-bottom mb-3">
       <a className="navbar-brand" onClick={props.handleToggle} href="#">Toggle Sidebar</a>
       <div className="navbar-brand">Welcome, {props.username}</div>
 
-      <button className="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
+      <button
+        className="navbar-toggler"
+        type="button"
+        data-toggle="collapse"
+        data-target="#navbarSupportedContent">
         <span className="navbar-toggler-icon">V</span>
       </button>
 
@@ -25,13 +31,12 @@ function Header(props: HeaderProps) {
           <li>
             <Poll selected={ props.selected } socket={ props.socket }/>
           </li>
-          {/* <li><a className="dropdown-item" href="/button">The button</a></li> */}
           <li><a className="dropdown-item" href="/logout">Logout</a></li>
         </ul>
       </div>
     </nav>
   );
-}
+});
 
 
 export default Header;

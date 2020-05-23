@@ -212,9 +212,11 @@ export async function users(msg: CustomMessage): Promise<void> {
   });
 
   for (const member of memberList) {
-    const guildMember = guild.members.resolve(member.id)!;
+    const guildMember = guild.members.resolve(member.id);
 
-    if (guildMember.permissions.has("ADMINISTRATOR") && !guildMember.user.bot) {
+    if (!guildMember) {
+      continue;
+    } else if (guildMember.permissions.has("ADMINISTRATOR") && !guildMember.user.bot) {
       continue;
     }
 

@@ -1,20 +1,26 @@
 import React from "react";
 
 interface ModalProps {
-  body: string;
-  html: boolean;
+  body: string | JSX.Element;
+  html?: boolean;
   id: string;
   title: string;
 }
 
-function Modal(props: ModalProps) {    
+const Modal = React.memo((props: ModalProps) => {    
   const id = props.id + "Modal";
-  const body = props.html ? 
-    (<div dangerouslySetInnerHTML={{ __html: props.body}}></div>): props.body;
+
+  let body: JSX.Element | string;
+
+  if (typeof(props.body) === "string" && props.html) {
+    body = <div dangerouslySetInnerHTML={{ __html: props.body}}></div>;
+  } else {
+    body = props.body;
+  }
 
   return (
     <div className="modal fade" id={id} tabIndex={-1} role="dialog">
-      <div className="modal-dialog modal-dialog-centered" role="document">
+      <div className="modal-dialog modal-dialog-centered modal-lg" role="document">
         <div className="modal-content">
           <div className="modal-header">
             <h5 className="modal-title" id={id + "Label"}>{props.title}</h5>
@@ -31,7 +37,7 @@ function Modal(props: ModalProps) {
         </div>
       </div>
     </div>
-    );
-}
+  );
+});
 
 export default Modal;

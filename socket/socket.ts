@@ -3,7 +3,7 @@ import socketio, { Server } from "socket.io";
 
 import { guild } from "../client";
 import { idIsAdmin, sentToAdmins } from "../helpers/base";
-import { lock } from "../helpers/locks";
+import { lock, unlock } from "../helpers/locks";
 import { isNone } from "../helpers/types";
 import { client } from "../models/redis";
 
@@ -15,7 +15,9 @@ import {
   ROOM_INFORMATION,
   ROOM_LOGS,
   USER_INVENTORY_CHANGE,
-  USER_NAME
+  USER_NAME,
+  USERS_INFO,
+  USER_ITEM_CHANGE
 } from "./consts";
 import {
   getArchivedRoomLogs,
@@ -27,7 +29,10 @@ import {
   setServer,
   createMap,
   getChannelInfo,
-  ChannelInfo
+  ChannelInfo,
+  getUsersInfo,
+  UserItemChange,
+  handleUserItemChange
 } from "./helpers";
 
 const LOCK_NAME = "socket-disconnect";
@@ -56,15 +61,19 @@ export function socket(app: any): Server {
       return;
     }
 
-    await lock({ release: false, room: LOCK_NAME });
-
     if (sockets.has(user.id)) {
       sockets.get(user.id)!.add(sock.id);
     } else {
       sockets.set(user.id, new Set([sock.id]));
     }
 
-    await lock({ release: true, room: LOCK_NAME });
+    sock.on(CHANNEL_UPDATE, 
+      async (roomId: string, callback: (data: ChannelInfo | undefined) => void) => {
+
+      const data = await getChannelInfo(roomId, user.id);
+
+      callback(data);
+    });
 
     sock.on(CHANNEL_UPDATE, 
       async (roomId: string, callback: (data: ChannelInfo | undefined) => void) => {
@@ -101,9 +110,12 @@ export function socket(app: any): Server {
     });
 
     sock.on(USER_INVENTORY_CHANGE, async () => {
-      await lock({ release: false, user: user.id });
+      const redlock = await lock({ user: user.id });
+
       await user.reload({ attributes: ["inventory" ]});
-      await lock({ release: true, user: user.id });
+
+      await unlock(redlock);
+
       const json = inventoryToJson(user.inventory);
       sock.emit(USER_INVENTORY_CHANGE, json);
     });
@@ -116,8 +128,22 @@ export function socket(app: any): Server {
       } as UserData);
     });
 
+    sock.on(USERS_INFO, async () => {
+      if (idIsAdmin(user.id)) {
+        const usersInfo = await getUsersInfo();
+        sock.emit(USERS_INFO, usersInfo);
+      }
+    });
+
+    sock.on(USER_ITEM_CHANGE, async (data: UserItemChange) => {
+      if (idIsAdmin(user.id)) {
+        const result = await handleUserItemChange(data);
+
+        sock.emit(USER_ITEM_CHANGE, result);
+      }
+    });
+
     sock.on("disconnect", async () => {
-      await lock({ release: false, room: LOCK_NAME });
       const userSet = sockets.get(user.id);
 
       if (userSet) {
@@ -129,8 +155,6 @@ export function socket(app: any): Server {
           sockets.set(user.id, userSet);
         }
       }
-
-      await lock({ release: true, room: LOCK_NAME });
     });
 
     sock.on("error", err => {
