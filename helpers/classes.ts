@@ -1,4 +1,4 @@
-// tslint:disable:max-classes-per-file
+/* eslint-disable max-classes-per-file */
 import { DMChannel, GuildMember, TextChannel, User, NewsChannel } from "discord.js";
 
 import { Dict } from "./base";
@@ -30,7 +30,7 @@ function compare<T>(a: T, b: T, comparator?: Comparator<T>): Result {
 
   if (bNone) return Result.GreaterThan;
 
-  if (typeof(a) === "string" && typeof(b) === "string") {
+  if (typeof a === "string" && typeof b === "string") {
     return a.localeCompare(b, "standard", { sensitivity: "case" });
   }
 

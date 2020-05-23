@@ -1,8 +1,10 @@
+/* eslint-disable @typescript-eslint/unbound-method */
 import React from "react";
-import { compareString } from "./rooms";
-import Select, { StylesConfig} from "react-select"
-import Inventory from "./inventory";
-import { MinimalItem } from "../../socket/helpers";
+import Select, { StylesConfig} from "react-select";
+
+import { MinimalItem } from "../../../socket/helpers";
+import Inventory from "../inventory/inventory";
+import { compareString } from "../util/util";
 
 const style: StylesConfig = {
   menu: (provided, _state) => ({
@@ -14,9 +16,9 @@ const style: StylesConfig = {
     backgroundColor: state.isSelected ? "#00bc8c" : "white",
     borderBottom: "1px solid black",
     color: "black",
-    padding: 10,
+    padding: 10
   })
-}
+};
 
 export interface RoomData {
   inventory: MinimalItem[];
@@ -32,11 +34,11 @@ interface CurrentRoomsProps {
   width: number;
 }
 
-interface CurrentRoomsState {
+export interface CurrentRoomsState {
   roomId?: string;
 }
 
-class CurrentRooms extends React.Component<CurrentRoomsProps, CurrentRoomsState> {
+export class CurrentRooms extends React.Component<CurrentRoomsProps, CurrentRoomsState> {
   public constructor(props: CurrentRoomsProps) {
     super(props);
     this.state = {
@@ -46,13 +48,13 @@ class CurrentRooms extends React.Component<CurrentRoomsProps, CurrentRoomsState>
     this.handleChange = this.handleChange.bind(this);
   }
 
-  public render() {
+  public render(): JSX.Element {
     const options = Array.from(this.props.rooms.entries())
-      .filter(room => room[1].present)
+      .filter(entry => entry[1].present)
       .sort((a, b) => compareString(a[1].name, b[1].name, 1))
-      .map(room => ({
-        label: room[1].name,
-        value: room[0],
+      .map(entry => ({
+        label: entry[1].name,
+        value: entry[0]
       }));
 
     const room = this.props.rooms.get(this.state.roomId || "");
@@ -70,7 +72,8 @@ class CurrentRooms extends React.Component<CurrentRoomsProps, CurrentRoomsState>
     </div>;
   }
 
-  private handleChange(value: any) {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  private handleChange(value: any): void {
     this.setState({ roomId: value.value });
   }
 }

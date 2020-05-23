@@ -1,7 +1,8 @@
+/* eslint-disable @typescript-eslint/unbound-method */
 import React from "react";
 
-import { VisibleStates } from "./visibleStates";
 import Poll from "./poll";
+import { VisibleStates } from "./util";
 
 interface HeaderProps {
   selected: VisibleStates;
@@ -11,13 +12,17 @@ interface HeaderProps {
   handleToggle(): void;
 }
 
-const Header = React.memo((props: HeaderProps) => {
+const Header = React.memo(function Header(props: HeaderProps) {
   return(
     <nav className="navbar navbar-expand-lg border-bottom mb-3">
       <a className="navbar-brand" onClick={props.handleToggle} href="#">Toggle Sidebar</a>
       <div className="navbar-brand">Welcome, {props.username}</div>
 
-      <button className="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
+      <button
+        className="navbar-toggler"
+        type="button"
+        data-toggle="collapse"
+        data-target="#navbarSupportedContent">
         <span className="navbar-toggler-icon">V</span>
       </button>
 

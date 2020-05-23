@@ -1,24 +1,22 @@
-import {enableMapSet} from "immer"
+// eslint-disable-next-line import/order
+import {enableMapSet, enableES5} from "immer";
 
-enableMapSet()
+enableMapSet();
+enableES5();
 
-import produce from "immer"
 
+// eslint-disable-next-line import/order
+import loadable from "@loadable/component";
 import { sanitize } from "dompurify";
+// eslint-disable-next-line no-duplicate-imports
+import produce from "immer";
 import React from "react";
 import { Converter } from "showdown";
+// eslint-disable-next-line import/no-extraneous-dependencies
 import io from "socket.io-client";
 
-import Sidebar from "./sidebar";
-import Header from "./header";
-import Inventory from "./inventory";
-import Rooms, { RoomData as RoomMessagesData, MessageData } from "./rooms";
-import CurrentRoom, { RoomData } from "./currentRoom";
-import Commands, { CommandData, CommandUse } from "./commands";
-import Maps from "./maps";
-import UsersView from "./usersView";
-
-import { 
+import { Dict } from "../../helpers/base";
+import {
   CHANNEL_UPDATE,
   MAPS,
   MESSAGES_GET,
@@ -30,17 +28,49 @@ import {
   USER_INVENTORY_CHANGE,
   USER_NAME,
   COMMANDS,
-  USERS_INFO
+  USERS_INFO,
+  USER_ITEM_CHANGE
 } from "../../socket/consts";
-import { Dict } from "../../helpers/base";
-import { MinimalCommand, MinimalRoomWithLink, MinimalItem, MinimalMessageWithChannel, MinimalMessageWithoutChannel, ChannelWithMinimalMessages, RoomJson, ChannelInfo, UserInfo } from "../../socket/helpers";
+import {
+  MinimalCommand,
+  MinimalRoomWithLink,
+  MinimalItem,
+  MinimalMessageWithChannel,
+  MinimalMessageWithoutChannel,
+  ChannelWithMinimalMessages,
+  RoomJson,
+  ChannelInfo,
+  UserInfo,
+  UserItemChange
+} from "../../socket/helpers";
 import { UserData } from "../../socket/socket";
-import { VisibleStates } from "./visibleStates";
 
+import { CommandData, CommandUse } from "./command/command";
+import { RoomData as CurrentRoomData } from "./currentRoom/currentRoom";
+import Inventory from "./inventory/inventory";
+import { MessageData } from "./rooms/room";
+import { RoomData as RoomMessagesData } from "./rooms/roomModal";
+import Header from "./util/header";
+import Sidebar from "./util/sidebar";
+import { VisibleStates } from "./util/util";
 
+const Commands = loadable(() =>
+  import(/* webpackChunkName: "commands" */ "./command/commands"));
+
+const CurrentRoom = loadable(() =>
+  import(/* webpackChunkName: "currentRoom" */ "./currentRoom/currentRoom"));
+
+const Rooms = loadable(() =>
+  import(/* webpackChunkName: "rooms" */ "./rooms/rooms"));
+
+const Maps = loadable(() => 
+  import(/* webpackChunkName: "maps" */ "./maps/maps"));
+
+const UsersView = loadable(() =>
+  import(/* webpackChunkName: "usersView" */ "./usersView/usersView"));
 
 const USER_OPS = [
-  VisibleStates.Inventory, 
+  VisibleStates.Inventory,
   VisibleStates.RoomLogs,
   VisibleStates.CurrentRooms,
   VisibleStates.Commands,
@@ -50,14 +80,14 @@ const ADMIN_OPS = [VisibleStates.ViewUsers];
 
 const converter = new Converter();
 const startupTasks = [
-  USER_NAME, 
-  USER_INVENTORY_CHANGE, 
-  ROOM_INFORMATION, 
-  MESSAGES_GET, 
+  USER_NAME,
+  USER_INVENTORY_CHANGE,
+  ROOM_INFORMATION,
+  MESSAGES_GET,
   COMMANDS
 ];
 
-function toHtml(content: string) {
+function toHtml(content: string): string {
   return sanitize(converter.makeHtml(content));
 }
 
@@ -68,7 +98,7 @@ interface AppState {
   commands: Dict<CommandData>;
   inventory: MinimalItem[];
   roomMessages: Map<string, RoomMessagesData>;
-  rooms: Map<string, RoomData>;
+  rooms: Map<string, CurrentRoomData>;
   roomsMap: MinimalRoomWithLink[];
   selected: VisibleStates;
   sidebar: boolean;
@@ -116,7 +146,7 @@ export class App extends React.Component<{}, AppState>{
 
           return usage;
         });
-        
+
         commands[name] = comm;
       }
 
@@ -129,7 +159,7 @@ export class App extends React.Component<{}, AppState>{
       });
     });
 
-    socket.on(USER_INVENTORY_CHANGE, (data: MinimalItem[]) => { 
+    socket.on(USER_INVENTORY_CHANGE, (data: MinimalItem[]) => {
       for (const item of data) {
         item.d = toHtml(item.d);
       }
@@ -141,12 +171,12 @@ export class App extends React.Component<{}, AppState>{
       const rooms = new Map();
 
       for (const room of json) {
-        const data: RoomData = {
+        const data: CurrentRoomData = {
           inventory: room.c || [],
           name: room.n,
           present: room.p || false,
           updatedAt: new Date().getTime()
-        }
+        };
 
         rooms.set(room.i, data);
       }
@@ -160,7 +190,7 @@ export class App extends React.Component<{}, AppState>{
 
         if (room) {
           if (messages.length > 0) {
-            room.archive = messages.map(msg => ({      
+            room.archive = messages.map(msg => ({
               author: msg.a,
               content: msg.t,
               id: msg.i,
@@ -169,7 +199,7 @@ export class App extends React.Component<{}, AppState>{
 
             const lastUpdate = room.archive[room.archive.length - 1].time;
             room.updatedAt = Math.max(new Date(lastUpdate).getTime(), room.updatedAt || 0);
-          } 
+          }
 
           room.hasArchive = true;
         }
@@ -182,7 +212,7 @@ export class App extends React.Component<{}, AppState>{
       const nextState = produce(this.state, state => {
         for (const [roomId, roomData] of Object.entries(data)) {
           let updateTime: Date;
-          
+
           if (roomData.m.length > 0) {
             updateTime = roomData.m[0].d;
           } else {
@@ -219,7 +249,7 @@ export class App extends React.Component<{}, AppState>{
     });
 
     socket.on(MESSAGE_CREATE, (data: MinimalMessageWithChannel) => {
-      this.getChannel(data.c, (newChannel) => {
+      this.getChannel(data.c, newChannel => {
         const nextState = produce(this.state, state => {
           const channel = newChannel || state.roomMessages.get(data.c)!;
 
@@ -230,7 +260,7 @@ export class App extends React.Component<{}, AppState>{
             time: new Date(data.d)
           });
 
-          channel.updatedAt = new Date().getTime();  
+          channel.updatedAt = new Date().getTime();
 
           if (newChannel) {
             state.roomMessages.set(data.c, channel);
@@ -258,7 +288,7 @@ export class App extends React.Component<{}, AppState>{
             state.roomMessages.set(data.c, channel);
           }
         });
-  
+
         this.setState(nextState);
       });
     });
@@ -269,7 +299,7 @@ export class App extends React.Component<{}, AppState>{
           const channel = newChannel || state.roomMessages.get(data.c)!;
 
           let idx;
-  
+
           for (idx = channel.messages.length - 1; idx >= 0; idx--) {
             if (channel.messages[idx].id === data.i) {
               channel.messages[idx].content = data.t;
@@ -277,7 +307,7 @@ export class App extends React.Component<{}, AppState>{
               break;
             }
           }
-    
+
           if (newChannel) {
             state.roomMessages.set(data.c, channel);
           }
@@ -288,8 +318,8 @@ export class App extends React.Component<{}, AppState>{
     });
 
     socket.on(USER_NAME, (info: UserData) => {
-      this.setState({ 
-        admin: info.a,  
+      this.setState({
+        admin: info.a,
         username: info.n
       });
     });
@@ -298,6 +328,42 @@ export class App extends React.Component<{}, AppState>{
       this.setState({
         users
       });
+    });
+
+    socket.on(USER_ITEM_CHANGE, (result: string | UserItemChange) => {
+      if (typeof result === "string") {
+        alert(`Failed to update item: ${result}`);
+      } else {
+        this.setState(oldState => {
+          const newState = produce(oldState, state => {
+            for (const user of state.users || []) {
+              if (user.n === result.u) {
+                if (result.o) {
+                  user.i = user.i.filter(item => item.n !== result.o!.n);
+                } else {
+                  let found = false;
+
+                  for (let index = 0; index < user.i.length; index++) {
+                    if (user.i[index].n === result.n!.n) {
+                      found = true;
+                      user.i[index] = result.n!;
+                      break;
+                    }
+                  }
+
+                  if (!found) {
+                    user.i.push(result.n!);
+                  }
+                }
+              }
+
+              break;
+            }
+          });
+
+          return newState;
+        });
+      }
     });
 
     for (const task of startupTasks) {
@@ -313,8 +379,8 @@ export class App extends React.Component<{}, AppState>{
     this.handleToggleSidebar = this.handleToggleSidebar.bind(this);
   }
 
-  public render(){
-    const wrapperClass = "d-flex" + (this.state.sidebar ? "": " toggled");
+  public render(): JSX.Element {
+    const wrapperClass = `d-flex${  this.state.sidebar ? "": " toggled"}`;
 
     return(
       <div id="wrapper" className={wrapperClass}>
@@ -334,7 +400,7 @@ export class App extends React.Component<{}, AppState>{
           <Inventory
             inventory={this.state.inventory}
             name="inventory"
-            selected={ this.state.selected == VisibleStates.Inventory}
+            selected={ this.state.selected === VisibleStates.Inventory}
             sidebar={this.state.sidebar}
             width={this.state.width}
           />
@@ -358,7 +424,7 @@ export class App extends React.Component<{}, AppState>{
           />
           <Commands
             commands={this.state.commands}
-            selected={this.state.selected === VisibleStates.Commands}  
+            selected={this.state.selected === VisibleStates.Commands}
           />
           <UsersView
             selected={this.state.selected === VisibleStates.ViewUsers}
@@ -372,7 +438,7 @@ export class App extends React.Component<{}, AppState>{
     );
   }
 
-  private getLogs(roomId: string) {
+  private getLogs(roomId: string): void {
     const room = this.state.roomMessages.get(roomId);
 
     if (room !== undefined && room.archive.length === 0) {
@@ -380,18 +446,17 @@ export class App extends React.Component<{}, AppState>{
     }
   }
 
-  private handleToggleSidebar() {
+  private handleToggleSidebar(): void {
     this.setState(state => ({
       sidebar: !state.sidebar
     }));
   }
 
-  private handleToggleMode(selected: VisibleStates) {
+  private handleToggleMode(selected: VisibleStates): void {
     this.setState({ selected });
   }
 
-  private getChannel(roomId: string, callback: (room: RoomMessagesData | undefined) => void) {
-
+  private getChannel(roomId: string, callback: (room: RoomMessagesData | undefined) => void): void {
     if (this.state.roomMessages.has(roomId)) {
       callback(undefined);
     } else {
@@ -403,7 +468,7 @@ export class App extends React.Component<{}, AppState>{
             messages: [],
             name: data.n,
             section: data.s
-          }
+          };
 
           callback(newChannel);
         }

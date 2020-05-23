@@ -1,11 +1,11 @@
 import {
   GuildMember,
   Message,
-  Role,
   TextChannel,
   Guild,
   PartialMessage
 } from "discord.js";
+// eslint-disable-next-line import/no-extraneous-dependencies
 import { sync } from "glob";
 import { readFile } from "jsonfile";
 import { NodeVM, VMScript } from "vm2";
@@ -15,7 +15,7 @@ import { AccessError } from "../config/errors";
 import { User, UserResolvable } from "../models/user";
 
 import { CustomMessage } from "./classes";
-import { isNone, isUserResolvable, Undefined } from "./types";
+import { isNone, isUserResolvable } from "./types";
 
 export const lineEnd = "\r\n";
 
@@ -66,6 +66,14 @@ export function getMembers(msg: Message | PartialMessage): string[] {
   return users;
 }
 
+export function userIsAdmin(user: GuildMember): boolean {
+  return user.hasPermission("ADMINISTRATOR");
+}
+
+export function isAdmin(msg: CustomMessage): boolean {
+  return userIsAdmin(msg.member);
+}
+
 /**
  * Throws an AccessError if the user is not an admin
  * @param msg the message we are handling
@@ -75,28 +83,21 @@ export function requireAdmin(msg: CustomMessage): void {
   if (!isAdmin(msg)) throw new AccessError(msg.content);
 }
 
-export function isAdmin(msg: CustomMessage): boolean {
-  return userIsAdmin(msg.member);
-}
-
-export function userIsAdmin(user: GuildMember): boolean {
-  return user.hasPermission("ADMINISTRATOR");
-}
 
 export function idIsAdmin(id: string): boolean {
   const member = guild.members.resolve(id);
   return member !== null && userIsAdmin(member);
 }
 
-export async function getAdministrators(guild: Guild): Promise<IterableIterator<GuildMember>> {
-  return await guild.members.cache.filter(member => 
+export function getAdministrators(adminGuild: Guild): IterableIterator<GuildMember> {
+  return adminGuild.members.cache.filter(member =>
     member.permissions.has("ADMINISTRATOR") && !member.user.bot
   )
     .values();
 }
 
-export async function sentToAdmins(guild: Guild, message: string): Promise<void> {
-  for (const admin of await getAdministrators(guild)) {
+export async function sentToAdmins(adminGuild: Guild, message: string): Promise<void> {
+  for (const admin of getAdministrators(adminGuild)) {
     await admin.send(message);
   }
 }
@@ -111,11 +112,11 @@ export type FunctionResolvable = Function | string | string[];
  * @param fn the function or string to resolve
  * @param env the environment of the function to be evaluated
  */
-// tslint:disable:no-any no-unsafe-any
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function toFunction(fn: FunctionResolvable, env: any): Function {
   if (fn instanceof Function) return fn.bind(env);
 
-  const fnString: string = fn instanceof Array ? fn.join(lineEnd) : fn,
+  const fnString: string = Array.isArray(fn) ? fn.join(lineEnd) : fn,
     script = new VMScript(fnString),
     vm = new NodeVM({
       console: "inherit",

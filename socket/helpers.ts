@@ -16,6 +16,7 @@ import { ItemModel } from "../rooms/item";
 
 import { sockets } from "./socket";
 import { currentRoom } from "../listeners/baseHelpers";
+import { lock, unlock } from "../helpers/locks";
 
 let serverSocket: Server;
 
@@ -207,6 +208,7 @@ export async function getArchivedRoomLogs(roomId: string, user: User, time: Date
 
 export interface MinimalItem {
   d: string;
+  e?: boolean;
   h?: boolean;
   l?: boolean;
   n: string;
@@ -219,6 +221,7 @@ export function itemToJson(item: ItemModel): MinimalItem {
     n: item.name
   };
 
+  if (item.editable) itemJson.e = true;
   if (item.hidden) itemJson.h = true;
   if (item.locked) itemJson.l = true;
   if (item.quantity !== 1) itemJson.q = item.quantity;
@@ -553,23 +556,98 @@ export async function getUsersInfo(): Promise<UserInfo[]> {
 }
 
 export interface UserItemChange {
-  n: MinimalItem;
+  n?: MinimalItem;
   o?: MinimalItem;
   u: string;
 }
 
+function defaultValue<T>(value: T | undefined, ifNot: T): T{
+  return value === undefined ? ifNot : value;
+}
+
+function sameItem(item: MinimalItem, existing: ItemModel): boolean {
+  return item.d === existing.description 
+    && defaultValue(item.e, false) === defaultValue(existing.editable, false)
+    && defaultValue(item.h, false) === defaultValue(existing.hidden, false)
+    && defaultValue(item.l, false) === defaultValue(existing.locked, false)
+    && defaultValue(item.q, 1) === defaultValue(existing.quantity, 1);
+}
+
 export async function handleUserItemChange(data: UserItemChange): 
-  Promise<UserItemChange | undefined> {
+  Promise<UserItemChange | string> {
+
+  if (!data.o && !data.n) {
+    return "Must provide an old and/or new item";
+  }
 
   const user = await User.findOne({
     where: {
-      discordName: data.u 
+      name: data.u 
     }
   });
 
   if (user) {
-    
+    const redlock = await lock({ user: user.id });
+
+    try {
+      await user.reload({
+        attributes: ["inventory"]
+      });
+
+      let existingItem: ItemModel | undefined;
+
+      if (data.o) {
+        existingItem = user.inventory[data.o.n];
+
+        if (!existingItem) {
+          return `User ${user.name} does not have`
+        } else if (!sameItem(data.o, existingItem)) {
+          return `The item ${data.o.n} for ${data.u} has changed`;
+        }
+      }
+
+      let oldItem: MinimalItem | undefined;
+      let newItem: MinimalItem | undefined;
+
+      if (data.n) {
+        if (!data.o && data.n.n in user.inventory) {
+          return `User ${data.u} already has item ${data.n.n}`;
+        } else if (!data.n.n) {
+          return "Must provide a name for the new item";
+        }
+
+        const changedItem = existingItem || {} as ItemModel;
+
+        changedItem.description  = defaultValue(data.n.d, "");
+        changedItem.editable     = defaultValue(data.n.e, false);
+        changedItem.hidden       = defaultValue(data.n.h, false);
+        changedItem.locked       = defaultValue(data.n.l, false);
+        changedItem.name         = data.n.n;
+        changedItem.quantity     = defaultValue(data.n.q, 1);
+
+        user.inventory[data.n.n] = changedItem;
+
+        newItem = data.n;
+      } else {
+        delete user.inventory[data.o!.n];
+
+        oldItem = data.o;
+      }
+
+      await user.update({
+        inventory: user.inventory
+      });
+
+
+      return {
+        n: newItem,
+        o: oldItem,
+        u: data.u
+      }
+    } finally {
+      await unlock(redlock);
+    }
   } else {
-    return undefined;
+    return `Could not find ${data.u}`;
   }
 }

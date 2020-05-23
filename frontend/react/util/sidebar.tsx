@@ -1,16 +1,17 @@
 import React, { MouseEventHandler } from "react";
-import { VisibleStates } from "./visibleStates";
+
+import { VisibleStates } from "./util";
 
 interface GroupProps {
   name: string;
   onClick: MouseEventHandler;
 }
 
-const Group = React.memo((props: GroupProps) =>  {
-  return <a 
-    href="#" 
+const Group = React.memo(function Group(props: GroupProps)  {
+  return <a
+    href="#"
     className="list-group-item list-group-item-action"
-    onClick={ props.onClick }>{ props.name }</a>
+    onClick={ props.onClick }>{ props.name }</a>;
 });
 
 interface SidebarProps {
@@ -26,7 +27,7 @@ interface SidebarState {
 }
 
 class Sidebar extends React.PureComponent<SidebarProps, SidebarState> {
-  public render(){
+  public render(): JSX.Element {
     let options = this.props.options;
 
     if (this.props.admin) {
@@ -34,7 +35,7 @@ class Sidebar extends React.PureComponent<SidebarProps, SidebarState> {
     }
 
     const items = options.map(value => {
-      return <Group key={value} name={value} onClick={() => this.handleSelect(value)}/>
+      return <Group key={value} name={value} onClick={(): void => this.handleSelect(value)}/>;
     });
 
     return(
@@ -47,8 +48,7 @@ class Sidebar extends React.PureComponent<SidebarProps, SidebarState> {
     );
   }
 
-
-  private handleSelect(value: VisibleStates) {
+  private handleSelect(value: VisibleStates): void {
     this.setState(() => ({
       selected: value
     }));

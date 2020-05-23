@@ -1,12 +1,15 @@
+/* eslint-disable @typescript-eslint/no-type-alias */
+/* eslint-disable @typescript-eslint/unbound-method */
 import React from "react";
 
-import { 
+import {
   MAPS,
   ROOM_INFORMATION,
   USER_INVENTORY_CHANGE,
-  USERS_INFO,
-} from "../../socket/consts";
-import { VisibleStates } from "./visibleStates";
+  USERS_INFO
+} from "../../../socket/consts";
+
+import { VisibleStates } from "./util";
 
 const COMMAND_MAPPING: {
   [key in VisibleStates]?: string;
@@ -15,7 +18,7 @@ const COMMAND_MAPPING: {
   [VisibleStates.CurrentRooms]: ROOM_INFORMATION,
   [VisibleStates.Map]: MAPS,
   [VisibleStates.ViewUsers]: USERS_INFO
-}
+};
 
 const POLL_TIMING = 120000; // 2 minutes
 
@@ -28,7 +31,7 @@ type PollState = {
   [key in VisibleStates]?: Date;
 } & {
   now: Date;
-}
+};
 
 function sameDate(a?: Date, b?: Date): boolean {
   if (!a && !b) {
@@ -60,7 +63,7 @@ class Poll extends React.Component<PollProps, PollState> {
       [VisibleStates.Map]: undefined,
       [VisibleStates.ViewUsers]: undefined,
       now: new Date()
-    }
+    };
 
     this.handleRefresh = this.handleRefresh.bind(this);
   }
@@ -81,38 +84,38 @@ class Poll extends React.Component<PollProps, PollState> {
     return false;
   }
 
-  public componentDidMount() {
+  public componentDidMount(): void {
     this.pollingId = setInterval(() => {
       if (this.props.selected in COMMAND_MAPPING) {
         this.conditionallyRefreshState(this.props.selected);
       }
-      
-      this.setState({ 
+
+      this.setState({
         now: new Date()
       });
     }, 1000);
   }
 
-  public componentWillUnmount() {
-    clearInterval(this.pollingId); 
+  public componentWillUnmount(): void {
+    clearInterval(this.pollingId);
   }
 
-  public componentDidUpdate(oldProps: PollProps) {
+  public componentDidUpdate(oldProps: PollProps): void {
     const selected = this.props.selected;
 
     if (oldProps.selected !== selected && selected in COMMAND_MAPPING) {
       this.conditionallyRefreshState(selected);
     }
   }
-  
-  public render() {
+
+  public render(): JSX.Element {
     if (this.props.selected in COMMAND_MAPPING) {
       let lastRefreshTime;
 
       if (this.state[this.props.selected]) {
-        const timeDiffInMs = this.state.now.valueOf() - 
+        const timeDiffInMs = this.state.now.valueOf() -
           this.state[this.props.selected]!.valueOf();
-          
+
         const nextRefresh = Math.round((POLL_TIMING - timeDiffInMs) / 1000);
 
         if (nextRefresh === 1) {
@@ -131,18 +134,18 @@ class Poll extends React.Component<PollProps, PollState> {
     } else {
       return <div className="poll">
         <span>No refresh necessary</span>
-      </div>
+      </div>;
     }
   }
 
-  private conditionallyRefreshState(selected: VisibleStates) {
+  private conditionallyRefreshState(selected: VisibleStates): void {
     const command = COMMAND_MAPPING[selected];
 
     if (command) {
       this.setState(state => {
         const previousUpdate = state[selected];
         const now = new Date();
-  
+
         if (!previousUpdate || now.valueOf() - previousUpdate.valueOf() > POLL_TIMING) {
           this.props.socket.emit(command);
 
@@ -154,7 +157,7 @@ class Poll extends React.Component<PollProps, PollState> {
     }
   }
 
-  private handleRefresh() {
+  private handleRefresh(): void {
     const selected = this.props.selected;
 
     const command = COMMAND_MAPPING[selected];

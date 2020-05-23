@@ -9,11 +9,11 @@ const LOCK_PREFIX = "discordo:";
 const Locks = {
   BASE_RANDOM_DELAY: 100,
   BASE_WAIT_TIME: 300,
-  PENDING: LOCK_PREFIX + "waiting-writers",
-  READERS: LOCK_PREFIX + "readers",
-  ROOMS: LOCK_PREFIX + "rooms",
-  USERS: LOCK_PREFIX + "users",
-  WRITER: LOCK_PREFIX + "writer"
+  PENDING: `${LOCK_PREFIX  }waiting-writers`,
+  READERS: `${LOCK_PREFIX  }readers`,
+  ROOMS: `${LOCK_PREFIX  }rooms`,
+  USERS: `${LOCK_PREFIX  }users`,
+  WRITER: `${LOCK_PREFIX  }writer`
 };
 
 export async function resetLocks(): Promise<void> {
@@ -35,7 +35,7 @@ resetLocks();
  * Returns a promise that resolves in BASE_WAIT_TIME + randint(0, BASE_RANDOM_DELAY)
  *  time. Essentially, a random "sleep" with promises
  */
-function randomDelay(): Promise<void> {
+async function randomDelay(): Promise<void> {
   return new Promise((resolve: () => void): void => {
     const delay = Locks.BASE_WAIT_TIME +
       Math.round(Math.random() * Locks.BASE_RANDOM_DELAY);
@@ -44,17 +44,17 @@ function randomDelay(): Promise<void> {
   });
 }
 
-export async function lock({ room, ttl = TTL, user }: 
-                            {room?: string; ttl?: number, user?: string | string[] }): 
-                            Promise<Lock> {
-  let locksToAcquire: string[] = [];
+export async function lock({ room, ttl = TTL, user }:
+{room?: string; ttl?: number; user?: string | string[] }):
+  Promise<Lock> {
+  const locksToAcquire: string[] = [];
 
   if (room) {
     locksToAcquire.push(`${Locks.ROOMS}:${room}`);
   }
 
   if (user) {
-    if (user instanceof Array) {
+    if (Array.isArray(user)) {
       locksToAcquire.concat(user.map(userId => `${Locks.USERS}:${userId}`));
     } else {
       locksToAcquire.push(`${Locks.USERS}:${user}`);
@@ -67,60 +67,19 @@ export async function lock({ room, ttl = TTL, user }:
     try {
       acquiredLock = await locks.lock(locksToAcquire, ttl);
     } catch (error) {
-      console.error(acquiredLock);
+      console.error(error);
     }
   } while (!acquiredLock);
 
   return acquiredLock;
 }
 
-export async function unlock(lock: Lock): Promise<void> {
+export async function unlock(redlock: Lock): Promise<void> {
   try {
-    await lock.unlock();
+    await redlock.unlock();
   } catch (error) {
     console.error(error);
   }
-}
-
-/**
- * Acquires or releases a global read/write lock.
- * @param args arguments
- *  - acquire (boolean): whether to acquire a lock
- *  - writer (boolean): whether the lock is a reader (shared) or writer (exclusive)
- */
-export async function globalLock({ acquire, writer }:
-  { acquire: boolean; writer: boolean}): Promise<void> {
-
-  return new Promise(async (resolve: () => void): Promise<void> => {
-    if (acquire) {
-      if (writer) {
-        client.incr(Locks.PENDING, async () => {
-          while (true) {
-            if (await acquireWriter()) break;
-            await randomDelay();
-          }
-
-          resolve();
-        });
-      } else {
-        while (true) {
-          if (await acquireReader()) break;
-          await randomDelay();
-        }
-
-        resolve();
-      }
-    } else {
-      if (writer) {
-        client.multi()
-          .decr(Locks.PENDING)
-          .del(Locks.WRITER)
-          .exec(resolve);
-      } else {
-        client.decr(Locks.READERS, resolve);
-      }
-    }
-  });
 }
 
 /**
@@ -128,7 +87,7 @@ export async function globalLock({ acquire, writer }:
  *  other readers and writers.
  * @returns true if a writer lock was successfully acquired, false otherwise
  */
-function acquireWriter(): Promise<boolean> {
+async function acquireWriter(): Promise<boolean> {
   return new Promise((resolve: (success: boolean) => void): void => {
     client.multi()
       .get(Locks.READERS)
@@ -162,7 +121,7 @@ function acquireWriter(): Promise<boolean> {
  *  is not a writer.
  * @returns true if a reader lock was successfully acquired, false otherwise
  */
-function acquireReader(): Promise<boolean> {
+async function acquireReader(): Promise<boolean> {
   return new Promise((resolve: (success: boolean) => void): void => {
     client.multi()
       .get(Locks.PENDING)
@@ -183,5 +142,46 @@ function acquireReader(): Promise<boolean> {
           resolve(true);
         }
       });
+  });
+}
+
+/**
+ * Acquires or releases a global read/write lock.
+ * @param args arguments
+ *  - acquire (boolean): whether to acquire a lock
+ *  - writer (boolean): whether the lock is a reader (shared) or writer (exclusive)
+ */
+export async function globalLock({ acquire, writer }:
+{ acquire: boolean; writer: boolean}): Promise<void> {
+
+  return new Promise(async (resolve: () => void): Promise<void> => {
+    if (acquire) {
+      if (writer) {
+        client.incr(Locks.PENDING, async () => {
+          while (true) {
+            if (await acquireWriter()) break;
+            await randomDelay();
+          }
+
+          resolve();
+        });
+      } else {
+        while (true) {
+          if (await acquireReader()) break;
+          await randomDelay();
+        }
+
+        resolve();
+      }
+    } else {
+      if (writer) {
+        client.multi()
+          .decr(Locks.PENDING)
+          .del(Locks.WRITER)
+          .exec(resolve);
+      } else {
+        client.decr(Locks.READERS, resolve);
+      }
+    }
   });
 }

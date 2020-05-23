@@ -1,35 +1,13 @@
+/* eslint-disable @typescript-eslint/unbound-method */
 import React from "react";
-
 import { Responsive, Layout } from "react-grid-layout";
-import Modal from "./modal";
-import SearchBar from "./search";
-import { compareString } from "./rooms";
 
-import { MinimalItem } from "../../socket/helpers";
+import { MinimalItem } from "../../../socket/helpers";
+import Modal from "../util/modal";
+import SearchBar from "../util/search";
+import { compareString } from "../util/util";
 
-interface ItemProps {
-  description: string;
-  locked?: boolean;
-  name: string;
-  quantity?: number;
-
-  toggle(activeItem: string): void;
-}
-
-const Item = React.memo((props: ItemProps) => {
-  const message = `${props.name} (${props.quantity || 1}${props.locked ? " locked": ""})`
-  return (
-    <div className="card item">
-      <div className="card-body">
-        <h5 className="card-title">{message}</h5>
-        <button type="button" className="close" onClick={() => props.toggle(props.name)}>
-          <span>^</span>
-        </button>
-        <p className="card-text item" dangerouslySetInnerHTML={{ __html: props.description}}></p>
-      </div>
-    </div>
-  );
-});
+import Item from "./item";
 
 enum InventorySortPossibilities {
   NONE = "none",
@@ -60,6 +38,7 @@ interface InventoryState {
   sort: InventorySortPossibilities;
 }
 
+// eslint-disable-next-line @typescript-eslint/no-type-alias
 type LayoutMap = Map<string, [number, number]>;
 
 class Inventory extends React.PureComponent<InventoryProps, InventoryState> {
@@ -79,12 +58,12 @@ class Inventory extends React.PureComponent<InventoryProps, InventoryState> {
     this.handleWidth = this.handleWidth.bind(this);
     this.toggleModal = this.toggleModal.bind(this);
   }
-  
-  public render() {
+
+  public render(): JSX.Element {
     const layout: Layout[] = [];
     const width = this.props.width - (this.props.sidebar ? 200 : 0);
     let x = 0;
-    
+
     const filtered = this.props.inventory.filter(item => {
       return !item.h &&
         (this.state.filter === "" || item.n.startsWith(this.state.filter));
@@ -92,14 +71,14 @@ class Inventory extends React.PureComponent<InventoryProps, InventoryState> {
 
     if (this.state.sort !== "none") {
       const sign = this.state.sort === "atoz" ? 1: -1;
-      
+
       filtered.sort((a, b) => compareString(a.n, b.n, sign));
-    } 
+    }
 
     const elements = filtered.map(item => {
       const name = item.n;
       let height = 3, width = 4;
-      
+
       if (this.state.sizes.has(name)) {
         const elem = this.state.sizes.get(name) as [number, number];
 
@@ -109,7 +88,7 @@ class Inventory extends React.PureComponent<InventoryProps, InventoryState> {
 
       layout.push({
         i: name,
-        x: x,
+        x,
         y: 0,
         w: width,
         h: height
@@ -127,7 +106,7 @@ class Inventory extends React.PureComponent<InventoryProps, InventoryState> {
             locked={item.l}
           />
         </div>
-      )
+      );
     });
 
     const layouts: ReactGridLayout.Layouts = {};
@@ -149,7 +128,7 @@ class Inventory extends React.PureComponent<InventoryProps, InventoryState> {
         }
       }
     }
-    
+
     return (
       <div className={className}>
         <SearchBar<InventorySortPossibilities>
@@ -160,7 +139,14 @@ class Inventory extends React.PureComponent<InventoryProps, InventoryState> {
           placeholder={"select an item"}
           name={this.props.name}
         />
-        <Responsive className="layout" rowHeight={50} width={width} layouts={layouts} onLayoutChange={this.handleLayout} onWidthChange={this.handleWidth}>
+        <Responsive
+          className="layout"
+          rowHeight={50}
+          width={width}
+          layouts={layouts}
+          onLayoutChange={this.handleLayout}
+          onWidthChange={this.handleWidth}
+        >
           {elements}
         </Responsive>
         <Modal
@@ -173,11 +159,11 @@ class Inventory extends React.PureComponent<InventoryProps, InventoryState> {
     );
   }
 
-  private handleFilter(event: React.ChangeEvent<HTMLInputElement>) {
+  private handleFilter(event: React.ChangeEvent<HTMLInputElement>): void {
     this.setState({ filter: event.target.value });
   }
 
-  private toggleModal(activeItem: string) {
+  private toggleModal(activeItem: string): void {
     this.setState({
       activeItem
     });
@@ -185,13 +171,13 @@ class Inventory extends React.PureComponent<InventoryProps, InventoryState> {
     $(`#${this.props.name}Modal`).modal("show");
   }
 
-  private handleSort(sort: InventorySortPossibilities) {
+  private handleSort(sort: InventorySortPossibilities): void {
     if (sort !== this.state.sort) {
       this.setState({ sort });
     }
   }
 
-  private handleLayout(layout: ReactGridLayout.Layout[]) {
+  private handleLayout(layout: ReactGridLayout.Layout[]): void {
     if (layout.length === 0) {
       return;
     }
@@ -199,29 +185,29 @@ class Inventory extends React.PureComponent<InventoryProps, InventoryState> {
     this.setState(state => {
       const currentMap = state.sizes;
       const layoutMap: LayoutMap = new Map();
-  
+
       let changed = false;
-  
+
       for(const item of layout) {
         const currentLayout = currentMap.get(item.i),
           layoutChange = currentLayout === undefined ||
             currentLayout[0] !== item.w || currentLayout[1] !== item.h;
-  
+
         if (layoutChange) {
           layoutMap.set(item.i, [item.w, item.h]);
           changed = true;
         }
       }
-  
+
       if (changed) {
         return { sizes: layoutMap };
       } else {
         return { sizes: currentMap };
       }
-    })
+    });
   }
 
-  private handleWidth(_width: number, _margin: [number, number], cols: number) {
+  private handleWidth(_width: number, _margin: [number, number], cols: number): void {
     if (cols !== this.state.cols) {
       this.setState({ cols });
     }

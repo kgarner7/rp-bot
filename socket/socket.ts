@@ -31,7 +31,8 @@ import {
   getChannelInfo,
   ChannelInfo,
   getUsersInfo,
-  UserItemChange
+  UserItemChange,
+  handleUserItemChange
 } from "./helpers";
 
 const LOCK_NAME = "socket-disconnect";
@@ -136,6 +137,9 @@ export function socket(app: any): Server {
 
     sock.on(USER_ITEM_CHANGE, async (data: UserItemChange) => {
       if (idIsAdmin(user.id)) {
+        const result = await handleUserItemChange(data);
+
+        sock.emit(USER_ITEM_CHANGE, result);
       }
     });
 
