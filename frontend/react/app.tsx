@@ -355,9 +355,9 @@ export class App extends React.Component<{}, AppState>{
                     user.i.push(result.n!);
                   }
                 }
-              }
 
-              break;
+                break;
+              }
             }
           });
 
