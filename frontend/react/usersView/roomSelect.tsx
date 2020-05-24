@@ -51,6 +51,7 @@ export class RoomSelect extends React.PureComponent<RoomSelectProps, RoolSelectS
         <label className="input-group-text">Current room: </label>
       </div>
       <select className="custom-select" value={ location } onChange={ this.handleChange }>
+        <option>Choose a room...</option>
         { options }
       </select>
       <div className="input-group-append">
