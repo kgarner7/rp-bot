@@ -705,7 +705,7 @@ Promise<UserLocationChange | string> {
         } else if (oldRoom.name !== data.o) {
           return `User ${user.name} is no longer in ${data.o}. Please refresh to get recent data`;
         }
-      } else if (member.roles.cache.size > 0) {
+      } else if (member.roles.cache.size > 1) {
         return `User ${user.name} is in a room. You should refresh to get the newest data`;
       }
 

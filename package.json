@@ -1,6 +1,6 @@
 {
   "name": "summer-mistakes-bot",
-  "version": "1.0.4",
+  "version": "1.0.5",
   "description": "a bot for discord rp",
   "main": "index.ts",
   "dependencies": {
