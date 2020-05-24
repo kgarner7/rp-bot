@@ -1,15 +1,16 @@
+/* eslint-disable @typescript-eslint/unbound-method */
 // eslint-disable-next-line import/order
 import {enableMapSet, enableES5} from "immer";
 
 enableMapSet();
 enableES5();
-
-
 // eslint-disable-next-line import/order
 import loadable from "@loadable/component";
 import { sanitize } from "dompurify";
 // eslint-disable-next-line no-duplicate-imports
 import produce from "immer";
+// eslint-disable-next-line import/no-internal-modules
+import isEqual from "lodash/isEqual";
 import React from "react";
 import { Converter } from "showdown";
 // eslint-disable-next-line import/no-extraneous-dependencies
@@ -29,7 +30,8 @@ import {
   USER_NAME,
   COMMANDS,
   USERS_INFO,
-  USER_ITEM_CHANGE
+  USER_ITEM_CHANGE,
+  USER_LOCATION_CHANGE
 } from "../../socket/consts";
 import {
   MinimalCommand,
@@ -40,8 +42,9 @@ import {
   ChannelWithMinimalMessages,
   RoomJson,
   ChannelInfo,
-  UserInfo,
-  UserItemChange
+  UserItemChange,
+  UsersAndRooms,
+  UserLocationChange
 } from "../../socket/helpers";
 import { UserData } from "../../socket/socket";
 
@@ -63,7 +66,7 @@ const CurrentRoom = loadable(() =>
 const Rooms = loadable(() =>
   import(/* webpackChunkName: "rooms" */ "./rooms/rooms"));
 
-const Maps = loadable(() => 
+const Maps = loadable(() =>
   import(/* webpackChunkName: "maps" */ "./maps/maps"));
 
 const UsersView = loadable(() =>
@@ -82,9 +85,7 @@ const converter = new Converter();
 const startupTasks = [
   USER_NAME,
   USER_INVENTORY_CHANGE,
-  ROOM_INFORMATION,
-  MESSAGES_GET,
-  COMMANDS
+  MESSAGES_GET
 ];
 
 function toHtml(content: string): string {
@@ -104,7 +105,7 @@ interface AppState {
   sidebar: boolean;
   socket: SocketIOClient.Socket;
   username: string;
-  users?: UserInfo[];
+  users?: UsersAndRooms;
   width: number;
 }
 
@@ -153,10 +154,10 @@ export class App extends React.Component<{}, AppState>{
       this.setState({ commands });
     });
 
-    socket.on(MAPS, (data: MinimalRoomWithLink[]) => {
-      this.setState({
-        roomsMap: data
-      });
+    socket.on(MAPS, (roomsMap: MinimalRoomWithLink[]) => {
+      if (!isEqual(this.state.roomsMap, roomsMap)) {
+        this.setState({ roomsMap });
+      }
     });
 
     socket.on(USER_INVENTORY_CHANGE, (data: MinimalItem[]) => {
@@ -164,14 +165,16 @@ export class App extends React.Component<{}, AppState>{
         item.d = toHtml(item.d);
       }
 
-      this.setState({ inventory: data });
+      if (!isEqual(this.state.inventory, data)) {
+        this.setState({ inventory: data });
+      }
     });
 
     socket.on(ROOM_INFORMATION, (json: RoomJson[]) => {
-      const rooms = new Map();
+      const rooms = new Map<string, CurrentRoomData>();
 
       for (const room of json) {
-        const data: CurrentRoomData = {
+        const data = {
           inventory: room.c || [],
           name: room.n,
           present: room.p || false,
@@ -181,7 +184,11 @@ export class App extends React.Component<{}, AppState>{
         rooms.set(room.i, data);
       }
 
-      this.setState({ rooms });
+      if (!isEqual(this.state.rooms, rooms)) {
+        this.setState({
+          rooms
+        });
+      }
     });
 
     socket.on(ROOM_LOGS, (messages: MinimalMessageWithoutChannel[], roomId: string) => {
@@ -324,10 +331,10 @@ export class App extends React.Component<{}, AppState>{
       });
     });
 
-    socket.on(USERS_INFO, (users: UserInfo[]) => {
-      this.setState({
-        users
-      });
+    socket.on(USERS_INFO, (users: UsersAndRooms) => {
+      if (!isEqual(this.state.users, users)) {
+        this.setState({ users });
+      }
     });
 
     socket.on(USER_ITEM_CHANGE, (result: string | UserItemChange) => {
@@ -336,7 +343,7 @@ export class App extends React.Component<{}, AppState>{
       } else {
         this.setState(oldState => {
           const newState = produce(oldState, state => {
-            for (const user of state.users || []) {
+            for (const user of state.users?.u || []) {
               if (user.n === result.u) {
                 if (result.o) {
                   user.i = user.i.filter(item => item.n !== result.o!.n);
@@ -362,6 +369,24 @@ export class App extends React.Component<{}, AppState>{
           });
 
           return newState;
+        });
+      }
+    });
+
+    socket.on(USER_LOCATION_CHANGE, (result: string | UserLocationChange) => {
+      if (typeof result === "string") {
+        alert(`Failed to update item: ${result}`);
+      } else {
+        this.setState(oldState => {
+          const nextState = produce(oldState, state => {
+            for (const user of state.users?.u || []) {
+              if (user.n === user.n) {
+                user.l = result.n;
+              }
+            }
+          });
+
+          return nextState;
         });
       }
     });

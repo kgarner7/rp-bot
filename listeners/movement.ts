@@ -48,8 +48,8 @@ export const usage: Action = {
   }
 };
 
-async function moveMember(member: GuildMember, target: string, source: string = ""):
-                          Promise<void> {
+export async function moveMember(member: GuildMember, target: string, source = ""):
+Promise<void> {
 
   const roles: string[] = [];
 
@@ -72,8 +72,8 @@ async function moveMember(member: GuildMember, target: string, source: string = 
       try {
         await link.addVisitor(member.id);
         manager.links.get(from)!.get(to)!.visitors.add(member.id);
-      } catch (err) {
-        console.error((err as Error).stack);
+      } catch (error) {
+        console.error((error as Error).stack);
       }
     }
   }
@@ -139,8 +139,8 @@ export async function move(msg: CustomMessage): Promise<void> {
 
   try {
     const command = parseCommand(msg, ["to"]),
-    targetName = (command.args.get("to") || []).join(lineEnd),
-    targetRoom = await getRoomModel(targetName);
+      targetName = (command.args.get("to") || []).join(lineEnd),
+      targetRoom = await getRoomModel(targetName);
 
     if (targetRoom === null) {
       sendMessage(msg, `Could not find room ${targetName}`, true);
@@ -160,8 +160,8 @@ export async function move(msg: CustomMessage): Promise<void> {
           true);
       }
     }
-  } catch (err) {
-    throw err;
+  } catch (error) {
+    throw error;
   } finally {
     await unlock(redlock);
   }
@@ -213,13 +213,13 @@ export async function userMove(msg: CustomMessage): Promise<void> {
 
     if (targetRoom === null) {
       throw new Error("That room does not exist");
-    } else if (neighbors.indexOf(targetRoom.name) === -1) {
+    } else if (!neighbors.includes(targetRoom.name)) {
       throw new Error("You cannot access that room");
     }
 
     moveMember(member, targetRoom.name);
-  } catch (err) {
-    throw err;
+  } catch (error) {
+    throw error;
   } finally {
     await unlock(redlock);
   }

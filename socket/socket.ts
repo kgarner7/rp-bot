@@ -17,7 +17,8 @@ import {
   USER_INVENTORY_CHANGE,
   USER_NAME,
   USERS_INFO,
-  USER_ITEM_CHANGE
+  USER_ITEM_CHANGE,
+  USER_LOCATION_CHANGE
 } from "./consts";
 import {
   getArchivedRoomLogs,
@@ -32,16 +33,17 @@ import {
   ChannelInfo,
   getUsersInfo,
   UserItemChange,
-  handleUserItemChange
+  handleUserItemChange,
+  UserLocationChange,
+  handleUserLocationChange
 } from "./helpers";
 
-const LOCK_NAME = "socket-disconnect";
 const TIME_FORMAT = "Y-MM-DDTHH:mm:ss.SSSSZZ";
 
 export const sockets: Map<string, Set<string>> = new Map();
 
 export interface UserData {
-  a: boolean; 
+  a: boolean;
   n: string;
 }
 
@@ -67,23 +69,23 @@ export function socket(app: any): Server {
       sockets.set(user.id, new Set([sock.id]));
     }
 
-    sock.on(CHANNEL_UPDATE, 
+    sock.on(CHANNEL_UPDATE,
       async (roomId: string, callback: (data: ChannelInfo | undefined) => void) => {
 
-      const data = await getChannelInfo(roomId, user.id);
+        const data = await getChannelInfo(roomId, user.id);
 
-      callback(data);
-    });
+        callback(data);
+      });
 
-    sock.on(CHANNEL_UPDATE, 
+    sock.on(CHANNEL_UPDATE,
       async (roomId: string, callback: (data: ChannelInfo | undefined) => void) => {
 
-      const data = await getChannelInfo(roomId, user.id);
+        const data = await getChannelInfo(roomId, user.id);
 
-      callback(data);
-    });
+        callback(data);
+      });
 
-    sock.on(COMMANDS, async () => {
+    sock.on(COMMANDS, () => {
       const commands = getCommands(idIsAdmin(user.id));
       sock.emit(COMMANDS, commands);
     });
@@ -120,6 +122,13 @@ export function socket(app: any): Server {
       sock.emit(USER_INVENTORY_CHANGE, json);
     });
 
+    sock.on(USER_LOCATION_CHANGE, async (data: UserLocationChange) => {
+      if (idIsAdmin(user.id)) {
+        const result = await handleUserLocationChange(data);
+        sock.emit(USER_LOCATION_CHANGE, result);
+      }
+    });
+
     sock.on(USER_NAME, async () => {
       await user.reload({ attributes: ["discordName"] });
       sock.emit(USER_NAME, {
@@ -143,7 +152,7 @@ export function socket(app: any): Server {
       }
     });
 
-    sock.on("disconnect", async () => {
+    sock.on("disconnect", () => {
       const userSet = sockets.get(user.id);
 
       if (userSet) {
@@ -174,38 +183,38 @@ export function socket(app: any): Server {
 
     client.hmget("countdown", ["status", "length", "started", user.discordName],
       (err, data) => {
-      const status = data[0],
-        length = data[1],
-        started = data[2],
-        // tslint:disable-next-line:no-magic-numbers
-        pushed = !isNone(data[3]);
+        const status = data[0],
+          length = data[1],
+          started = data[2],
+          // tslint:disable-next-line:no-magic-numbers
+          pushed = !isNone(data[3]);
 
-      if (err) {
-        sock.emit("err", err.message);
-      } else {
-        if (data && length && status === "started") {
-          const end = moment.utc(data[2])
-            .add(length, "milliseconds");
+        if (err) {
+          sock.emit("err", err.message);
+        } else {
+          if (data && length && status === "started") {
+            const end = moment.utc(data[2])
+              .add(length, "milliseconds");
 
-          if (moment.utc() > end) {
-            client.hmset("countdown", "status", "done", error => {
-              if (error) {
-                sock.emit("err", error.message);
-              } else {
-                sock.emit("time", {
-                  length,
-                  status: "done"
-                });
-              }
-            });
+            if (moment.utc() > end) {
+              client.hmset("countdown", "status", "done", error => {
+                if (error) {
+                  sock.emit("err", error.message);
+                } else {
+                  sock.emit("time", {
+                    length,
+                    status: "done"
+                  });
+                }
+              });
+            } else {
+              sock.emit("time", { length, pushed, started, status });
+            }
           } else {
             sock.emit("time", { length, pushed, started, status });
           }
-        } else {
-          sock.emit("time", { length, pushed, started, status });
         }
-      }
-    });
+      });
 
     sock.on("set timer", timeInMillis => {
       if (!idIsAdmin(user.id)) {
@@ -254,16 +263,16 @@ export function socket(app: any): Server {
           started: now.format(),
           status: "started"
         }, (nestedErr, _resp) => {
-            if (nestedErr) {
-              sock.emit("err", nestedErr.message);
-            } else {
-              button.emit("time", {
-                length,
-                started: now.format(),
-                status: "started"
-              });
-            }
-          });
+          if (nestedErr) {
+            sock.emit("err", nestedErr.message);
+          } else {
+            button.emit("time", {
+              length,
+              started: now.format(),
+              status: "started"
+            });
+          }
+        });
       });
     });
 

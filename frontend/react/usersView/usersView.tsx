@@ -2,13 +2,14 @@
 import React from "react";
 import { Responsive, Layout } from "react-grid-layout";
 
-import { USER_ITEM_CHANGE } from "../../../socket/consts";
-import { UserInfo, MinimalItem, UserItemChange } from "../../../socket/helpers";
+import { USER_ITEM_CHANGE, USER_LOCATION_CHANGE } from "../../../socket/consts";
+import { MinimalItem, UserItemChange, UsersAndRooms, UserInfo, UserLocationChange } from "../../../socket/helpers";
 import Modal from "../util/modal";
 
 import NewUserItemEditor from "./newUserItemEditor";
 import User from "./user";
 import UserItemEditor from "./userItemEditor";
+import RoomSelect from "./roomSelect";
 
 // eslint-disable-next-line @typescript-eslint/no-type-alias
 type LayoutMap = Map<string, [number, number]>;
@@ -19,7 +20,7 @@ export interface UsersViewProps {
   selected: boolean;
   sidebar: boolean;
   socket: SocketIOClient.Socket;
-  users?: UserInfo[];
+  users?: UsersAndRooms;
   width: number;
 }
 
@@ -45,6 +46,7 @@ class UsersView extends React.Component<UsersViewProps, UsersViewState> {
     this.handleCancelEdit = this.handleCancelEdit.bind(this);
     this.handleItemChange = this.handleItemChange.bind(this);
     this.handleLayout = this.handleLayout.bind(this);
+    this.handleLocationChange = this.handleLocationChange.bind(this);
     this.handleNewItem = this.handleNewItem.bind(this);
     this.handleWidth = this.handleWidth.bind(this);
     this.toggleModal = this.toggleModal.bind(this);
@@ -56,7 +58,7 @@ class UsersView extends React.Component<UsersViewProps, UsersViewState> {
 
     let x = 0;
 
-    const elements = (this.props.users || []).map(user => {
+    const elements = (this.props.users?.u || []).map(user => {
       const name = user.n;
 
       let height = 3, width = 4;
@@ -91,12 +93,15 @@ class UsersView extends React.Component<UsersViewProps, UsersViewState> {
 
     const className = this.props.selected ? "visible": "invisible";
 
+    let activeUser: UserInfo | undefined;
     let items: JSX.Element[] = [];
     let title = "";
 
     if (this.state.activeUser && this.props.users) {
-      for (const user of this.props.users) {
+      for (const user of this.props.users.u) {
         if (user.n === this.state.activeUser) {
+          activeUser = user;
+
           title = `Editing ${user.n}`;
 
           items = user.i.map(item =>
@@ -135,10 +140,18 @@ class UsersView extends React.Component<UsersViewProps, UsersViewState> {
       </Responsive>
       <Modal
         body={
-          <ul className="list-group">
-            { items }
-            { body }
-          </ul>
+          <React.Fragment>
+            <RoomSelect
+              options={ this.props.users?.r || []}
+              user={ activeUser }
+              handleChange={ this.handleLocationChange }
+            />
+            <ul className="list-group">
+              { items }
+              { body }
+            </ul>
+          </React.Fragment>
+
         }
         id="viewUser"
         title={ title }
@@ -198,6 +211,18 @@ class UsersView extends React.Component<UsersViewProps, UsersViewState> {
         return { sizes: currentMap };
       }
     });
+  }
+
+  private handleLocationChange(original: string, newRoom: string): void {
+    if (this.state.activeUser) {
+      const data: UserLocationChange = {
+        n: newRoom,
+        o: original,
+        u: this.state.activeUser
+      };
+
+      this.props.socket.emit(USER_LOCATION_CHANGE, data);
+    }
   }
 
   private handleNewItem(): void {

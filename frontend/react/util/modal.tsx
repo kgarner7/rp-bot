@@ -7,8 +7,8 @@ interface ModalProps {
   title: string;
 }
 
-const Modal = React.memo((props: ModalProps) => {    
-  const id = props.id + "Modal";
+const Modal = React.memo(function Modal(props: ModalProps) {
+  const id = `${props.id}Modal`;
 
   let body: JSX.Element | string;
 
@@ -23,7 +23,7 @@ const Modal = React.memo((props: ModalProps) => {
       <div className="modal-dialog modal-dialog-centered modal-lg" role="document">
         <div className="modal-content">
           <div className="modal-header">
-            <h5 className="modal-title" id={id + "Label"}>{props.title}</h5>
+            <h5 className="modal-title" id={`${id}Label`}>{props.title}</h5>
             <button type="button" className="close" data-dismiss="modal">
               <span aria-hidden="true">&times;</span>
             </button>

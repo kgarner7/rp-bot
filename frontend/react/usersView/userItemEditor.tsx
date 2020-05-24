@@ -127,7 +127,7 @@ export class UserItemEditor extends React.PureComponent<UserItemEditorProps, Use
     </li>;
   }
 
-  private handleCancel() {
+  private handleCancel(): void {
     this.setState({
       d: undefined,
       h: undefined,

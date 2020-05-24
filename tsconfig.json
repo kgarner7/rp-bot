@@ -17,6 +17,7 @@
     "noUnusedParameters": true,
     "outDir": "./dist",
     "pretty": true,
+    "removeComments": true,
     "resolveJsonModule": true,
     "strict": true,
     "strictBindCallApply": true,

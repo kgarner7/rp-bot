@@ -8,15 +8,16 @@ import { Op } from "sequelize";
 import { Server, Socket } from "socket.io";
 
 import { guild } from "../client";
-import { Dict, idIsAdmin, userIsAdmin } from "../helpers/base";
-import { None, Null } from "../helpers/types";
+import { Dict, idIsAdmin } from "../helpers/base";
+import { lock, unlock } from "../helpers/locks";
+import { None } from "../helpers/types";
 import { usages } from "../listeners/actions";
+import { currentRoom, getRoomModel } from "../listeners/baseHelpers";
 import { Link, Message, Room, sequelize, User } from "../models/models";
 import { ItemModel } from "../rooms/item";
 
 import { sockets } from "./socket";
-import { currentRoom } from "../listeners/baseHelpers";
-import { lock, unlock } from "../helpers/locks";
+import { moveMember } from "../listeners/movement";
 
 let serverSocket: Server;
 
@@ -52,9 +53,9 @@ export function triggerUser(member: User | GuildMember | DiscordUser,
 const roomAttributes = ["discordName", "id", "inventory", "name", "updatedAt"];
 
 export async function getRooms(user: GuildMember | User): Promise<RoomJson[]> {
-  const visibleRooms = new Set<String>();
+  const visibleRooms = new Set<string>();
 
-  for (const [_, channel] of guild.channels.cache) {
+  for (const [, channel] of guild.channels.cache) {
     if (channel instanceof TextChannel) {
       if (channel.members.has(user.id)) visibleRooms.add(channel.name);
     }
@@ -66,7 +67,7 @@ export async function getRooms(user: GuildMember | User): Promise<RoomJson[]> {
     messageRooms = await Room.findAll({ attributes: roomAttributes });
   } else {
     const transaction = await sequelize.transaction();
-    
+
     const userModel = await User.findOne({
       attributes: ["id"],
       include: [{
@@ -79,8 +80,8 @@ export async function getRooms(user: GuildMember | User): Promise<RoomJson[]> {
       where: {
         id: user.id
       }
-    })
-    
+    });
+
     messageRooms = userModel?.visitedRooms || [];
 
     const messageRoomNames = new Set<string>(messageRooms.map(room => room.name));
@@ -140,7 +141,7 @@ export interface RoomJson {
 
 export function roomToJson(room: Room, present: boolean,
                            isAdmin: boolean): RoomJson {
-  
+
   const channel = guild.channels.resolve(room.id) as TextChannel;
 
   const json: RoomJson = {
@@ -148,7 +149,7 @@ export function roomToJson(room: Room, present: boolean,
     i: channel.id,
     n: room.name,
     s: channel.parent?.name
-  }
+  };
 
   if (present) {
     json.c = inventoryToJson(room.inventory)
@@ -161,7 +162,7 @@ export function roomToJson(room: Room, present: boolean,
 }
 
 export async function getArchivedRoomLogs(roomId: string, user: User, time: Date):
-  Promise<MinimalMessageWithoutChannel[]> {
+Promise<MinimalMessageWithoutChannel[]> {
 
   const room = await Room.findOne({
     attributes: ["id"],
@@ -200,7 +201,7 @@ export async function getArchivedRoomLogs(roomId: string, user: User, time: Date
         t: message.message
       };
     });
-    
+
   } else {
     return [];
   }
@@ -307,8 +308,8 @@ export async function getMessages(user: User | GuildMember | DiscordUser,
       d: message.createdAt!,
       i: message.id,
       t: message.message
-    }
-    
+    };
+
     const room = response[message.Room.id];
 
     if (room) {
@@ -320,20 +321,20 @@ export async function getMessages(user: User | GuildMember | DiscordUser,
         d: channel.topic || "",
         m: [messageJson],
         n: message.Room.name,
-        s: channel!.parent!.name
-      }
+        s: channel.parent!.name
+      };
     }
   }
 
   let rooms: Room[] = [];
 
   if (idIsAdmin(user.id)) {
-    rooms = await Room.findAll({})
+    rooms = await Room.findAll({});
   } else {
     const visitor = await User.findOne({
       include: [{
         as: "visitedRooms",
-        model: Room,
+        model: Room
       }],
       where: {
         id: user.id
@@ -353,8 +354,8 @@ export async function getMessages(user: User | GuildMember | DiscordUser,
         d: channel.topic || "",
         m: [],
         n: room.name,
-        s: channel!.parent!.name
-      }
+        s: channel.parent!.name
+      };
     }
   }
 
@@ -471,7 +472,7 @@ export async function createMap(user: GuildMember | User): Promise<MinimalRoomWi
       for (const room of rooms) {
         for (const link of room.sources) {
           if (!linkIds.has(link.id)) {
-            link.target.name = `${ link.name}??`
+            link.target.name = `${ link.name}??`;
           }
         }
       }
@@ -504,8 +505,8 @@ export interface ChannelInfo {
   s: string;
 }
 
-export async function getChannelInfo(roomId: string, userId: string): 
-  Promise<ChannelInfo | undefined> {
+export async function getChannelInfo(roomId: string, userId: string):
+Promise<ChannelInfo | undefined> {
 
   const channel = guild.channels.resolve(roomId);
 
@@ -521,7 +522,7 @@ export async function getChannelInfo(roomId: string, userId: string):
         d: channel.topic || "",
         n: room?.name || "",
         s: channel.parent?.name || ""
-      }
+      };
     }
   }
 
@@ -534,14 +535,24 @@ export interface UserInfo {
   n: string;
 }
 
-export async function getUsersInfo(): Promise<UserInfo[]> {
-  return (await User.findAll())
+export interface UsersAndRooms {
+  r: string[];
+  u: UserInfo[];
+}
+
+export async function getUsersInfo(): Promise<UsersAndRooms> {
+  // eslint-disable-next-line @typescript-eslint/require-array-sort-compare
+  const rooms = (await Room.findAll())
+    .map(room => room.name)
+    .sort();
+
+  const userInfo =  (await User.findAll())
     .filter(user => !idIsAdmin(user.id))
     .map(user => {
       const inventory = inventoryToJson(user.inventory);
       const member = guild.members.resolve(user.id);
 
-      let location: string = "";
+      let location = "";
 
       if (member) {
         location = currentRoom(member) || "";
@@ -551,8 +562,13 @@ export async function getUsersInfo(): Promise<UserInfo[]> {
         i: inventory,
         l: location,
         n: user.name
-      }
+      };
     });
+
+  return {
+    r: rooms,
+    u: userInfo
+  };
 }
 
 export interface UserItemChange {
@@ -566,15 +582,15 @@ function defaultValue<T>(value: T | undefined, ifNot: T): T{
 }
 
 function sameItem(item: MinimalItem, existing: ItemModel): boolean {
-  return item.d === existing.description 
+  return item.d === existing.description
     && defaultValue(item.e, false) === defaultValue(existing.editable, false)
     && defaultValue(item.h, false) === defaultValue(existing.hidden, false)
     && defaultValue(item.l, false) === defaultValue(existing.locked, false)
     && defaultValue(item.q, 1) === defaultValue(existing.quantity, 1);
 }
 
-export async function handleUserItemChange(data: UserItemChange): 
-  Promise<UserItemChange | string> {
+export async function handleUserItemChange(data: UserItemChange):
+Promise<UserItemChange | string> {
 
   if (!data.o && !data.n) {
     return "Must provide an old and/or new item";
@@ -582,7 +598,7 @@ export async function handleUserItemChange(data: UserItemChange):
 
   const user = await User.findOne({
     where: {
-      name: data.u 
+      name: data.u
     }
   });
 
@@ -600,7 +616,7 @@ export async function handleUserItemChange(data: UserItemChange):
         existingItem = user.inventory[data.o.n];
 
         if (!existingItem) {
-          return `User ${user.name} does not have`
+          return `User ${user.name} does not have`;
         } else if (!sameItem(data.o, existingItem)) {
           return `The item ${data.o.n} for ${data.u} has changed`;
         }
@@ -629,6 +645,7 @@ export async function handleUserItemChange(data: UserItemChange):
 
         newItem = data.n;
       } else {
+        // eslint-disable-next-line @typescript-eslint/no-dynamic-delete
         delete user.inventory[data.o!.n];
 
         oldItem = data.o;
@@ -643,11 +660,71 @@ export async function handleUserItemChange(data: UserItemChange):
         n: newItem,
         o: oldItem,
         u: data.u
-      }
+      };
     } finally {
       await unlock(redlock);
     }
   } else {
     return `Could not find ${data.u}`;
   }
+}
+
+export interface UserLocationChange {
+  n: string;
+  o?: string;
+  u: string;
+}
+
+export async function handleUserLocationChange(data: UserLocationChange):
+Promise<UserLocationChange | string> {
+  const user = await User.findOne({
+    where: {
+      name: data.u
+    }
+  });
+
+  if (user) {
+    const redlock = await lock({ user: user.id });
+
+    try {
+      const member = guild.members.cache.get(user.id);
+
+      if (!member) {
+        return `No member ${user.name} in this guild server`;
+      }
+
+      if (data.o && data.o !== "") {
+        if (member.roles.cache.size === 0) {
+          return `User ${user.name} is no longer in ${data.o}. Please refresh to get recent data`;
+        }
+
+        const oldRoom = await getRoomModel(member.roles.cache.first()!.name);
+
+        if (!oldRoom) {
+          return `Could not find a room for ${user.name}. Something has gone very wrong`;
+        } else if (oldRoom.name !== data.o) {
+          return `User ${user.name} is no longer in ${data.o}. Please refresh to get recent data`;
+        }
+      } else if (member.roles.cache.size > 0) {
+        return `User ${user.name} is in a room. You should refresh to get the newest data`;
+      }
+
+      const newRoom = await getRoomModel(data.n);
+
+      if (newRoom) {
+        await moveMember(member, newRoom.name);
+      } else {
+        return `Room ${data.n} does not exist`;
+      }
+    } finally {
+      await unlock(redlock);
+    }
+  } else {
+    return `Could not find a user ${data.u}`;
+  }
+
+  return {
+    n: data.n,
+    u: data.u
+  };
 }

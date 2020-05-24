@@ -6,7 +6,8 @@ import {
   MAPS,
   ROOM_INFORMATION,
   USER_INVENTORY_CHANGE,
-  USERS_INFO
+  USERS_INFO,
+  COMMANDS
 } from "../../../socket/consts";
 
 import { VisibleStates } from "./util";
@@ -16,6 +17,7 @@ const COMMAND_MAPPING: {
 } = {
   [VisibleStates.Inventory]: USER_INVENTORY_CHANGE,
   [VisibleStates.CurrentRooms]: ROOM_INFORMATION,
+  [VisibleStates.Commands]: COMMANDS,
   [VisibleStates.Map]: MAPS,
   [VisibleStates.ViewUsers]: USERS_INFO
 };
@@ -59,9 +61,6 @@ class Poll extends React.Component<PollProps, PollState> {
 
     this.state = {
       [VisibleStates.Inventory]: new Date(),
-      [VisibleStates.CurrentRooms]: undefined,
-      [VisibleStates.Map]: undefined,
-      [VisibleStates.ViewUsers]: undefined,
       now: new Date()
     };
 
@@ -72,6 +71,9 @@ class Poll extends React.Component<PollProps, PollState> {
     if (this.props.selected !== nextProps.selected) {
       return true;
     } else if (COMMAND_MAPPING[nextProps.selected] === undefined) {
+      return false;
+    } else if (nextProps.selected === VisibleStates.Commands
+               && this.state[VisibleStates.Commands]) {
       return false;
     }
 
@@ -109,7 +111,10 @@ class Poll extends React.Component<PollProps, PollState> {
   }
 
   public render(): JSX.Element {
-    if (this.props.selected in COMMAND_MAPPING) {
+    const shouldShowRefresh = this.props.selected in COMMAND_MAPPING
+      && this.props.selected !== VisibleStates.Commands;
+
+    if (shouldShowRefresh) {
       let lastRefreshTime;
 
       if (this.state[this.props.selected]) {
@@ -141,7 +146,7 @@ class Poll extends React.Component<PollProps, PollState> {
   private conditionallyRefreshState(selected: VisibleStates): void {
     const command = COMMAND_MAPPING[selected];
 
-    if (command) {
+    if (command && selected !== VisibleStates.Commands) {
       this.setState(state => {
         const previousUpdate = state[selected];
         const now = new Date();
