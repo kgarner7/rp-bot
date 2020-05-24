@@ -380,8 +380,9 @@ export class App extends React.Component<{}, AppState>{
         this.setState(oldState => {
           const nextState = produce(oldState, state => {
             for (const user of state.users?.u || []) {
-              if (user.n === user.n) {
+              if (user.n === result.u) {
                 user.l = result.n;
+                break;
               }
             }
           });
