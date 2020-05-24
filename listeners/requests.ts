@@ -85,7 +85,7 @@ export async function createItem(msg: CustomMessage): Promise<void> {
 
   const message = `New request from ${user.discordName} (#${request.id}): ` +
   `${quantity} of ${itemName}`;
-  
+
   await sentToAdmins(guild, message);
 }
 
@@ -106,7 +106,7 @@ export async function requests(msg: CustomMessage): Promise<void> {
   if (command.args.has("approve") || command.args.has("deny")) {
     return changeRequestStatus(msg, command);
   } else {
-    viewRequests(msg, command.params, command.args.get("for"));
+    await viewRequests(msg, command.params, command.args.get("for"));
   }
 }
 
@@ -153,7 +153,7 @@ async function viewRequests(msg: CustomMessage,
     `Request ${r.id} for ${r.User.discordName}: ` +
     `\n${r.quantity} of ${r.name}: ${r.description} (${r.getStatus()} ${r.reason || ""})`
   )
-  .join("\n");
+    .join("\n");
 
   if (message.length === 0) {
     message = "No requests found for that filter";

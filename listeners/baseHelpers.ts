@@ -2,11 +2,11 @@ import { GuildMember, TextChannel } from "discord.js";
 import { Op } from "sequelize";
 
 import { guild } from "../client";
+import { isAdmin } from "../helpers/base";
 import { CustomMessage } from "../helpers/classes";
 import { Null } from "../helpers/types";
 import { Room as RoomModel } from "../models/models";
 import { manager } from "../rooms/roomManager";
-import { isAdmin } from "../helpers/base";
 
 const MAX_MESSAGE_SIZE = 1900;
 
@@ -113,6 +113,7 @@ export function parseCommand(msg: CustomMessage,
 }
 
 /** Represents the name of a room and whether it was user-defined */
+// eslint-disable-next-line @typescript-eslint/no-type-alias
 export type RoomName = Null<{
   /** the name of the room */
   name: string;
@@ -137,7 +138,7 @@ export function currentRoom(member: GuildMember): Null<string> {
  * @param override whether to ignore user input
  * @returns the room name, or null
  */
-export function getRoomName(msg: CustomMessage, override: boolean = false): RoomName {
+export function getRoomName(msg: CustomMessage, override = false): RoomName {
   const command: Command = parseCommand(msg);
 
   if (!command.args.has("in") || override) {
@@ -185,8 +186,8 @@ export async function getRoomModel(name: string): Promise<Null<RoomModel>> {
  * @param requirePresence whether the author must have a role to see that room
  */
 export async function getRoom(msg: CustomMessage,
-                              requirePresence: boolean = true):
-                              Promise<Null<RoomModel>> {
+                              requirePresence = true):
+  Promise<Null<RoomModel>> {
 
   let channel = getRoomName(msg),
     roomModel: Null<RoomModel> = null;
@@ -229,7 +230,7 @@ export async function getRoom(msg: CustomMessage,
  *  or privately
  */
 export function sendMessage(msg: CustomMessage, message: string,
-                            isPrivate: boolean = false): void {
+                            isPrivate = false): void {
 
   let target: GuildMember | TextChannel;
 

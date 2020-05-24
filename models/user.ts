@@ -27,6 +27,7 @@ import { Dict } from "../helpers/base";
 import { Null } from "../helpers/types";
 import { ItemModel, ItemResolvable } from "../rooms/item";
 
+// eslint-disable-next-line import/order
 import { sequelize } from "./connection";
 
 export interface UserResolvable {
@@ -111,7 +112,7 @@ export class User extends Model {
    * @param member the guild member corresponding to this User
    */
   public static async createFromMember(member: GuildMember):
-                                       Promise<Null<[User, boolean]>> {
+  Promise<Null<[User, boolean]>> {
 
     if (!member.user.bot) {
       const [user, created] = await User.findOrCreate({
@@ -154,7 +155,6 @@ User.init({
   sequelize
 });
 
-// tslint:disable-next-line:ordered-imports
 import { Link } from "./link";
 import { Message } from "./message";
 import { Request } from "./request";
@@ -170,9 +170,9 @@ User.hasMany(Message, { as: "SentMessages" });
 
 User.belongsToMany(Message, { through: "UserMessage" });
 
-User.belongsToMany(Room, { 
+User.belongsToMany(Room, {
   as: "visitedRooms",
   through: RoomVisitation
-})
+});
 
 User.hasMany(Request);

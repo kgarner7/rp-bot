@@ -57,8 +57,7 @@
             "String",
             "string",
             "Boolean",
-            "boolean",
-            "Undefined"
+            "boolean"
         ],
         "id-match": "warn",
         "max-classes-per-file": [
@@ -455,13 +454,6 @@
             "argsIgnorePattern": "^_",
             "caughtErrors": "all",
             "caughtErrorsIgnorePattern": "^_"
-        }],
-        "@typescript-eslint/no-use-before-define": ["warn", {
-            "functions": true,
-            "classes": true,
-            "enums": true,
-            "variables": true,
-            "typedefs": true
         }],
         "@typescript-eslint/no-useless-constructor": "warn",
         "@typescript-eslint/quotes": [

@@ -109,7 +109,7 @@ export const usage: Action = {
 };
 
 async function findRoomByCommand(command: Command, target: string):
-  Promise<RoomModel> {
+Promise<RoomModel> {
 
   const arr = command.args.get(target);
   let name: string;
@@ -132,9 +132,9 @@ export function handleLock(locked: boolean): (msg: CustomMessage) => Promise<voi
     requireAdmin(msg);
 
     const args: {
-      sourceId?: string;
-      targetId?: string;
-    } & Dict<string> = { },
+        sourceId?: string;
+        targetId?: string;
+      } & Dict<string> = { },
       command = parseCommand(msg, ["from", "to"]);
 
     if (!command.args.has("from") && !command.args.has("to")) {
@@ -195,11 +195,12 @@ export function handleLock(locked: boolean): (msg: CustomMessage) => Promise<voi
       }
     }
 
-    sendMessage(msg, (messageArray.length > 0 ?
+    sendMessage(msg, messageArray.length > 0 ?
+      // eslint-disable-next-line @typescript-eslint/require-array-sort-compare
       messageArray.sort()
         .join(lineEnd) :
-        "No links changed"),
-      true);
+      "No links changed",
+    true);
   };
 }
 
@@ -208,9 +209,9 @@ export function hide(hidden: boolean): (msg: CustomMessage) => Promise<void> {
     requireAdmin(msg);
 
     const args: {
-      sourceId?: string;
-      targetId?: string;
-    } & Dict<string> = { },
+        sourceId?: string;
+        targetId?: string;
+      } & Dict<string> = { },
       command = parseCommand(msg, ["from", "to"]);
 
     if (!command.args.has("from") && !command.args.has("to")) {
@@ -271,11 +272,12 @@ export function hide(hidden: boolean): (msg: CustomMessage) => Promise<void> {
       }
     }
 
-    sendMessage(msg, (messageArray.length > 0 ?
+    sendMessage(msg, messageArray.length > 0 ?
+      // eslint-disable-next-line @typescript-eslint/require-array-sort-compare
       messageArray.sort()
         .join(lineEnd) :
-        "No links changed"),
-      true);
+      "No links changed",
+    true);
   };
 }
 
@@ -283,10 +285,10 @@ export async function links(msg: CustomMessage): Promise<void> {
   requireAdmin(msg);
 
   const args: {
-    locked?: boolean;
-    sourceId?: string;
-    targetId?: string;
-  } & Dict<string | boolean> = { },
+      locked?: boolean;
+      sourceId?: string;
+      targetId?: string;
+    } & Dict<string | boolean> = { },
     command = parseCommand(msg, ["locked", "unlocked", "from", "to"]);
 
   if (command.args.has("from")) {
@@ -329,7 +331,7 @@ export async function links(msg: CustomMessage): Promise<void> {
 
     return `${link.source.name} => ${link.target.name}${endString} (${neighbor.name})`;
   })
-  .join(lineEnd);
+    .join(lineEnd);
 
   if (linkString === "") {
     linkString = "No links found with those parameters";

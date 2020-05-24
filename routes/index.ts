@@ -8,12 +8,12 @@ import { User } from "../models/models";
 const MIN_PASS_LENGTH = 8;
 const SALT_ROUNDS = 15;
 
-type handler = (req: Request, res: Response, next: NextFunction) => void;
+type Handler = (req: Request, res: Response, next: NextFunction) => void;
 
-// tslint:disable-next-line:typedef
-const wrapper = (fn: handler) => (req: Request, res: Response, next: NextFunction) => {
-    Promise.resolve(fn(req, res, next))
-      .catch(next);
+// eslint-disable-next-line @typescript-eslint/explicit-function-return-type
+const wrapper = (fn: Handler) => (req: Request, res: Response, next: NextFunction): void => {
+  Promise.resolve(fn(req, res, next))
+    .catch(next);
 };
 
 export const router = express.Router();
@@ -112,9 +112,9 @@ router.post("/signup", wrapper(async (req, res) => {
   res.redirect("/login");
 }));
 
-router.get("/logout", requireLogin, wrapper(async (req, res) => {
+router.get("/logout", requireLogin, (req, res) => {
   req.session!.destroy(_err => res.redirect("/login"));
-}));
+});
 
 router.get("/button", requireLogin, wrapper(async (req, res) => {
   const user = await User.findOne({
@@ -135,14 +135,14 @@ router.get("/button", requireLogin, wrapper(async (req, res) => {
   });
 }));
 
-router.get("/button/admin", requireLogin, wrapper(async (req, res) => {
+router.get("/button/admin", requireLogin, (req, res) => {
   if (!idIsAdmin(req.session!.userId)) {
     res.redirect("/button");
     return;
   }
 
   res.render("button-admin");
-}));
+});
 
 const robotsRule = `
 User-agent: *

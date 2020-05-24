@@ -1,6 +1,7 @@
+import { promises } from "fs";
+
 import { queue } from "async";
 import { StreamDispatcher, VoiceChannel } from "discord.js";
-import { promises } from "fs";
 import ytdl from "ytdl-core";
 
 import { guild } from "../client";
@@ -47,32 +48,32 @@ const musicQueue = queue(
     tube?: string; },
    callback: (err?: None<Error>) => void) => {
 
-  if (shouldPlay) {
-    startChannel(channel, loop, path, tube)
-      .then(() => {
-        callback(undefined);
-      })
-      .catch(err => {
-        callback(err);
-      });
-  } else {
-    if (activeDispatch) {
-      activeDispatch.end("stop");
-      activeDispatch = undefined;
-    }
+    if (shouldPlay) {
+      startChannel(channel, loop, path, tube)
+        .then(() => {
+          callback(undefined);
+        })
+        .catch(error => {
+          callback(error);
+        });
+    } else {
+      if (activeDispatch) {
+        activeDispatch.end("stop");
+        activeDispatch = undefined;
+      }
 
-    if (activeChannel) {
-      activeChannel.leave();
-      activeChannel = undefined;
+      if (activeChannel) {
+        activeChannel.leave();
+        activeChannel = undefined;
+      }
+      callback();
     }
-    callback();
-  }
-}, 1);
+  }, 1);
 
 async function startChannel(channelName: string, loop: boolean,
                             path: string, tube: string): Promise<void> {
   const channel = guild.channels.cache.find(c =>
-      c.type === "voice" && c.name === channelName) as None<VoiceChannel>;
+    c.type === "voice" && c.name === channelName) as None<VoiceChannel>;
 
   if (isNone(channel)) {
     throw new Error(`Could not find channel ${channelName}`);
@@ -92,7 +93,7 @@ async function startChannel(channelName: string, loop: boolean,
           channel.leave();
         }
       });
-    } catch (err) {
+    } catch (error) {
       if (activeChannel) {
         activeChannel.leave();
         activeChannel = undefined;
@@ -103,7 +104,7 @@ async function startChannel(channelName: string, loop: boolean,
         activeDispatch = undefined;
       }
 
-      throw err;
+      throw error;
     }
   }
 }
@@ -133,7 +134,7 @@ export async function play(msg: CustomMessage): Promise<void> {
         const message = `Now playing ${path} in ${channel}`;
         sendMessage(msg, message, true);
         resolve();
-    });
+      });
   });
 }
 

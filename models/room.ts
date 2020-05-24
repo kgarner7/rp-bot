@@ -25,6 +25,7 @@ import {
 import { Dict } from "../helpers/base";
 import { ItemModel } from "../rooms/item";
 
+// eslint-disable-next-line import/order
 import { sequelize } from "./connection";
 
 /**

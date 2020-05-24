@@ -26,7 +26,7 @@ export async function createRoom(msg: CustomMessage): Promise<void> {
   requireAdmin(msg);
 
   const name: string = parseCommand(msg).params
-      .join("");
+    .join("");
 
   if (name === "" || guild.channels.cache.find(c => c.name === name) !== null) {
     throw new ExistingChannelError(name);
@@ -54,7 +54,7 @@ export async function createRoom(msg: CustomMessage): Promise<void> {
         "READ_MESSAGE_HISTORY",
         "SEND_MESSAGES",
         "VIEW_CHANNEL"
-       ],
+      ],
       // deny: ["READ_MESSAGES", "READ_MESSAGE_HISTORY", "SEND_MESSAGES"],
       id: everyone
     }],
@@ -92,8 +92,9 @@ export async function deleteRoom(msg: CustomMessage): Promise<void> {
 
 export async function getAvailableRooms(msg: CustomMessage): Promise<void> {
   return new Promise((resolve: () => void): void => {
+    // eslint-disable-next-line @typescript-eslint/require-array-sort-compare
     const roomList: string[] = adjacentRooms(msg)
-    .sort();
+      .sort();
 
     sendMessage(msg,
       `Here are the rooms you can visit:${lineEnd}${roomList.join(lineEnd)}`,

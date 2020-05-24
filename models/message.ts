@@ -19,6 +19,7 @@ import {
 
 import { getMembers } from "../helpers/base";
 
+// eslint-disable-next-line import/order
 import { sequelize } from "./connection";
 
 /**
@@ -83,8 +84,8 @@ export class Message extends Model {
 
       await message.addUsers(users, { transaction });
       await transaction.commit();
-    } catch (err) {
-      console.error(err);
+    } catch (error) {
+      console.error(error);
       await transaction.rollback();
     }
   }
@@ -107,7 +108,8 @@ export class Message extends Model {
       await message.update({  message: msg.content }, { transaction });
 
       await transaction.commit();
-    } catch (err) {
+    } catch (error) {
+      console.error(error);
       await transaction.rollback();
     }
   }

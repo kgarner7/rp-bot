@@ -35,6 +35,7 @@ export interface Usage {
   uses: UsageDescription[];
 }
 
+// eslint-disable-next-line @typescript-eslint/no-type-alias
 export type Action = Dict<Usage>;
 
 export const usages: Action = {
@@ -63,6 +64,7 @@ for (const [command, usage] of Object.entries(usages)) {
   };
 }
 
+// eslint-disable-next-line @typescript-eslint/require-await
 async function help(msg: CustomMessage): Promise<void> {
   const command = parseCommand(msg),
     commandName = command.params.join("");
@@ -70,6 +72,7 @@ async function help(msg: CustomMessage): Promise<void> {
   const availableUsages: Action = isAdmin(msg) ? usages : userUsages;
 
   if (commandName === "") {
+    // eslint-disable-next-line @typescript-eslint/require-array-sort-compare
     const commands = Object.entries(availableUsages)
       .sort()
       .map(([name, data]) => `${name}: ${data.description}`)

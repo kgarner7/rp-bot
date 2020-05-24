@@ -146,7 +146,7 @@ export const usage: Action = {
 usage.examine = usage.inspect;
 
 function senderName(msg: CustomMessage): string {
-  return (msg.channel instanceof TextChannel) ? msg.author.toString() : "You";
+  return msg.channel instanceof TextChannel ? msg.author.toString() : "You";
 }
 
 function exclude<T>(arg: Dict<T>, excluded: string): Dict<T> {
@@ -177,7 +177,7 @@ function missing(msg: CustomMessage, item: None<ItemModel>): boolean {
   return isNone(item) || (item.hidden && !isAdmin(msg));
 }
 
-/*function notifyUserInventoryChange(user: User): void {
+/* function notifyUserInventoryChange(user: User): void {
   const json = JSON.stringify(inventoryToJson(user.inventory));
   triggerUser(user, USER_INVENTORY_CHANGE, json);
 }
@@ -209,11 +209,11 @@ function notifyRoomInventoryChange(msg: CustomMessage, room: Room): void {
 export async function consume(msg: CustomMessage): Promise<void> {
   const command = parseCommand(msg, ["of"]),
     user = await User.findOne({
-    attributes: ["id", "inventory"],
-    where: {
-      id: msg.author.id
-    }
-  });
+      attributes: ["id", "inventory"],
+      where: {
+        id: msg.author.id
+      }
+    });
 
   if (isNone(user)) throw new Error(`Could not find a user ${msg.author.username}`);
 
@@ -296,7 +296,7 @@ export async function changeItem(msg: CustomMessage): Promise<void> {
 }
 
 async function changeUserItem(command: Command, target: string, name: string):
-  Promise<void> {
+Promise<void> {
   const user = await User.findOne({
     attributes: ["id"],
     where: {
@@ -415,13 +415,13 @@ export async function dropItem(msg: CustomMessage): Promise<void> {
   }
 
   const room = manager.rooms
-    .get(roomModel.name)!,
+      .get(roomModel.name)!,
     user = await User.findOne({
-    attributes: ["id"],
-    where: {
-      id: msg.author.id
-    }
-  });
+      attributes: ["id"],
+      where: {
+        id: msg.author.id
+      }
+    });
 
   if (user === null) {
     throw new Error("Could not find a user for you");
@@ -483,22 +483,22 @@ export async function dropItem(msg: CustomMessage): Promise<void> {
         inventory: user.inventory
       }, { transaction });
 
-      transaction.commit();
+      await transaction.commit();
       // notifyUserInventoryChange(user);
       // notifyRoomInventoryChange(msg, roomModel);
-    } catch (err) {
+    } catch (error) {
       roomItem.quantity -= quantity;
 
       if (roomItem.quantity === 0) room.items.delete(itemName);
 
-      transaction.rollback();
-      throw err;
+      await transaction.rollback();
+      throw error;
     }
 
     sendMessage(msg,
       `${senderName(msg)} dropped ${quantity} of ${itemName} in ${roomModel.name}`);
-  } catch (err) {
-    throw err;
+  } catch (error) {
+    throw error;
   } finally {
     await unlock(redlock);
   }
@@ -540,7 +540,7 @@ export async function editItem(msg: CustomMessage): Promise<void> {
   }
 }
 
-// tslint:disable-next-line:cyclomatic-complexity
+// eslint-disable-next-line complexity
 export async function giveItem(msg: CustomMessage): Promise<void> {
   const command = parseCommand(msg, ["of", "to"]),
     targetName = command.args.get("to");
@@ -677,9 +677,9 @@ export async function giveItem(msg: CustomMessage): Promise<void> {
       // notifyUserInventoryChange(target);
 
       transaction.commit();
-    } catch (err) {
+    } catch (error) {
       transaction.rollback();
-      throw err;
+      throw error;
     }
 
     const recipient = guild.members.resolve(target.id)!;
@@ -690,8 +690,8 @@ export async function giveItem(msg: CustomMessage): Promise<void> {
     if (!(msg.channel instanceof TextChannel)) {
       recipient.send(`${msg.author} gave you ${quantity} of ${itemName}`);
     }
-  } catch (err) {
-    throw err;
+  } catch (error) {
+    throw error;
   } finally {
     await unlock(redlock);
   }
@@ -709,7 +709,7 @@ export async function items(msg: CustomMessage): Promise<void> {
 
     try {
       const room = manager.rooms
-      .get(roomModel.name)!;
+        .get(roomModel.name)!;
 
       if (room.items.size === 0) {
         sendMessage(msg, "There are no items here");
@@ -728,8 +728,8 @@ export async function items(msg: CustomMessage): Promise<void> {
 
         sendMessage(msg, `The following items are present: ${lineEnd}${itemString}`);
       }
-    } catch (err) {
-      throw err;
+    } catch (error) {
+      throw error;
     } finally {
       await unlock(redlock);
     }
@@ -816,6 +816,7 @@ export async function inventory(msg: CustomMessage): Promise<void> {
       attributes: ["inventory"]
     });
 
+    // eslint-disable-next-line @typescript-eslint/require-array-sort-compare
     const userItems = Object.values(user.inventory)
       .sort()
       .filter(i => admin || !i.hidden)
@@ -827,8 +828,8 @@ export async function inventory(msg: CustomMessage): Promise<void> {
       `You have the following items:${lineEnd}${userItems}` : "You have no items";
 
     sendMessage(msg, message, true);
-  } catch (err) {
-    throw err;
+  } catch (error) {
+    throw error;
   } finally {
     await unlock(redlock);
   }
@@ -919,14 +920,16 @@ export async function takeItem(msg: CustomMessage): Promise<void> {
       // notifyRoomInventoryChange(msg, roomModel);
 
       sendMessage(msg, `${senderName(msg)} took ${quantity} of ${itemName}`);
-    } catch (err) {
+    } catch (error) {
       existing!.quantity += quantity;
       room.items.set(itemName, existing!);
 
       await transaction.rollback();
+
+      throw error;
     }
-  } catch (err) {
-    throw err;
+  } catch (error) {
+    throw error;
   } finally {
     await unlock(redlock);
   }

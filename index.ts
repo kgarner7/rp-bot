@@ -1,12 +1,13 @@
+import { randomBytes } from "crypto";
+import { createServer } from "http";
+
 import bodyParser from "body-parser";
 import compression from "compression";
 import connectRedis from "connect-redis";
 import cookieParser from "cookie-parser";
-import { randomBytes } from "crypto";
 import express, { NextFunction, Request, Response } from "express";
 import session from "express-session";
 import helmet from "helmet";
-import { createServer } from "http";
 import { createClient } from "redis";
 
 import { client } from "./client";
@@ -19,7 +20,7 @@ import { socket } from "./socket/socket";
 const RedisStore = connectRedis(session);
 
 // tslint:disable:no-magic-numbers
-const MAX_AGE = 1000 * 3600 * 4;
+const MAX_AGE = 1000 * 3600 * 9;
 const PORT = process.env.PORT || 443;
 // tslint:enable:no-magic-numbers
 
@@ -100,13 +101,13 @@ initDB()
       server.listen(PORT, () => {
         console.error("started server");
       });
-    } catch (err) {
-      console.error((err as Error).stack);
+    } catch (error) {
+      console.error((error as Error).stack);
       process.exit(0);
     }
   })
-  .catch((err: Error) => {
-    console.error(err);
+  .catch((error: Error) => {
+    console.error(error);
     process.exit(0);
   });
 

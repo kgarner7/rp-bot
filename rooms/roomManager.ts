@@ -9,11 +9,11 @@ import { readFile } from "jsonfile";
 import { Op } from "sequelize";
 
 import { everyone, guild } from "../client";
+import { sentToAdmins } from "../helpers/base";
 import { isNone, isRoomAttribute } from "../helpers/types";
 import { Link, Room as RoomModel, sequelize, User } from "../models/models";
 
 import { Neighbor, Room } from "./room";
-import { sentToAdmins } from "../helpers/base";
 
 export let manager: RoomManager;
 
@@ -184,7 +184,7 @@ export class RoomManager {
           link = linkMap.get(sourceId)!
             .get(targetId)!;
 
-          if (link.locked !== neighbor.locked || 
+          if (link.locked !== neighbor.locked ||
               link.hidden !== neighbor.hidden ||
               link.name !== neighbor.name) {
 
@@ -229,8 +229,8 @@ export class RoomManager {
     await transaction.commit();
   }
 
-  public static async create(directory: string, force: boolean = false):
-                             Promise<void> {
+  public static async create(directory: string, force = false):
+  Promise<void> {
 
     const categories: Map<string, Room[]> = new Map(),
       rooms: Room[] = [],
@@ -285,7 +285,7 @@ export class RoomManager {
             id: everyone
           }],
           type: "category"
-        }) as CategoryChannel;
+        });
       } else {
         let overwrites: OverwriteResolvable[] = [];
 

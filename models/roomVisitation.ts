@@ -1,5 +1,11 @@
-import { Model, BelongsToCreateAssociationMixin, BelongsToGetAssociationMixin, BelongsToSetAssociationMixin } from "sequelize";
+import {
+  Model,
+  BelongsToCreateAssociationMixin,
+  BelongsToGetAssociationMixin,
+  BelongsToSetAssociationMixin
+} from "sequelize";
 
+// eslint-disable-next-line import/order
 import { sequelize } from "./connection";
 
 export class RoomVisitation extends Model {

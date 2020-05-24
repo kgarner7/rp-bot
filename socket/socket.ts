@@ -345,7 +345,7 @@ export function socket(app: any): Server {
               sock.emit("submit", "OK");
 
               sentToAdmins(guild, `${user.discordName} pressed at ${mesg}`)
-                .catch(error => console.error(error));
+                .catch(nextError => console.error(nextError));
             }
           });
         }

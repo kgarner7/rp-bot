@@ -40,7 +40,7 @@ export class Item implements Serializable<ItemModel> {
 
   public constructor({ actions = { }, children = [], description, editable = false,
                        hidden = false,  locked = false, name, quantity = 1 }:
-                       ItemAttributes) {
+  ItemAttributes) {
 
     this.description = description;
     this.hidden = hidden;

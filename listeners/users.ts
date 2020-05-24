@@ -1,5 +1,6 @@
-import { User as DiscordUser } from "discord.js";
 import { writeFileSync } from "fs";
+
+import { User as DiscordUser } from "discord.js";
 import moment from "moment";
 import { Op } from "sequelize";
 import tmp from "tmp";
@@ -162,11 +163,11 @@ export async function showLogs(msg: CustomMessage): Promise<void> {
 
           const timeString: string =
             moment(message.createdAt)
-            .format("M/DD/YY h:mm A");
+              .format("M/DD/YY h:mm A");
 
           return `${senderName} (${timeString}): ${message.message}`;
         })
-        .join(lineEnd));
+          .join(lineEnd));
 
         (msg.overridenSender || sender).send({
           files: [{
@@ -174,12 +175,13 @@ export async function showLogs(msg: CustomMessage): Promise<void> {
             name: `${name}-log.txt`
           }]
         })
-        .then(() => {
-          callback();
-        })
-        .catch(_err => {
-          callback();
-        });
+          .then(() => {
+            callback();
+          })
+          .catch(error => {
+            console.error(error);
+            callback();
+          });
       });
     }
   }
@@ -222,7 +224,7 @@ export async function users(msg: CustomMessage): Promise<void> {
 
     const room = currentRoom(guildMember),
       visitedRooms: Set<string> = new Set(room === null ? [] : [room]);
-    let visitedString = room === null ? "" : room + ", ";
+    let visitedString = room === null ? "" : `${room  }, `;
 
     const roomString: string = room === undefined ?
       "Not in any room" : `Currently in: ${room}`;
@@ -233,12 +235,12 @@ export async function users(msg: CustomMessage): Promise<void> {
 
       if (!visitedRooms.has(source)) {
         visitedRooms.add(source);
-        visitedString += source + ", ";
+        visitedString += `${source  }, `;
       }
 
       if (!visitedRooms.has(target)) {
         visitedRooms.add(target);
-        visitedString += target + ", ";
+        visitedString += `${target  }, `;
       }
     }
 

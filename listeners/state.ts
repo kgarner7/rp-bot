@@ -1,7 +1,8 @@
 import { existsSync, readFileSync, unlinkSync } from "fs";
+import { basename } from "path";
+
 import { sync } from "glob";
 import { writeFile } from "jsonfile";
-import { basename } from "path";
 
 import {
   Dict,
@@ -14,7 +15,7 @@ import { globalLock } from "../helpers/locks";
 import { isNone, isRoomAttribute, isUserResolvable, Undefined } from "../helpers/types";
 import { User, UserResolvable } from "../models/user";
 import { ItemAttributes, ItemModel } from "../rooms/item";
-import { NeighborResolvable, RoomAttributes, RoomResolvable } from "../rooms/room";
+import { NeighborResolvable, RoomResolvable } from "../rooms/room";
 import { manager, RoomManager } from "../rooms/roomManager";
 
 import { Action } from "./actions";
@@ -83,7 +84,7 @@ export async function deleteFile(msg: CustomMessage): Promise<void> {
   const command = parseCommand(msg, ["type"]),
     type = (command.args.get("type") || []).join("");
 
-  const types: string[] = Array(command.params.length)
+  const types: string[] = new Array(command.params.length)
     .fill(type);
 
   await globalLock({ acquire: true, writer: true });
@@ -153,14 +154,14 @@ export async function read(msg: CustomMessage): Promise<void> {
 
   try {
     const attachments = command.params
-    .map(filename => {
-      const path = `./data/${dir}/${filename}.json`;
+      .map(filename => {
+        const path = `./data/${dir}/${filename}.json`;
 
-      return {
-        attachment: path,
-        name: filename + ".json"
-      };
-    });
+        return {
+          attachment: path,
+          name: `${filename  }.json`
+        };
+      });
 
     if (attachments.length === 0) {
       const files = sync(`./data/${dir}/**/*.json`)
@@ -168,7 +169,7 @@ export async function read(msg: CustomMessage): Promise<void> {
         .map(file => basename(file));
 
       const message = files.length === 0 ?
-          `There are no files in ./data/${dir}` : files.join(", ");
+        `There are no files in ./data/${dir}` : files.join(", ");
 
       sendMessage(msg, message,  true);
     } else {
@@ -179,14 +180,14 @@ export async function read(msg: CustomMessage): Promise<void> {
             message += readFileSync(file.attachment) + lineEnd;
           }
 
-          await sendMessage(msg, message, true);
+          sendMessage(msg, message, true);
         } else {
           await msg.author.send({
             files: attachments
           });
         }
-      } catch (err) {
-        throw err;
+      } catch (error) {
+        throw error;
       }
     }
   } finally {
@@ -307,11 +308,11 @@ export async function write(msg: CustomMessage): Promise<void> {
   let path = "./data/";
 
   if (isRoomAttribute(json)) {
-    const room = json as RoomAttributes;
+    const room = json;
     path += `rooms/${room.parent}/${room.name}.json`;
 
   } else if (isUserResolvable(json)) {
-    const user = json as UserResolvable;
+    const user = json;
     path += `rooms/${user.name}.json`;
 
   } else {
@@ -323,8 +324,8 @@ export async function write(msg: CustomMessage): Promise<void> {
   try {
     await writeFile(path, json, { spaces: 2 });
     sendMessage(msg, `Updated file ${path} successfully`, true);
-  } catch (err) {
-    sendMessage(msg, `Could not update ${path}: ${err}`, true);
+  } catch (error) {
+    sendMessage(msg, `Could not update ${path}: ${error}`, true);
   } finally {
     await globalLock({ acquire: false, writer: true });
   }

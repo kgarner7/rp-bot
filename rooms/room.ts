@@ -112,7 +112,7 @@ export class Room {
     if (fn !== undefined) fn(args);
   }
 
-  public async init(force: boolean = false): Promise<void> {
+  public async init(force = false): Promise<void> {
     if (this.parentChannel === null) return;
 
     this.manager = manager;
@@ -160,7 +160,7 @@ export class Room {
           channel = await guild.channels.create(this.name, {
             topic: this.description,
             type: "text"
-          }) as TextChannel;
+          });
           existingChannel.update({
             id: channel.id
           });
@@ -208,7 +208,7 @@ export class Room {
         await guild.channels.create(this.name, {
           topic: this.description,
           type: "text"
-        }) as TextChannel;
+        });
 
       await RoomModel.create({
         discordName: this.channel.name,
@@ -216,7 +216,7 @@ export class Room {
         inventory: this.items.serialize(),
         name: this.name
       });
-    } catch (err) {
+    } catch (error) {
       if (this.role) {
         this.role.delete();
         this.role = undefined;
@@ -227,7 +227,7 @@ export class Room {
         this.role = undefined;
       }
 
-      await sentToAdmins(guild, `Could not create room ${this.name}: ${(err as Error).message}`);
+      await sentToAdmins(guild, `Could not create room ${this.name}: ${(error as Error).message}`);
     }
   }
 
@@ -251,7 +251,7 @@ export class Room {
       id: everyone
     }];
 
-    const existingRoles = new Set<String>([this.role.id]);
+    const existingRoles = new Set<string>([this.role.id]);
 
     if (manager.visibility.get(this.parent) !== true &&
       (!this.isPrivate || this.isPublic)) {
@@ -297,7 +297,7 @@ export class Room {
 
     const role = guild.roles
       .resolve(channel.permissionOverwrites
-      .find(p => p.deny.bitfield === 0)!.id);
+        .find(p => p.deny.bitfield === 0)!.id);
 
     if (!role) throw new ChannelNotFoundError(name);
 
@@ -305,8 +305,8 @@ export class Room {
       await channel.delete();
       await role.delete();
       await sentToAdmins(guild, `Room ${name} successfully deleted`);
-    } catch (err) {
-      await sentToAdmins(guild, `Could not delete room ${name}: ${((err as Error).message)}`);
+    } catch (error) {
+      await sentToAdmins(guild, `Could not delete room ${name}: ${(error as Error).message}`);
     }
   }
 

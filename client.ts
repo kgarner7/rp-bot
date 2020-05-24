@@ -12,10 +12,8 @@ import { config } from "./config/config";
 import { initUsers, isAdmin, sentToAdmins } from "./helpers/base";
 import { CustomMessage } from "./helpers/classes";
 import { globalLock } from "./helpers/locks";
-import { isNone } from "./helpers/types";
 import { actions } from "./listeners/actions";
 import { sendMessage } from "./listeners/baseHelpers";
-import { toHaiku } from "./listeners/haiku";
 import { handleSave } from "./listeners/state";
 import { Message, User } from "./models/models";
 import { RoomManager } from "./rooms/roomManager";
@@ -50,7 +48,7 @@ client.on("ready", async () => {
     if (user) userIds.push(user[0].id);
   }
 
-  User.destroy({
+  await User.destroy({
     where: {
       id: {
         [Op.not]: userIds
@@ -64,21 +62,21 @@ client.on("ready", async () => {
   const job = new CronJob("0 * * * * *", async (): Promise<void> => {
     try {
       await handleSave();
-    } catch (err) {
-      await sentToAdmins(guild, `Could not save: ${err}`);
+    } catch (error) {
+      await sentToAdmins(guild, `Could not save: ${error}`);
     }
   });
 
   job.start();
 });
 
-client.on("messageDelete", (msg) => {
+client.on("messageDelete", async msg => {
   if (!msg.partial) {
     if (invalid(msg)) return;
 
     triggerRoom(msg, MESSAGE_DELETE);
 
-    Message.destroy({
+    await Message.destroy({
       where: {
         id: msg.id
       }
@@ -91,7 +89,7 @@ client.on("messageUpdate", async (_old, msg) => {
     if (invalid(msg)) return;
 
     triggerRoom(msg, MESSAGE_UPDATE);
-  
+
     return Message.updateFromMsg(msg);
   }
 });
@@ -99,7 +97,7 @@ client.on("messageUpdate", async (_old, msg) => {
 client.on("message", async (msg: DiscordMessage) => {
   if (invalid(msg)) return;
 
-  const haiku = toHaiku(msg.content);
+  // const haiku = toHaiku(msg.content);
 
   // if (haiku) msg.reply(haiku);
 
@@ -163,7 +161,7 @@ client.on("message", async (msg: DiscordMessage) => {
               mesg.author = overrideUser.user;
               mesg.member = overrideUser;
             } else {
-              console.log(`could not resolve ${ user.id }`)
+              console.error(`could not resolve ${ user.id }`);
             }
           }
         }
@@ -171,20 +169,20 @@ client.on("message", async (msg: DiscordMessage) => {
         await globalLock({ acquire: true, writer: false });
         await actions[message](mesg);
       }
-    } catch (err) {
-      sendMessage(mesg, (err as Error).message, true);
-      console.error((err as Error).stack);
+    } catch (error) {
+      sendMessage(mesg, (error as Error).message, true);
+      console.error((error as Error).stack);
     } finally {
       await globalLock({ acquire: false, writer: false });
     }
-  } 
+  }
 
   if (msg.channel instanceof TextChannel) {
     await Message.createFromMsg(msg);
   }
 });
 
-client.on("guildMemberAdd", async (member) => {
+client.on("guildMemberAdd", async member => {
   if (!member.partial) {
     await User.createFromMember(member);
   }
@@ -202,9 +200,9 @@ client.on("guildMemberUpdate",async (oldMember, newMember) => {
         }
       });
     }
-  
+
     if (oldMember.roles.cache.equals(newMember.roles.cache)) return;
-  
+
     const json = await getRooms(newMember);
     triggerUser(newMember, ROOM_INFORMATION, JSON.stringify(json));
   }

@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 // tslint:disable:no-any no-unsafe-any
 import { Room } from "../models/room";
 import { UserResolvable } from "../models/user";
@@ -14,12 +15,12 @@ import { Dict, FunctionResolvable } from "./base";
 /**
  * A wrapper for undefined | null
  */
-export type none = undefined | null;
+export type NoValue = undefined | null;
 
 /**
  * A wrapper for T | none
  */
-export type None<T> = T | none;
+export type None<T> = T | NoValue;
 
 /**
  * A wrapper for T | null
@@ -31,7 +32,7 @@ export type Null<T> = T | null;
  */
 export type Undefined<T> = T | undefined;
 
-export function isNone(arg: any): arg is none {
+export function isNone(arg: any): arg is NoValue {
   return arg === undefined || arg === null;
 }
 
@@ -46,15 +47,15 @@ export function exists(arg: any): boolean {
  * @param arg the item to check
  */
 export function isFunctionResolvable(arg: any): arg is FunctionResolvable {
-  if (arg instanceof Array) {
+  if (Array.isArray(arg)) {
     for (const item of arg) {
-      if (typeof(item) !== "string") return false;
+      if (typeof item !== "string") return false;
     }
 
     return true;
   }
 
-  return typeof(arg) === "string" || arg instanceof Function;
+  return typeof arg === "string" || arg instanceof Function;
 }
 
 /**
@@ -62,9 +63,9 @@ export function isFunctionResolvable(arg: any): arg is FunctionResolvable {
  * @param arg the argument to type check
  */
 export function isFunctionResolvableDict(arg: any): arg is Dict<FunctionResolvable> {
-  if (exists(arg) && typeof(arg) === "object") {
+  if (exists(arg) && typeof arg === "object") {
     for (const [key, resolvable] of Object.entries(arg)) {
-      if (typeof(key) !== "string") return false;
+      if (typeof key !== "string") return false;
       if (!isFunctionResolvable(resolvable)) return false;
     }
 
@@ -82,14 +83,14 @@ export function isFunctionResolvableDict(arg: any): arg is Dict<FunctionResolvab
  */
 export function isItemAttributes(arg: any): arg is ItemAttributes {
   const baseCheck = exists(arg) &&
-    typeof(arg.description) === "string" &&
+    typeof arg.description === "string" &&
     (exists(arg.editable) ?
-      typeof(arg.editable) === "boolean" : true) &&
+      typeof arg.editable === "boolean" : true) &&
     (exists(arg.locked) ?
-      typeof(arg.locked) === "boolean" : true) &&
-    typeof(arg.name) === "string" &&
+      typeof arg.locked === "boolean" : true) &&
+    typeof arg.name === "string" &&
     (exists(arg.quantity) ?
-      (typeof(arg.quantity) === "number" && arg.quantity > 0) : true);
+      typeof arg.quantity === "number" && arg.quantity > 0 : true);
 
   if (!baseCheck) return false;
 
@@ -98,7 +99,7 @@ export function isItemAttributes(arg: any): arg is ItemAttributes {
   }
 
   if (exists(arg.children)) {
-    if (arg.children instanceof Array) {
+    if (Array.isArray(arg.children)) {
       for (const item of arg.children) {
         if (!isItemAttributes(item)) return false;
       }
@@ -126,16 +127,16 @@ export function isItemResolvable(arg: any): arg is ItemResolvable {
  */
 export function isNeighbor(arg: any): arg is Neighbor {
   const baseCheck = exists(arg) &&
-    typeof(arg.hidden) === "boolean" &&
-    typeof(arg.locked) === "boolean" &&
-    typeof(arg.name) === "string" &&
-    typeof(arg.to) === "string";
+    typeof arg.hidden === "boolean" &&
+    typeof arg.locked === "boolean" &&
+    typeof arg.name === "string" &&
+    typeof arg.to === "string";
 
   if (!baseCheck) return false;
 
   if (arg.visitors instanceof Set) {
     for (const visitor of arg.visitors) {
-      if (typeof(visitor) !== "string") return false;
+      if (typeof visitor !== "string") return false;
     }
 
     return true;
@@ -151,11 +152,11 @@ export function isNeighbor(arg: any): arg is Neighbor {
 export function isNeighborResolvable(arg: any): arg is NeighborResolvable {
   return exists(arg) &&
     (exists(arg.hidden) ?
-      typeof(arg.hidden) === "boolean" : true) &&
+      typeof arg.hidden === "boolean" : true) &&
     (exists(arg.locked) ?
-      typeof(arg.locked) === "boolean" : true) &&
-    (exists(arg.name) && typeof(arg.name) === "string") &&
-    (exists(arg.to) && typeof(arg.to) === "string");
+      typeof arg.locked === "boolean" : true) &&
+    (exists(arg.name) && typeof arg.name === "string") &&
+    (exists(arg.to) && typeof arg.to === "string");
 }
 
 // END NEIGHBOR; START ROOM
@@ -164,20 +165,20 @@ export function isNeighborResolvable(arg: any): arg is NeighborResolvable {
  * Returns whether the argument fulfils RoomAttributes
  * @param arg the argument to evaluate
  */
-// tslint:disable-next-line:cyclomatic-complexity
+// eslint-disable-next-line complexity
 export function isRoomAttribute(arg: any): arg is RoomAttributes {
   const baseCheck = exists(arg) &&
     (exists(arg.color) ?
-      (typeof(arg.color) === "number" || typeof(arg.color) === "string") : true) &&
-    typeof(arg.description) === "string" &&
+      typeof arg.color === "number" || typeof arg.color === "string" : true) &&
+    typeof arg.description === "string" &&
     (exists(arg.history) ?
-      typeof(arg.history) === "boolean" : true) &&
+      typeof arg.history === "boolean" : true) &&
     (exists(arg.isPrivate) ?
-      typeof(arg.isPrivate) === "boolean" : true) &&
+      typeof arg.isPrivate === "boolean" : true) &&
     (exists(arg.isPublic) ?
-      typeof(arg.isPublic) === "boolean" : true) &&
-    typeof(arg.name) === "string" &&
-    typeof(arg.parent) === "string";
+      typeof arg.isPublic === "boolean" : true) &&
+    typeof arg.name === "string" &&
+    typeof arg.parent === "string";
 
   if (!baseCheck) return false;
 
@@ -186,8 +187,8 @@ export function isRoomAttribute(arg: any): arg is RoomAttributes {
   }
 
   if (exists(arg.itemsList)) {
-    if (arg.itemsList instanceof Array) {
-      for (const item of arg.itemsList as any[]) {
+    if (Array.isArray(arg.itemsList)) {
+      for (const item of arg.itemsList) {
         if (!isItemResolvable(item)) return false;
       }
     } else {
@@ -196,7 +197,7 @@ export function isRoomAttribute(arg: any): arg is RoomAttributes {
   }
 
   if (exists(arg.neighbors)) {
-    if (arg.neighbors instanceof Array) {
+    if (Array.isArray(arg.neighbors)) {
       for (const neighbor of arg.neighbors) {
         if (!isNeighborResolvable(neighbor)) return false;
       }
@@ -220,10 +221,10 @@ export function isRoomResolvable(arg: any): arg is RoomResolvable {
 
 export function isUserResolvable(arg: any): arg is UserResolvable {
   const baseCheck = exists(arg) &&
-    exists(arg.discordName) && typeof(arg.discordName) === "string" &&
-    exists(arg.id) && typeof(arg.id) === "string" &&
-    exists(arg.inventory) && typeof(arg.inventory) === "object" &&
-    exists(arg.name) && typeof(arg.name) === "string";
+    exists(arg.discordName) && typeof arg.discordName === "string" &&
+    exists(arg.id) && typeof arg.id === "string" &&
+    exists(arg.inventory) && typeof arg.inventory === "object" &&
+    exists(arg.name) && typeof arg.name === "string";
 
   if (!baseCheck) return false;
 

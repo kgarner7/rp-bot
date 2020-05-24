@@ -1,4 +1,4 @@
-import { GuildMember, Role, TextChannel, User } from "discord.js";
+import { GuildMember, Role, TextChannel } from "discord.js";
 import { Op } from "sequelize";
 
 import { guild } from "../client";
@@ -217,7 +217,7 @@ export async function userMove(msg: CustomMessage): Promise<void> {
       throw new Error("You cannot access that room");
     }
 
-    moveMember(member, targetRoom.name);
+    await moveMember(member, targetRoom.name);
   } catch (error) {
     throw error;
   } finally {

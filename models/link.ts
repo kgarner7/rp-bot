@@ -18,6 +18,7 @@ import {
   STRING
 } from "sequelize";
 
+// eslint-disable-next-line import/order
 import { sequelize } from "./connection";
 
 /**

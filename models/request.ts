@@ -9,6 +9,7 @@ import {
   TEXT
 } from "sequelize";
 
+// eslint-disable-next-line import/order
 import { sequelize } from "./connection";
 
 export enum RequestStatus {
