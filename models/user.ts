@@ -24,8 +24,7 @@ import {
 } from "sequelize";
 
 import { Dict } from "../helpers/base";
-import { Null } from "../helpers/types";
-import { ItemModel, ItemResolvable } from "../rooms/item";
+import { ItemModel, Null } from "../helpers/types";
 
 // eslint-disable-next-line import/order
 import { sequelize } from "./connection";
@@ -33,7 +32,7 @@ import { sequelize } from "./connection";
 export interface UserResolvable {
   discordName: string;
   id: string;
-  inventory: Dict<ItemResolvable>;
+  inventory: Dict<ItemModel>;
   name: string;
 }
 

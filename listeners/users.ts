@@ -17,7 +17,8 @@ import {
   currentRoom,
   getRoom,
   getRoomName,
-  sendMessage
+  sendMessage,
+  ignorePromise
 } from "./baseHelpers";
 
 export const usage: Action = {
@@ -59,14 +60,14 @@ export async function members(msg: CustomMessage): Promise<void> {
   const room = await getRoom(msg, true);
 
   if (room === null) {
-    msg.author
-      .send("Either you do not have access to this room, or that room does not exist");
+    ignorePromise(msg.author
+      .send("Either you do not have access to this room, or that room does not exist"));
   } else {
     let memberString = "";
     const memberList = guild.roles.cache.find(r => r.name === room.name)?.members;
 
     if (!memberList || memberList.size === 0) {
-      msg.channel.send(`There is no one in the ${room.name}`);
+      ignorePromise(msg.channel.send(`There is no one in the ${room.name}`));
 
       return;
     }
@@ -79,7 +80,7 @@ export async function members(msg: CustomMessage): Promise<void> {
 
     memberString = memberString.substring(0, memberString.length - 2);
 
-    msg.channel.send(`The following people are in ${room.name}: ${memberString}`);
+    ignorePromise(msg.channel.send(`The following people are in ${room.name}: ${memberString}`));
   }
 }
 
@@ -145,7 +146,9 @@ export async function showLogs(msg: CustomMessage): Promise<void> {
     room = await getChannel(name);
   }
 
-  if (warning) (msg.overridenSender || sender).send(warning);
+  if (warning) {
+    ignorePromise((msg.overridenSender || sender).send(warning));
+  }
 
   if (room === null) {
     throw new NoLogError(msg);

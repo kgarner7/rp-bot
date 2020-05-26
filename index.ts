@@ -12,7 +12,6 @@ import { createClient } from "redis";
 
 import { client } from "./client";
 import { config } from "./config/config";
-import { handleSave } from "./listeners/state";
 import { initDB, sequelize } from "./models/models";
 import { router } from "./routes/index";
 import { socket } from "./socket/socket";
@@ -110,16 +109,3 @@ initDB()
     console.error(error);
     process.exit(0);
   });
-
-async function handleExit(): Promise<void> {
-  try {
-    await handleSave();
-  } finally {
-    process.exit(0);
-  }
-}
-
-process.on("exit", handleExit);
-process.on("SIGINT", handleExit);
-process.on("SIGUSR1", handleExit);
-process.on("SIGUSR2", handleExit);

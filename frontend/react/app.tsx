@@ -31,7 +31,12 @@ import {
   COMMANDS,
   USERS_INFO,
   USER_ITEM_CHANGE,
-  USER_LOCATION_CHANGE
+  USER_LOCATION_CHANGE,
+  ROOM_DESCRIPTION,
+  ROOM_DELETE,
+  ROOM_NAME,
+  ROOM_CREATE,
+  ROOM_ITEM_CHANGE
 } from "../../socket/consts";
 import {
   MinimalCommand,
@@ -44,7 +49,11 @@ import {
   ChannelInfo,
   UserItemChange,
   UsersAndRooms,
-  UserLocationChange
+  UserLocationChange,
+  RoomDescriptionChange,
+  RoomDeleteResult,
+  RoomCreation,
+  RoomItemChange
 } from "../../socket/helpers";
 import { UserData } from "../../socket/socket";
 
@@ -160,101 +169,6 @@ export class App extends React.Component<{}, AppState>{
       }
     });
 
-    socket.on(USER_INVENTORY_CHANGE, (data: MinimalItem[]) => {
-      for (const item of data) {
-        item.d = toHtml(item.d);
-      }
-
-      if (!isEqual(this.state.inventory, data)) {
-        this.setState({ inventory: data });
-      }
-    });
-
-    socket.on(ROOM_INFORMATION, (json: RoomJson[]) => {
-      const rooms = new Map<string, CurrentRoomData>();
-
-      for (const room of json) {
-        const data = {
-          inventory: room.c || [],
-          name: room.n,
-          present: room.p || false,
-          updatedAt: new Date().getTime()
-        };
-
-        rooms.set(room.i, data);
-      }
-
-      if (!isEqual(this.state.rooms, rooms)) {
-        this.setState({
-          rooms
-        });
-      }
-    });
-
-    socket.on(ROOM_LOGS, (messages: MinimalMessageWithoutChannel[], roomId: string) => {
-      const nextState = produce(this.state, state => {
-        const room = state.roomMessages.get(roomId);
-
-        if (room) {
-          if (messages.length > 0) {
-            room.archive = messages.map(msg => ({
-              author: msg.a,
-              content: msg.t,
-              id: msg.i,
-              time: msg.d
-            }));
-
-            const lastUpdate = room.archive[room.archive.length - 1].time;
-            room.updatedAt = Math.max(new Date(lastUpdate).getTime(), room.updatedAt || 0);
-          }
-
-          room.hasArchive = true;
-        }
-      });
-
-      this.setState(nextState);
-    });
-
-    socket.on(MESSAGES_GET, (data: Dict<ChannelWithMinimalMessages>) => {
-      const nextState = produce(this.state, state => {
-        for (const [roomId, roomData] of Object.entries(data)) {
-          let updateTime: Date;
-
-          if (roomData.m.length > 0) {
-            updateTime = roomData.m[0].d;
-          } else {
-            updateTime = new Date(0);
-          }
-
-          const roomMessages = roomData.m.map(msg => {
-            if (msg.d > updateTime) updateTime = msg.d;
-
-            return {
-              author: msg.a,
-              content: msg.t,
-              id: msg.i,
-              time: msg.d
-            };
-          }) as MessageData[];
-
-          const updatedAt = new Date(updateTime).getTime();
-
-          const room: RoomMessagesData = {
-            archive: [],
-            description: toHtml(roomData.d),
-            name: roomData.n,
-            messages: roomMessages,
-            section: roomData.s,
-            updatedAt
-          };
-
-          state.roomMessages.set(roomId, room);
-        }
-      });
-
-      this.setState(nextState);
-    });
-
     socket.on(MESSAGE_CREATE, (data: MinimalMessageWithChannel) => {
       this.getChannel(data.c, newChannel => {
         const nextState = produce(this.state, state => {
@@ -300,6 +214,46 @@ export class App extends React.Component<{}, AppState>{
       });
     });
 
+    socket.on(MESSAGES_GET, (data: Dict<ChannelWithMinimalMessages>) => {
+      const nextState = produce(this.state, state => {
+        for (const [roomId, roomData] of Object.entries(data)) {
+          let updateTime: Date;
+
+          if (roomData.m.length > 0) {
+            updateTime = roomData.m[0].d;
+          } else {
+            updateTime = new Date(0);
+          }
+
+          const roomMessages = roomData.m.map(msg => {
+            if (msg.d > updateTime) updateTime = msg.d;
+
+            return {
+              author: msg.a,
+              content: msg.t,
+              id: msg.i,
+              time: msg.d
+            };
+          }) as MessageData[];
+
+          const updatedAt = new Date(updateTime).getTime();
+
+          const room: RoomMessagesData = {
+            archive: [],
+            description: toHtml(roomData.d),
+            name: roomData.n,
+            messages: roomMessages,
+            section: roomData.s,
+            updatedAt
+          };
+
+          state.roomMessages.set(roomId, room);
+        }
+      });
+
+      this.setState(nextState);
+    });
+
     socket.on(MESSAGE_UPDATE, (data: MinimalMessageWithChannel) => {
       this.getChannel(data.c, newChannel => {
         const nextState = produce(this.state, state => {
@@ -324,16 +278,167 @@ export class App extends React.Component<{}, AppState>{
       });
     });
 
-    socket.on(USER_NAME, (info: UserData) => {
-      this.setState({
-        admin: info.a,
-        username: info.n
-      });
+    socket.on(ROOM_CREATE, (result: RoomCreation) => {
+      if (typeof result === "string") {
+        alert(`Failed to create room: ${result}`);
+      } else {
+        this.setState(oldState => {
+          return produce(oldState, state => {
+            if (result.i) {
+              state.rooms.set(result.i, {
+                description: result.d,
+                id: result.i,
+                inventory: [],
+                name: result.n,
+                present: this.state.admin,
+                section: result.s,
+                updatedAt: new Date().getTime()
+              });
+            }
+          });
+        });
+      }
     });
 
-    socket.on(USERS_INFO, (users: UsersAndRooms) => {
-      if (!isEqual(this.state.users, users)) {
-        this.setState({ users });
+    socket.on(ROOM_DELETE, (result: RoomDeleteResult) => {
+      if (result.e) {
+        alert(`Failed to delete room: ${result.e}`);
+      } else if (result.r) {
+        this.setState(oldState => {
+          return produce(oldState, state => {
+            state.rooms.delete(result.r!);
+            state.roomMessages.delete(result.r!);
+          });
+        });
+      }
+    });
+
+    socket.on(ROOM_DESCRIPTION, (result: RoomDescriptionChange) => {
+      if (typeof result === "string") {
+        alert(`Failed to update description: ${result}`);
+      } else {
+        this.setState(oldState => {
+          return produce(oldState, state => {
+            const room = state.rooms.get(result.r);
+
+            if (room) {
+              room.description = result.n || "";
+            }
+          });
+        });
+      }
+    });
+
+    socket.on(ROOM_INFORMATION, (json: RoomJson[]) => {
+      const rooms = new Map<string, CurrentRoomData>();
+
+      for (const room of json) {
+        const data = {
+          description: room.d,
+          id: room.i,
+          inventory: room.c || [],
+          name: room.n,
+          present: room.p || false,
+          section: room.s || "",
+          updatedAt: new Date().getTime()
+        };
+
+        rooms.set(room.i, data);
+      }
+
+      if (!isEqual(this.state.rooms, rooms)) {
+        this.setState({
+          rooms
+        });
+      }
+    });
+
+    socket.on(ROOM_ITEM_CHANGE, (result: string | RoomItemChange) => {
+      if (typeof result === "string") {
+        alert(`Failed to update item: ${result}`);
+      } else {
+        this.setState(oldState => {
+          return produce(oldState, state => {
+            const room = state.rooms.get(result.r);
+
+            if (room) {
+              if (result.o) {
+                room.inventory = room.inventory.filter(item =>
+                  item.n !== result.o!.n);
+              } else if (result.n) {
+                let found = false;
+
+                for (let index = 0; index < room.inventory.length; index++) {
+                  if (room.inventory[index].n === result.n.n) {
+                    found = true;
+                    room.inventory[index] = result.n;
+                    break;
+                  }
+                }
+
+                if (!found) {
+                  room.inventory.push(result.n);
+                }
+              }
+            }
+          });
+        });
+      }
+    });
+
+    socket.on(ROOM_LOGS, (messages: MinimalMessageWithoutChannel[], roomId: string) => {
+      const nextState = produce(this.state, state => {
+        const room = state.roomMessages.get(roomId);
+
+        if (room) {
+          if (messages.length > 0) {
+            room.archive = messages.map(msg => ({
+              author: msg.a,
+              content: msg.t,
+              id: msg.i,
+              time: msg.d
+            }));
+
+            const lastUpdate = room.archive[room.archive.length - 1].time;
+            room.updatedAt = Math.max(new Date(lastUpdate).getTime(), room.updatedAt || 0);
+          }
+
+          room.hasArchive = true;
+        }
+      });
+
+      this.setState(nextState);
+    });
+
+    socket.on(ROOM_NAME, (data: RoomDescriptionChange) => {
+      if (typeof data === "string") {
+        alert(`Could not change room name: ${data}`);
+      } else {
+        this.setState(oldState => {
+          return produce(oldState, state => {
+            const oldItem = state.rooms.get(data.r);
+
+            if (oldItem) {
+              oldItem.name = data.n!;
+            }
+
+            const oldMessages = state.roomMessages.get(data.r);
+
+            if (oldMessages) {
+              oldMessages.name = data.n!;
+            }
+          });
+        });
+      }
+    });
+
+    socket.on(USER_INVENTORY_CHANGE, (data: MinimalItem[]) => {
+      for (const item of data) {
+        item.d = toHtml(item.d);
+      }
+
+      if (!isEqual(this.state.inventory, data)) {
+        this.setState({ inventory: data });
       }
     });
 
@@ -392,6 +497,19 @@ export class App extends React.Component<{}, AppState>{
       }
     });
 
+    socket.on(USER_NAME, (info: UserData) => {
+      this.setState({
+        admin: info.a,
+        username: info.n
+      });
+    });
+
+    socket.on(USERS_INFO, (users: UsersAndRooms) => {
+      if (!isEqual(this.state.users, users)) {
+        this.setState({ users });
+      }
+    });
+
     for (const task of startupTasks) {
       socket.emit(task);
     }
@@ -439,9 +557,11 @@ export class App extends React.Component<{}, AppState>{
             width={this.state.width}
           />
           <CurrentRoom
+            admin={this.state.admin}
             rooms={this.state.rooms}
             selected={this.state.selected === VisibleStates.CurrentRooms}
             sidebar={this.state.sidebar}
+            socket={this.state.socket}
             width={this.state.width}
           />
           <Maps

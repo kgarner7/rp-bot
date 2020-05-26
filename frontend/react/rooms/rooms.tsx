@@ -181,7 +181,7 @@ class Rooms extends React.PureComponent<RoomsProps, RoomsState> {
           name="rooms"
         />
         <Responsive
-          className="layout rooms"
+          className="layout rooms mt-4"
           rowHeight={60}
           width={width}
           layouts={layouts}

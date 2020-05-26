@@ -19,11 +19,12 @@ import {
   BelongsToManyGetAssociationsMixin,
   BelongsToManyRemoveAssociationMixin,
   BelongsToManyRemoveAssociationsMixin,
-  BelongsToManySetAssociationsMixin
+  BelongsToManySetAssociationsMixin,
+  BOOLEAN
 } from "sequelize";
 
 import { Dict } from "../helpers/base";
-import { ItemModel } from "../rooms/item";
+import { ItemModel } from "../helpers/types";
 
 // eslint-disable-next-line import/order
 import { sequelize } from "./connection";
@@ -43,11 +44,16 @@ export class Room extends Model {
 
   /** the name of the corresponding Channel on Discord */
   public discordName: string;
+  public history: boolean;
   /** the id of the corresponding Channel on Discord */
   public id: string;
   public inventory: Dict<ItemModel>;
+  public isPrivate: boolean;
+  public isPublic: boolean;
   /** the initial name of this Room */
   public name: string;
+  public parent: string;
+  public role: string;
   public createdAt: Date;
   public updatedAt: Date;
 
@@ -104,15 +110,34 @@ export class Room extends Model {
 
 Room.init({
   discordName: { type: TEXT },
+  history: {
+    defaultValue: false,
+    type: BOOLEAN
+  },
   id: {
     primaryKey: true,
     type: STRING
+  },
+  isPrivate: {
+    defaultValue: false,
+    type: BOOLEAN
+  },
+  isPublic: {
+    defaultValue: false,
+    type: BOOLEAN
   },
   inventory: {
     defaultValue: { },
     type: JSON
   },
-  name: { type: TEXT }
+  name: { type: TEXT },
+  parent: {
+    type: TEXT
+  },
+  role: {
+    allowNull: false,
+    type: STRING
+  }
 }, { sequelize });
 
 // tslint:disable-next-line:ordered-imports
@@ -121,7 +146,9 @@ import { Message } from "./message";
 import { RoomVisitation } from "./roomVisitation";
 import { User } from "./user";
 
-Room.hasMany(Message);
+Room.hasMany(Message, {
+  onDelete: "CASCADE"
+});
 
 Room.hasMany(Link, {
   as: "sources",
@@ -135,5 +162,6 @@ Room.hasMany(Link, {
 
 Room.belongsToMany(User, {
   as: "visitors",
+  onDelete: "CASCADE",
   through: RoomVisitation
 });

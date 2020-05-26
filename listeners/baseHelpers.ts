@@ -5,27 +5,46 @@ import { guild } from "../client";
 import { isAdmin } from "../helpers/base";
 import { CustomMessage } from "../helpers/classes";
 import { Null } from "../helpers/types";
-import { Room as RoomModel } from "../models/models";
-import { manager } from "../rooms/roomManager";
+import { Room as RoomModel, Link } from "../models/models";
 
 const MAX_MESSAGE_SIZE = 1900;
+
+export function ignorePromise<T>(promise: Promise<T>): void {
+  promise.catch(error => console.error(error));
+}
 
 /**
  * Gets the rooms adjacent to the target room
  */
-export function adjacentRooms(msg: CustomMessage): string[] {
+export async function adjacentRooms(msg: CustomMessage): Promise<string[]> {
   const roomList: string[] = [];
 
   const member = guild.members.resolve(msg.author.id)!;
 
   if (!member) return [];
 
-  const room = member.roles.cache.find(role => manager.roles.has(role.id));
+  const role = member.roles.cache.find(r => !r.permissions.has("ADMINISTRATOR"));
+
+  if (!role) return [];
+
+  const room = await RoomModel.findOne({
+    include: [{
+      as: "sources",
+      include: [{
+        as: "target",
+        model: RoomModel
+      }],
+      model: Link
+    }],
+    where: {
+      name: role.name
+    }
+  });
 
   if (!room) return [];
 
-  for (const name of manager.neighbors(msg.author.id, room.name)) {
-    roomList.push(name);
+  for (const link of room.sources) {
+    roomList.push(link.target.name);
   }
 
   return roomList;
@@ -127,9 +146,11 @@ export type RoomName = Null<{
  * @returns the current room of the author, or null
  */
 export function currentRoom(member: GuildMember): Null<string> {
-  const role = member.roles.cache.find(r => manager.roles.has(r.id));
+  // TODO: figure out how to handle roles better
+  const role = member.roles.cache.find(r =>
+    !r.permissions.has("ADMINISTRATOR") && r.id !== guild.roles.everyone.id);
 
-  return role  ? role.name: null;
+  return role ? role.name: null;
 }
 
 /**
@@ -243,13 +264,13 @@ export function sendMessage(msg: CustomMessage, message: string,
   }
 
   if (message.length < MAX_MESSAGE_SIZE) {
-    target.send(message);
+    ignorePromise(target.send(message));
   } else {
     let idx = 0;
 
     while (idx < message.length) {
       const mesg = message.slice(idx, idx + MAX_MESSAGE_SIZE);
-      target.send(mesg);
+      ignorePromise(target.send(mesg));
 
       idx += MAX_MESSAGE_SIZE;
     }

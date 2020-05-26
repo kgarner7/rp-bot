@@ -146,19 +146,27 @@ class Poll extends React.Component<PollProps, PollState> {
   private conditionallyRefreshState(selected: VisibleStates): void {
     const command = COMMAND_MAPPING[selected];
 
-    if (command && selected !== VisibleStates.Commands) {
-      this.setState(state => {
-        const previousUpdate = state[selected];
-        const now = new Date();
+    if (command) {
+      if (selected === VisibleStates.Commands && !this.state[selected]) {
+        this.props.socket.emit(command);
 
-        if (!previousUpdate || now.valueOf() - previousUpdate.valueOf() > POLL_TIMING) {
-          this.props.socket.emit(command);
+        this.setState({
+          [selected]: new Date()
+        });
+      } else {
+        this.setState(state => {
+          const previousUpdate = state[selected];
+          const now = new Date();
 
-          return { [selected]: now } as Pick<PollState, keyof PollState>;
-        } else {
-          return { [selected]: previousUpdate } as Pick<PollState, keyof PollState>;
-        }
-      });
+          if (!previousUpdate || now.valueOf() - previousUpdate.valueOf() > POLL_TIMING) {
+            this.props.socket.emit(command);
+
+            return { [selected]: now } as Pick<PollState, keyof PollState>;
+          } else {
+            return { [selected]: previousUpdate } as Pick<PollState, keyof PollState>;
+          }
+        });
+      }
     }
   }
 

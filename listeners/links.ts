@@ -3,8 +3,7 @@ import { Op } from "sequelize";
 import { ChannelNotFoundError } from "../config/errors";
 import { Dict, lineEnd, requireAdmin, isAdmin } from "../helpers/base";
 import { CustomMessage } from "../helpers/classes";
-import { Link, Room as RoomModel } from "../models/models";
-import { manager } from "../rooms/roomManager";
+import { Link, Room as RoomModel, User } from "../models/models";
 
 import { Action } from "./actions";
 import { Command, getRoom, getRoomModel, parseCommand, sendMessage } from "./baseHelpers";
@@ -167,6 +166,10 @@ export function handleLock(locked: boolean): (msg: CustomMessage) => Promise<voi
     }
 
     const rooms = await RoomModel.findAll({
+      include: [{
+        as: "sources",
+        model: Link
+      }],
       attributes: ["id", "name"],
       where: {
         id: {
@@ -180,19 +183,11 @@ export function handleLock(locked: boolean): (msg: CustomMessage) => Promise<voi
     const messageArray: string[] = [];
 
     for (const link of updated[1]) {
-      const sourceName: string = roomMap.get(link.sourceId) as string,
-        targetName: string = roomMap.get(link.targetId) as string,
-        map = manager.links.get(sourceName);
+      const sourceName: string = roomMap.get(link.sourceId) as string;
+      const targetName: string = roomMap.get(link.targetId) as string;
 
-      if (map !== undefined) {
-        const neighbor = map.get(targetName);
-
-        if (neighbor !== undefined) {
-          neighbor.locked = link.locked;
-          const start = `${link.locked ? "L" : "Un"}ocked`;
-          messageArray.push(`${start} ${sourceName} => ${targetName} (${neighbor.name})`);
-        }
-      }
+      const start = `${link.locked ? "L" : "Un"}ocked`;
+      messageArray.push(`${start} ${sourceName} => ${targetName} (${link.name})`);
     }
 
     sendMessage(msg, messageArray.length > 0 ?
@@ -257,19 +252,11 @@ export function hide(hidden: boolean): (msg: CustomMessage) => Promise<void> {
     const messageArray: string[] = [];
 
     for (const link of updated[1]) {
-      const sourceName: string = roomMap.get(link.sourceId) as string,
-        targetName: string = roomMap.get(link.targetId) as string,
-        map = manager.links.get(sourceName);
+      const sourceName = roomMap.get(link.sourceId) as string;
+      const targetName = roomMap.get(link.targetId) as string;
 
-      if (map !== undefined) {
-        const neighbor = map.get(targetName);
-
-        if (neighbor !== undefined) {
-          neighbor.hidden = link.hidden;
-          const start = `${link.hidden ? "H" : "Not h"}idden`;
-          messageArray.push(`${start} ${sourceName} => ${targetName} (${neighbor.name})`);
-        }
-      }
+      const start = `${link.locked ? "L" : "Un"}ocked`;
+      messageArray.push(`${start} ${sourceName} => ${targetName} (${link.name})`);
     }
 
     sendMessage(msg, messageArray.length > 0 ?
@@ -325,11 +312,9 @@ export async function links(msg: CustomMessage): Promise<void> {
   });
 
   let linkString = linksList.map((link: Link) => {
-    const map = manager.links.get(link.source.name)!,
-      neighbor = map.get(link.target.name)!,
-      endString = (link.locked ? ": locked" : "") + (link.hidden ? ": hidden" : "");
+    const endString = (link.locked ? ": locked" : "") + (link.hidden ? ": hidden" : "");
 
-    return `${link.source.name} => ${link.target.name}${endString} (${neighbor.name})`;
+    return `${link.source.name} => ${link.target.name}${endString} (${link.name})`;
   })
     .join(lineEnd);
 
@@ -348,22 +333,36 @@ export async function doors(msg: CustomMessage): Promise<void> {
   }
 
   let messageString = "";
-  const linkList = manager.links.get(roomModel.name);
+  const linkList = await roomModel.getSources({
+    include: [{
+      as: "target",
+      model: RoomModel
+    }, {
+      as: "visitors",
+      model: User
+    }]
+  });
 
-  if (linkList !== undefined) {
-    for (const [, neighbor] of linkList.entries()) {
-      if (!neighbor.hidden) {
-        messageString += neighbor.name;
+  if (linkList.length > 0) {
+    const admin = isAdmin(msg);
 
-        if (neighbor.visitors.has(msg.author.id) || isAdmin(msg)) {
-          messageString += ` => ${neighbor.to}`;
+    for (const link of linkList) {
+      if (!link.hidden || admin) {
+        messageString += link.name;
+
+        if (admin || link.visitors.find(user => user.id === msg.author.id)) {
+          messageString += ` => ${link.target.name}`;
         } else {
           messageString += " => unknown";
         }
 
-        if (neighbor.locked) messageString += ": locked";
+        if (link.locked) {
+          messageString += " (locked)";
+        }
 
-        messageString += lineEnd;
+        if (link.hidden) {
+          messageString += " (hidden)";
+        }
       }
     }
   } else {

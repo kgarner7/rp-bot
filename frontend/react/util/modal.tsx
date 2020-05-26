@@ -20,7 +20,7 @@ const Modal = React.memo(function Modal(props: ModalProps) {
 
   return (
     <div className="modal fade" id={id} tabIndex={-1} role="dialog">
-      <div className="modal-dialog modal-dialog-centered modal-lg" role="document">
+      <div className="modal-dialog modal-dialog-centered modal-xl" role="document">
         <div className="modal-content">
           <div className="modal-header">
             <h5 className="modal-title" id={`${id}Label`}>{props.title}</h5>

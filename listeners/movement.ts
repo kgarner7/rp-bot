@@ -6,10 +6,7 @@ import { ChannelNotFoundError } from "../config/errors";
 import { lineEnd, requireAdmin } from "../helpers/base";
 import { CustomMessage } from "../helpers/classes";
 import { lock, unlock } from "../helpers/locks";
-import { Undefined } from "../helpers/types";
 import { Link, Room as RoomModel, User as UserModel, RoomVisitation } from "../models/models";
-import { Neighbor } from "../rooms/room";
-import { manager } from "../rooms/roomManager";
 
 import { Action } from "./actions";
 import {
@@ -17,7 +14,8 @@ import {
   getRoom,
   getRoomModel,
   parseCommand,
-  sendMessage
+  sendMessage,
+  ignorePromise
 } from "./baseHelpers";
 
 export const usage: Action = {
@@ -71,19 +69,14 @@ Promise<void> {
     if (link) {
       try {
         await link.addVisitor(member.id);
-        manager.links.get(from)!.get(to)!.visitors.add(member.id);
       } catch (error) {
         console.error((error as Error).stack);
       }
     }
   }
 
-  for (const [, role] of member.roles.cache) {
-    if (!manager.roles.has(role.id)) roles.push(role.id);
-  }
+  const newRole: Role = guild.roles.cache.find(r => r.name === target)!;
 
-  const newRole: Role = guild.roles.cache
-    .find(r => r.name === target)!;
   roles.push(newRole.id);
 
   if (source !== "") {
@@ -129,7 +122,9 @@ Promise<void> {
     }
   }
 
-  if (!member.user.bot) member.send(`You were moved to ${target}`);
+  if (!member.user.bot) {
+    ignorePromise(member.send(`You were moved to ${target}`));
+  }
 }
 
 export async function move(msg: CustomMessage): Promise<void> {
@@ -171,35 +166,33 @@ export async function userMove(msg: CustomMessage): Promise<void> {
   const redlock = await lock({ user: [msg.author.id ]});
 
   try {
-    const command = parseCommand(msg, ["through"]),
-      member = guild.members.resolve(msg.author.id)!,
-      name = command.params.join(),
-      roomModel = await getRoom(msg, true);
+    const command = parseCommand(msg, ["through"]);
+    const member = guild.members.resolve(msg.author.id)!;
+    const name = command.params.join();
+    const roomModel = await getRoom(msg, true);
 
     if (roomModel === null) throw new ChannelNotFoundError(name);
 
     const through = command.args.get("through");
 
     if (through !== undefined) {
-      const door: string = through.join(),
-        linkList = manager.links.get(roomModel.name);
+      const door = through.join();
+      const links = await roomModel.getSources({
+        include: [{
+          as: "target",
+          model: RoomModel
+        }]
+      });
 
-      if (linkList !== undefined) {
-        let targetNeighbor: Undefined<Neighbor>;
+      if (links.length > 0) {
+        const targetLink = links.find(link => link.name === door);
 
-        for (const [, neighbor] of linkList.entries()) {
-          if (neighbor.name === door) {
-            targetNeighbor = neighbor;
-            break;
-          }
-        }
-
-        if (targetNeighbor === undefined) {
+        if (!targetLink) {
           throw new Error("There is no door of that name");
-        } else if (targetNeighbor.locked) {
-          throw new Error(`Door ${targetNeighbor.name} is locked`);
+        } else if (targetLink.locked) {
+          throw new Error(`Door ${targetLink.name} is locked`);
         } else {
-          await moveMember(member, targetNeighbor.to, roomModel.name);
+          await moveMember(member, targetLink.target.name, roomModel.name);
 
           return;
         }
@@ -208,10 +201,10 @@ export async function userMove(msg: CustomMessage): Promise<void> {
       }
     }
 
-    const neighbors: string[] = adjacentRooms(msg),
-      targetRoom = await getRoomModel(name);
+    const neighbors: string[] = await adjacentRooms(msg);
+    const targetRoom = await getRoomModel(name);
 
-    if (targetRoom === null) {
+    if (!targetRoom) {
       throw new Error("That room does not exist");
     } else if (!neighbors.includes(targetRoom.name)) {
       throw new Error("You cannot access that room");

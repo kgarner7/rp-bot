@@ -39,6 +39,7 @@
   ],
   "exclude": [
     "data",
-    "dist"
+    "dist",
+    "rooms"
   ]
 }

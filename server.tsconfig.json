@@ -6,6 +6,7 @@
   },
   "exclude": [
     "frontend/react",
-    "**/*.spec.ts"
+    "**/*.spec.ts",
+    "rooms"
   ]
 }

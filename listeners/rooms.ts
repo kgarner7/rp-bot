@@ -91,15 +91,11 @@ export async function deleteRoom(msg: CustomMessage): Promise<void> {
 }
 
 export async function getAvailableRooms(msg: CustomMessage): Promise<void> {
-  return new Promise((resolve: () => void): void => {
-    // eslint-disable-next-line @typescript-eslint/require-array-sort-compare
-    const roomList: string[] = adjacentRooms(msg)
-      .sort();
+  // eslint-disable-next-line @typescript-eslint/require-array-sort-compare
+  const roomList: string[] = (await adjacentRooms(msg))
+    .sort();
 
-    sendMessage(msg,
-      `Here are the rooms you can visit:${lineEnd}${roomList.join(lineEnd)}`,
-      true);
-
-    resolve();
-  });
+  sendMessage(msg,
+    `Here are the rooms you can visit:${lineEnd}${roomList.join(lineEnd)}`,
+    true);
 }

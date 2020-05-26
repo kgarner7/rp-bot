@@ -19,7 +19,6 @@ import { move, usage as MovementUsage, userMove } from "./movement";
 import { play, stop, usage as PlayUsage } from "./music";
 import { createItem, requests, usage as RequestUsage } from "./requests";
 import { getAvailableRooms, usage as RoomUsage } from "./rooms";
-import { deleteFile, read, save, update, usage as SaveUsage, write } from "./state";
 import { members, showLogs, usage as UserUsage, users } from "./users";
 
 export interface UsageDescription {
@@ -43,7 +42,6 @@ export const usages: Action = {
   ...LinkUsage,
   ...MovementUsage,
   ...RoomUsage,
-  ...SaveUsage,
   ...PlayUsage,
   ...RequestUsage,
   ...UserUsage
@@ -114,7 +112,6 @@ export const actions: Dict<(msg: CustomMessage) => Promise<void>> = {
   change: changeItem,
   consume,
   create: createItem,
-  delete: deleteFile,
   doors,
   drop: dropItem,
   edit: editItem,
@@ -131,16 +128,12 @@ export const actions: Dict<(msg: CustomMessage) => Promise<void>> = {
   move: userMove,
   mv: move,
   play,
-  read,
   requests,
   rooms: getAvailableRooms,
-  save,
   stop,
   take: takeItem,
   unhide: hide(false),
   unlock: handleLock(false),
-  update,
   users,
-  who: members,
-  write
+  who: members
 };

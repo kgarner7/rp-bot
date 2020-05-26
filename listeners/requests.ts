@@ -9,7 +9,7 @@ import { Request, User } from "../models/models";
 import { RequestStatus } from "../models/request";
 
 import { Action } from "./actions";
-import { Command, parseCommand, sendMessage } from "./baseHelpers";
+import { Command, parseCommand, sendMessage, ignorePromise } from "./baseHelpers";
 import { getInt } from "./items";
 
 export const usage: Action = {
@@ -198,7 +198,7 @@ async function changeRequestStatus(msg: CustomMessage,
       status: RequestStatus.DENIED
     });
 
-    requester.send(`Your request for ${request.name} was denied: ${reasonString}`);
+    ignorePromise(requester.send(`Your request for ${request.name} was denied: ${reasonString}`));
     sendMessage(msg, `Successfully declined ${requestId} for ${requester.displayName}`);
   } else {
     const name = request.name;
@@ -226,13 +226,12 @@ async function changeRequestStatus(msg: CustomMessage,
       let message: string;
 
       if (name in user.inventory) {
-        user.inventory[name].quantity += quantity;
+        user.inventory[name].quantity = (user.inventory[name].quantity || 1) + quantity;
         user.inventory[name].description = description;
 
         message = `You already have ${name}. Its quantity and description were updated`;
       } else {
         user.inventory[name] = {
-          children: [],
           description,
           editable: true,
           hidden: false,
@@ -247,7 +246,7 @@ async function changeRequestStatus(msg: CustomMessage,
       await request.update({  status: RequestStatus.ACCEPTED });
       await user.update({ inventory: user.inventory });
 
-      requester.send(message + changedMessage);
+      ignorePromise(requester.send(message + changedMessage));
       sendMessage(msg, `Created ${quantity} of ${name} for ${user.discordName}`);
     } finally {
       await unlock(redlock);

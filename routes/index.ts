@@ -40,7 +40,7 @@ router.get("/", requireLogin, wrapper(async (req, res, _next) => {
   });
 
   if (user) {
-    res.render("main", { name: `${user.discordName} (${user.name})` });
+    res.render("main");
   } else {
     req.session!.userId = undefined;
     res.redirect("/login");
@@ -114,34 +114,6 @@ router.post("/signup", wrapper(async (req, res) => {
 
 router.get("/logout", requireLogin, (req, res) => {
   req.session!.destroy(_err => res.redirect("/login"));
-});
-
-router.get("/button", requireLogin, wrapper(async (req, res) => {
-  const user = await User.findOne({
-    attributes: ["discordName", "id"],
-    where: {
-      id: req.session!.userId
-    }
-  });
-
-  if (!user) {
-    res.redirect("/login");
-    return;
-  }
-
-  res.render("button", {
-    admin: idIsAdmin(user.id),
-    user: user.discordName
-  });
-}));
-
-router.get("/button/admin", requireLogin, (req, res) => {
-  if (!idIsAdmin(req.session!.userId)) {
-    res.redirect("/button");
-    return;
-  }
-
-  res.render("button-admin");
 });
 
 const robotsRule = `

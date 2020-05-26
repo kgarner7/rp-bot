@@ -34,3 +34,13 @@ input[type=number] {
 .poll > .dropdown-item {
   display: initial;
 }
+.popover.custom {
+  top: 4em;
+}
+.cover {
+  position: fixed;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  right: 0;
+}

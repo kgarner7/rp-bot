@@ -1,4 +1,3 @@
-import { CronJob } from "cron";
 import {
   Client,
   Guild,
@@ -9,14 +8,12 @@ import {
 import { Op } from "sequelize";
 
 import { config } from "./config/config";
-import { initUsers, isAdmin, sentToAdmins } from "./helpers/base";
+import { isAdmin } from "./helpers/base";
 import { CustomMessage } from "./helpers/classes";
 import { globalLock } from "./helpers/locks";
 import { actions } from "./listeners/actions";
 import { sendMessage } from "./listeners/baseHelpers";
-import { handleSave } from "./listeners/state";
 import { Message, User } from "./models/models";
-import { RoomManager } from "./rooms/roomManager";
 import {
   MESSAGE_CREATE,
   MESSAGE_DELETE,
@@ -55,19 +52,6 @@ client.on("ready", async () => {
       }
     }
   });
-
-  await RoomManager.create("./data/rooms");
-  await initUsers("./data/users");
-
-  const job = new CronJob("0 * * * * *", async (): Promise<void> => {
-    try {
-      await handleSave();
-    } catch (error) {
-      await sentToAdmins(guild, `Could not save: ${error}`);
-    }
-  });
-
-  job.start();
 });
 
 client.on("messageDelete", async msg => {

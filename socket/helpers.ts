@@ -2,22 +2,26 @@ import {
   GuildMember,
   Message as DiscordMessage,
   TextChannel,
-  User as DiscordUser
+  User as DiscordUser,
+  CategoryChannel,
+  ChannelCreationOverwrites,
+  PermissionOverwrites,
+  PermissionResolvable,
+  PermissionOverwriteOption
 } from "discord.js";
 import { Op } from "sequelize";
 import { Server, Socket } from "socket.io";
 
 import { guild } from "../client";
 import { Dict, idIsAdmin } from "../helpers/base";
-import { lock, unlock } from "../helpers/locks";
-import { None } from "../helpers/types";
+import { lock, unlock, globalLock } from "../helpers/locks";
+import { None, ItemModel } from "../helpers/types";
 import { usages } from "../listeners/actions";
 import { currentRoom, getRoomModel } from "../listeners/baseHelpers";
+import { moveMember } from "../listeners/movement";
 import { Link, Message, Room, sequelize, User } from "../models/models";
-import { ItemModel } from "../rooms/item";
 
 import { sockets } from "./socket";
-import { moveMember } from "../listeners/movement";
 
 let serverSocket: Server;
 
@@ -38,7 +42,7 @@ export async function getUser(sock: Socket): Promise<None<User>> {
 }
 
 export function triggerUser(member: User | GuildMember | DiscordUser,
-                            // tslint:disable-next-line:no-any
+                            // eslint-disable-next-line @typescript-eslint/no-explicit-any
                             event: string, message: any): void {
   const notifiers = sockets.get(member.id);
 
@@ -716,6 +720,8 @@ Promise<UserLocationChange | string> {
       } else {
         return `Room ${data.n} does not exist`;
       }
+    } catch (error) {
+      console.error(error);
     } finally {
       await unlock(redlock);
     }
@@ -727,4 +733,423 @@ Promise<UserLocationChange | string> {
     n: data.n,
     u: data.u
   };
+}
+
+export interface RoomDescriptionChange {
+  n?: string;
+  o?: string;
+  r: string;
+}
+
+export async function handleRoomDescriptionChange(data: RoomDescriptionChange):
+Promise<RoomDescriptionChange | string> {
+  if (!data.n) {
+    return "You must have a description";
+  }
+
+  const room = await Room.findOne({
+    where: {
+      id: data.r
+    }
+  });
+
+  if (!room) {
+    return `Could not find a room ${data.r}`;
+  }
+
+  const redlock = await lock({ room: room.id });
+
+  try {
+    const channel = guild.channels.cache.get(room.id) as TextChannel | undefined;
+
+    if (!channel) {
+      return `No channel ${room.name}`;
+    }
+
+    if (channel.topic !== data.o) {
+      return `Old description for ${data.r} does not match. Please refresh to resync`;
+    }
+
+    await channel.setTopic(data.n);
+  } finally {
+    await unlock(redlock);
+  }
+
+  return {
+    n: data.n,
+    r: data.r
+  };
+}
+
+export interface RoomDeleteResult {
+  e?: string;
+  r?: string;
+}
+
+export async function handleRoomDelete(roomId: string): Promise<RoomDeleteResult> {
+  const room = await Room.findOne({
+    where: {
+      id: roomId
+    }
+  });
+
+  if (!room) {
+    return {e: `No room with id ${roomId}`};
+  }
+
+  const redlock = await lock({ room: roomId });
+
+  try {
+    const channel = guild.channels.cache.get(roomId);
+
+    if (!channel) {
+      return {e: `No channel with id ${roomId}`};
+    }
+
+    await channel.delete();
+    await room.destroy();
+
+    const guildRole = guild.roles.cache.find(role => role.name === room.name);
+
+    if (guildRole) {
+      await guildRole.delete();
+    }
+  } catch(error) {
+    return {e: error};
+  } finally {
+    await unlock(redlock);
+  }
+
+  return {r: roomId};
+}
+
+export async function handleRoomNameChange(change: RoomDescriptionChange):
+Promise<RoomDescriptionChange | string> {
+  if (!change.o) {
+    return "You must provide a previous room name";
+  } else if (!change.n) {
+    return "You must provide a new room name";
+  }
+
+  const rooms = await Room.findAll({
+    where: {
+      [Op.or]: [{
+        id: change.r
+      }, {
+        name: change.n
+      }]
+    }
+  });
+
+  if (rooms.length === 0) {
+    return `No room with id ${change.r}`;
+  } else if (rooms.length > 1) {
+    return `The room ${change.n} already exists`;
+  }
+
+  const room = rooms[0];
+
+  if (room.name !== change.o) {
+    return `No room ${change.o}. It may have been deleted or renamed. Please force refresh`;
+  }
+
+  const redlock = await lock({ room: change.r });
+
+  try {
+    const channel = guild.channels.cache.get(change.r);
+
+    if (!channel) {
+      return `No channel with id ${change.r}`;
+    }
+
+    await channel.setName(change.n);
+
+    const guildRole = guild.roles.cache.find(role => role.name === room.name);
+
+    if (guildRole) {
+      await guildRole.setName(change.n);
+    }
+
+    await room.update({
+      discordName: channel.name,
+      name: change.n
+    });
+  } finally {
+    await unlock(redlock);
+  }
+
+  return {
+    n: change.n,
+    r: change.r
+  };
+}
+
+export type RoomVisibility = "publicW" | "publicR" | "private";
+
+export interface RoomCreation {
+  c?: [number, number, number];
+  d: string;
+  h?: boolean;
+  i?: string;
+  n: string;
+  s: string;
+  v?: RoomVisibility;
+}
+
+function isInt(value: any): boolean {
+  return !isNaN(value)
+    && parseInt(value) == value
+    && !isNaN(parseInt(value, 10));
+}
+
+function isColorArray(input: any): boolean {
+  if (!Array.isArray(input) || input.length !== 3) {
+    return false;
+  } else {
+    return input.reduce((prev, current) => {
+      return isInt(current)
+        && current >= 0
+        && current <= 255
+        && prev;
+    }, true);
+  }
+}
+
+function checkRoomCreation(room: RoomCreation): string | undefined {
+  if (!room.c || !room.d || !room.n || !room.s || !room.v) {
+    return "You must provide a color, description, name, section, and visibility";
+  } else if (!isColorArray(room.c)) {
+    return "Must provide valid rgb color array";
+  } else if (room.v !== "publicW" && room.v !== "publicR" && room.v !== "private") {
+    return "Must provide a valid room visibility";
+  }
+
+  return undefined;
+}
+
+export async function handleRoomCreation(room: RoomCreation): Promise<RoomCreation | string> {
+  const errorMessage = checkRoomCreation(room);
+
+  if (errorMessage) {
+    return errorMessage;
+  }
+
+  await globalLock({ acquire: true, writer: true });
+
+  let id: string;
+
+  try {
+    const existing = await Room.findOne({
+      where: {
+        name: room.n
+      }
+    });
+
+    if (existing) {
+      return `The room ${room.n} already exists`;
+    }
+
+    const logReason = `Create room ${room.n}`;
+
+    const role = await guild.roles.create({
+      data: {
+        color: room.c,
+        name: room.n
+      },
+      reason: logReason
+    });
+
+    const roleAllow: PermissionResolvable = ["VIEW_CHANNEL", "SEND_MESSAGES"];
+
+    if (room.h) {
+      roleAllow.push("READ_MESSAGE_HISTORY");
+    }
+
+    const overwrites: Array<ChannelCreationOverwrites | PermissionOverwrites> = [{
+      allow: roleAllow,
+      id: role.id
+    }, {
+      deny: ["VIEW_CHANNEL", "SEND_MESSAGES"],
+      id: guild.roles.everyone.id
+    }];
+
+    let category = guild.channels.cache.find(channel =>
+      channel.name === room.s && channel instanceof CategoryChannel) as CategoryChannel | undefined;
+
+    if (!category) {
+      category = await guild.channels.create(room.s, {
+        reason: logReason,
+        type: "category"
+      });
+    } else {
+      const rooms = await Room.findAll({
+        where: {
+          parent: room.s
+        }
+      });
+
+      const isNotPrivate = room.v !== "private";
+      const allowed: PermissionResolvable = ["VIEW_CHANNEL"];
+
+      if (room.v === "publicW") {
+        allowed.push("SEND_MESSAGES");
+      }
+
+      if (room.h) {
+        allowed.push("READ_MESSAGE_HISTORY");
+      }
+
+      const existingPromises: Array<Promise<any>> = [];
+
+      for (const existingRoom of rooms) {
+        if (isNotPrivate) {
+          overwrites.push({
+            allow: allowed,
+            id: existingRoom.role
+          });
+        }
+
+        if (!existingRoom.isPrivate) {
+          const existingChannel = guild.channels.resolve(existingRoom.id);
+
+          if (existingChannel) {
+            const options: PermissionOverwriteOption = {
+              VIEW_CHANNEL: true
+            };
+
+            if (existingRoom.isPublic) {
+              options.SEND_MESSAGES = true;
+            }
+
+            if (existingRoom.history) {
+              options.READ_MESSAGE_HISTORY = true;
+            }
+
+            existingPromises.push(existingChannel.updateOverwrite(role.id,
+              options, logReason));
+          }
+        }
+      }
+
+      if (existingPromises.length > 0) {
+        await Promise.all(existingPromises);
+      }
+    }
+
+    const newChannel = await guild.channels.create(room.n, {
+      parent: category,
+      permissionOverwrites: overwrites,
+      topic: room.d,
+      type: "text"
+    });
+
+    const roomModel = await Room.create({
+      discordName: newChannel.name,
+      history: room.h,
+      id: newChannel.id,
+      isPrivate: room.v === "private",
+      isPublic: room.v === "publicW",
+      name: room.n,
+      parent: room.s,
+      role: role.id
+    });
+
+    id = roomModel.id;
+  } finally {
+    await globalLock({ acquire: false, writer: true });
+  }
+
+  return {
+    d: room.d,
+    i: id,
+    n: room.n,
+    s: room.s
+  };
+}
+
+export interface RoomItemChange {
+  n?: MinimalItem;
+  o?: MinimalItem;
+  r: string;
+}
+
+
+export async function handleRoomItemChange(data: RoomItemChange):
+Promise<RoomItemChange | string> {
+
+  if (!data.o && !data.n) {
+    return "Must provide an old and/or new item";
+  }
+
+  const room = await Room.findOne({
+    where: {
+      id: data.r
+    }
+  });
+
+  if (room) {
+    const redlock = await lock({ room: room.id });
+
+    try {
+      await room.reload({
+        attributes: ["inventory"]
+      });
+
+      let existingItem: ItemModel | undefined;
+
+      if (data.o) {
+        existingItem = room.inventory[data.o.n];
+
+        if (!existingItem) {
+          return `Room ${room.name} does not have ${data.o.n}`;
+        } else if (!sameItem(data.o, existingItem)) {
+          return `The item ${data.o.n} for ${data.r} has changed`;
+        }
+      }
+
+      let oldItem: MinimalItem | undefined;
+      let newItem: MinimalItem | undefined;
+
+      if (data.n) {
+        if (!data.o && data.n.n in room.inventory) {
+          return `Room ${data.r} already has item ${data.n.n}`;
+        } else if (!data.n.n) {
+          return "Must provide a name for the new item";
+        }
+
+        const changedItem = existingItem || {} as ItemModel;
+
+        changedItem.description  = defaultValue(data.n.d, "");
+        changedItem.editable     = defaultValue(data.n.e, false);
+        changedItem.hidden       = defaultValue(data.n.h, false);
+        changedItem.locked       = defaultValue(data.n.l, false);
+        changedItem.name         = data.n.n;
+        changedItem.quantity     = defaultValue(data.n.q, 1);
+
+        room.inventory[data.n.n] = changedItem;
+
+        newItem = data.n;
+      } else {
+        // eslint-disable-next-line @typescript-eslint/no-dynamic-delete
+        delete room.inventory[data.o!.n];
+
+        oldItem = data.o;
+      }
+
+      await room.update({
+        inventory: room.inventory
+      });
+
+
+      return {
+        n: newItem,
+        o: oldItem,
+        r: data.r
+      };
+    } finally {
+      await unlock(redlock);
+    }
+  } else {
+    return `Could not find ${data.r}`;
+  }
 }

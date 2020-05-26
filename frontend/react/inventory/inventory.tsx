@@ -3,6 +3,7 @@ import React from "react";
 import { Responsive, Layout } from "react-grid-layout";
 
 import { MinimalItem } from "../../../socket/helpers";
+import UserItemEditor from "../usersView/userItemEditor";
 import Modal from "../util/modal";
 import SearchBar from "../util/search";
 import { compareString } from "../util/util";
@@ -23,11 +24,14 @@ const options: Array<[InventorySortPossibilities, string]> = [
 ];
 
 interface InventoryProps {
+  edit?: boolean;
   name: string;
   inventory: MinimalItem[];
   selected: boolean;
   sidebar: boolean;
   width: number;
+
+  handleItemChange?(oldItem: MinimalItem | undefined, newItem: MinimalItem | undefined): void;
 }
 
 interface InventoryState {
@@ -57,6 +61,20 @@ class Inventory extends React.PureComponent<InventoryProps, InventoryState> {
     this.handleSort = this.handleSort.bind(this);
     this.handleWidth = this.handleWidth.bind(this);
     this.toggleModal = this.toggleModal.bind(this);
+  }
+
+  public componentDidUpdate(oldProps: InventoryProps): void {
+    if (oldProps.inventory.length > this.props.inventory.length && this.state.activeItem) {
+      for (const item of oldProps.inventory) {
+        if (item.n === this.state.activeItem) {
+          $(`#${this.props.name}Modal`).modal("hide");
+
+          this.setState({
+            activeItem: undefined
+          });
+        }
+      }
+    }
   }
 
   public render(): JSX.Element {
@@ -117,14 +135,19 @@ class Inventory extends React.PureComponent<InventoryProps, InventoryState> {
 
     const className = this.props.selected ? "visible": "invisible";
 
-    let body = "";
+    let body: JSX.Element | string = "";
     let title = "";
 
     if (this.state.activeItem) {
       for (const item of this.props.inventory) {
         if (item.n === this.state.activeItem) {
-          body = item.d;
-          title = `${item.n} (${item.q || 1}${item.l ? " locked": ""})`;
+          if (this.props.edit) {
+            body = <UserItemEditor {...item} handleItemChange={this.props.handleItemChange!}/>;
+            title = `Editing ${item.n}`;
+          } else {
+            body = item.d;
+            title = `${item.n} (${item.q || 1}${item.l ? " locked": ""})`;
+          }
         }
       }
     }
@@ -140,7 +163,7 @@ class Inventory extends React.PureComponent<InventoryProps, InventoryState> {
           name={this.props.name}
         />
         <Responsive
-          className="layout"
+          className="layout mt-4"
           rowHeight={50}
           width={width}
           layouts={layouts}
@@ -153,7 +176,7 @@ class Inventory extends React.PureComponent<InventoryProps, InventoryState> {
           id={this.props.name}
           title={title}
           body={body}
-          html={true}
+          html={this.props.edit}
         />
       </div>
     );

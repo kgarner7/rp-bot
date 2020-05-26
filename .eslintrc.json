@@ -401,7 +401,7 @@
         "@typescript-eslint/type-annotation-spacing": "warn",
         "@typescript-eslint/typedef": ["error", {
             "arrowParameter": false,
-            "memberVariableDeclaration": true,
+            "memberVariableDeclaration": false,
             "parameter": false,
             "propertyDeclaration": true
         }],

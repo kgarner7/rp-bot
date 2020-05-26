@@ -5,49 +5,14 @@ import {
   Guild,
   PartialMessage
 } from "discord.js";
-// eslint-disable-next-line import/no-extraneous-dependencies
-import { sync } from "glob";
-import { readFile } from "jsonfile";
 import { NodeVM, VMScript } from "vm2";
 
 import { guild } from "../client";
 import { AccessError } from "../config/errors";
-import { User, UserResolvable } from "../models/user";
 
 import { CustomMessage } from "./classes";
-import { isNone, isUserResolvable } from "./types";
 
 export const lineEnd = "\r\n";
-
-/**
- * Updates users with items
- * @param path the path to initialize users
- */
-export async function initUsers(path: string): Promise<void> {
-  for (const file of sync(`${path}/*.json`, { absolute : true})) {
-    const module = await readFile(file);
-    let user: UserResolvable;
-
-    if (isUserResolvable(module)) {
-      user = module;
-    } else {
-      continue;
-    }
-
-    for (const item of Object.values(user.inventory)) {
-      if (isNone(item.quantity)) {
-        item.quantity = 1;
-      }
-    }
-
-    await User.upsert({
-      discordName: user.discordName,
-      id: user.id,
-      inventory: user.inventory,
-      name: user.name
-    });
-  }
-}
 
 /**
  * Gets the IDs of all members currently present in a channel

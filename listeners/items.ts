@@ -7,20 +7,23 @@ import {
   isAdmin,
   lineEnd,
   requireAdmin,
-  userIsAdmin,
-  getAdministrators
 } from "../helpers/base";
 import { CustomMessage, SortableArray } from "../helpers/classes";
 import { lock, unlock } from "../helpers/locks";
-import { isNone, None, Undefined } from "../helpers/types";
+import { isNone, None, Undefined, ItemModel } from "../helpers/types";
 import { Room, sequelize, User } from "../models/models";
-import { Item, ItemModel } from "../rooms/item";
-import { manager } from "../rooms/roomManager";
 import { ROOM_INFORMATION, USER_INVENTORY_CHANGE } from "../socket/consts";
 import { inventoryToJson, roomToJson, triggerUser } from "../socket/helpers";
 
 import { Action } from "./actions";
-import { Command, getRoom, getRoomModel, parseCommand, sendMessage } from "./baseHelpers";
+import {
+  Command,
+  getRoom,
+  getRoomModel,
+  parseCommand,
+  sendMessage,
+  ignorePromise
+} from "./baseHelpers";
 
 export const usage: Action = {
   change: {
@@ -174,7 +177,7 @@ export function getInt(value: string): number {
 }
 
 function missing(msg: CustomMessage, item: None<ItemModel>): boolean {
-  return isNone(item) || (item.hidden && !isAdmin(msg));
+  return isNone(item) || (item.hidden === true && !isAdmin(msg));
 }
 
 /* function notifyUserInventoryChange(user: User): void {
@@ -227,17 +230,23 @@ export async function consume(msg: CustomMessage): Promise<void> {
   const redlock = await lock({ user: user.id});
 
   try {
-    const item: Undefined<ItemModel> = user.inventory[itemName];
+    const item = user.inventory[itemName];
 
     if (missing(msg, item)) throw new Error(`You do not have ${itemName}`);
     else if (item.locked) throw new Error(`You cannot remove ${itemName}`);
 
-    if (quantity > item.quantity) {
+    const itemQuantity = item.quantity || 1;
+
+    if (quantity > itemQuantity) {
       const mesg = `You have ${item.quantity} ${itemName}, you cannot remove ${quantity}`;
       throw new Error(mesg);
     }
 
-    item.quantity -= quantity;
+    if (quantity === itemQuantity) {
+      user.inventory = exclude(user.inventory, itemName);
+    } else {
+      item.quantity = itemQuantity - quantity;
+    }
 
     await user.update({
       inventory: user.inventory
@@ -336,20 +345,15 @@ async function changeRoomItem(command: Command, target: string, name: string,
 
   const redlock = await lock({ room: roomModel.id });
 
-  const room = manager.rooms
-    .get(roomModel.name)!;
-
   try {
     await roomModel.reload({ attributes: ["inventory"]});
     const item = roomModel.inventory[name];
 
     if (command.args.has("delete")) {
       roomModel.inventory = exclude(roomModel.inventory, name);
-      room.items.delete(name);
     } else {
       const updatedItem = createOrUpdateItem(command, item, name);
       roomModel.inventory[name] = updatedItem;
-      room.items.set(name, new Item({ ...updatedItem }));
     }
 
     await roomModel.update({ inventory: roomModel.inventory });
@@ -396,7 +400,6 @@ function createOrUpdateItem(command: Command, item: None<ItemModel>,
     const quantity = getInt((command.args.get("count") || ["1"]).join());
 
     return {
-      children: [],
       description: description.join(),
       editable: command.args.has("edit"),
       hidden: command.args.has("hide"),
@@ -414,22 +417,20 @@ export async function dropItem(msg: CustomMessage): Promise<void> {
     throw new Error("Could not find a room");
   }
 
-  const room = manager.rooms
-      .get(roomModel.name)!,
-    user = await User.findOne({
-      attributes: ["id"],
-      where: {
-        id: msg.author.id
-      }
-    });
+  const user = await User.findOne({
+    attributes: ["id"],
+    where: {
+      id: msg.author.id
+    }
+  });
 
   if (user === null) {
     throw new Error("Could not find a user for you");
   }
 
   const command = parseCommand(msg, ["of", "in"]);
-  let itemName: string = command.params.join(),
-    quantity = 1;
+  let itemName: string = command.params.join();
+  let quantity = 1;
 
   if (command.args.has("of")) {
     quantity = getInt(itemName);
@@ -450,26 +451,29 @@ export async function dropItem(msg: CustomMessage): Promise<void> {
       throw new Error(`You cannot drop ${itemName}: it is locked`);
     }
 
-    if (quantity > item.quantity) {
+    console.log(item);
+
+    const itemQuantity = item.quantity || 1;
+
+    if (quantity > itemQuantity) {
       const message = `Cannot drop **${quantity}** of **${itemName}**` +
                       `${lineEnd}You have **${item.quantity}**`;
       throw new Error(message);
     }
 
-    item.quantity -= quantity;
-
-    if (item.quantity <= 0) {
-      quantity += item.quantity;
+    if (quantity === itemQuantity) {
       user.inventory = exclude(user.inventory, itemName);
+    } else {
+      item.quantity = itemQuantity - quantity;
     }
 
-    let roomItem = room.items.get(itemName);
+    let roomItem = roomModel.inventory[itemName];
 
     if (roomItem === undefined) {
-      roomItem = new Item({ ...item, quantity});
-      room.items.set(itemName, roomItem);
+      roomItem = { ...item, quantity};
+      roomModel.inventory[itemName] = roomItem;
     } else {
-      roomItem.quantity += quantity;
+      roomItem.quantity = (roomItem.quantity || 1) +  quantity;
     }
 
     const transaction = await sequelize.transaction();
@@ -487,10 +491,6 @@ export async function dropItem(msg: CustomMessage): Promise<void> {
       // notifyUserInventoryChange(user);
       // notifyRoomInventoryChange(msg, roomModel);
     } catch (error) {
-      roomItem.quantity -= quantity;
-
-      if (roomItem.quantity === 0) room.items.delete(itemName);
-
       await transaction.rollback();
       throw error;
     }
@@ -636,28 +636,28 @@ export async function giveItem(msg: CustomMessage): Promise<void> {
       throw new Error(`You cannot give "${itemName}"`);
     }
 
-    if (quantity > item.quantity) {
+    const itemQuantity = item.quantity || 1;
+
+    if (quantity > itemQuantity) {
       const message = `Cannot give **${quantity}** of **${itemName}**` +
                       `${lineEnd}You have **${item.quantity}**`;
       throw new Error(message);
     }
 
-    item.quantity -= quantity;
-
-    if (item.quantity <= 0)  {
-      quantity += item.quantity;
+    if (quantity === itemQuantity) {
       sender.inventory = exclude(sender.inventory, item.name);
+    } else {
+      item.quantity = itemQuantity - quantity;
     }
 
     const transaction = await sequelize.transaction();
 
     const targetItem = target.inventory[item.name];
 
-    if (targetItem === undefined) {
-      target.inventory[item.name] = new Item(item);
-      target.inventory[item.name].quantity = quantity;
+    if (!targetItem) {
+      target.inventory[item.name] = {...item, quantity};
     } else {
-      targetItem.quantity += quantity;
+      targetItem.quantity = (targetItem.quantity || 1) + quantity;
     }
 
     try {
@@ -676,9 +676,9 @@ export async function giveItem(msg: CustomMessage): Promise<void> {
       // notifyUserInventoryChange(sender);
       // notifyUserInventoryChange(target);
 
-      transaction.commit();
+      await transaction.commit();
     } catch (error) {
-      transaction.rollback();
+      await transaction.rollback();
       throw error;
     }
 
@@ -688,7 +688,7 @@ export async function giveItem(msg: CustomMessage): Promise<void> {
       `${senderName(msg)} gave ${recipient} ${quantity} of ${itemName}`);
 
     if (!(msg.channel instanceof TextChannel)) {
-      recipient.send(`${msg.author} gave you ${quantity} of ${itemName}`);
+      ignorePromise(recipient.send(`${msg.author} gave you ${quantity} of ${itemName}`));
     }
   } catch (error) {
     throw error;
@@ -707,16 +707,17 @@ export async function items(msg: CustomMessage): Promise<void> {
   if (roomModel) {
     const redlock = await lock({ room: roomModel.id });
 
-    try {
-      const room = manager.rooms
-        .get(roomModel.name)!;
+    await roomModel.reload({
+      attributes: ["inventory"]
+    });
 
-      if (room.items.size === 0) {
+    try {
+      if (Object.keys(roomModel.inventory).length === 0) {
         sendMessage(msg, "There are no items here");
       } else {
         let itemString = "";
 
-        for (const item of room.items.values()) {
+        for (const item of Object.values(roomModel.inventory)) {
           if (!missing(msg, item)) {
             const ending = (item.hidden ? " hidden" : "") +
               (item.locked ? " locked" : "");
@@ -755,14 +756,14 @@ export async function inspect(msg: CustomMessage): Promise<void> {
     const missingItems = new Set<string>(itemsList.params);
 
     if (!isNone(roomModel)) {
-      const room = manager.rooms
-        .get(roomModel.name)!;
-
+      await roomModel.reload({
+        attributes: ["inventory"]
+      });
       for (const item of itemsList.params) {
-        const roomItem = room.items.get(item);
+        const roomItem = roomModel.inventory[item];
 
         if (!missing(msg, roomItem)) {
-          descriptions.add(`**${item}**: ${roomItem!.description}`);
+          descriptions.add(`**${item}**: ${roomItem.description}`);
           missingItems.delete(item);
         }
       }
@@ -847,10 +848,8 @@ export async function takeItem(msg: CustomMessage): Promise<void> {
 
   if (!roomModel || !user) return;
 
-  const item = command.args.get("of"),
-    room = manager.rooms
-      .get(roomModel.name)!,
-    joined = command.params.join();
+  const item = command.args.get("of");
+  const joined = command.params.join();
 
   let itemName: string,
     quantity: number;
@@ -874,39 +873,41 @@ export async function takeItem(msg: CustomMessage): Promise<void> {
       attributes: ["inventory"]
     });
 
-    const existing = room.items.get(itemName);
+    const existing = roomModel.inventory[itemName];
 
     if (missing(msg, existing)) {
       throw new Error(`${itemName} does not exist in the room`);
-    } else if (existing!.locked) {
+    } else if (existing.locked) {
       throw new Error(`${itemName} cannot be removed`);
     }
 
-    if (quantity > existing!.quantity) {
+    const itemQuantity = existing.quantity || 1;
+
+    if (quantity > itemQuantity) {
       const err = `Cannot take **${quantity}** of **${itemName}**` +
-                  `${lineEnd}You have **${existing!.quantity}**`;
+                  `${lineEnd}There have **${existing.quantity}**`;
       throw new Error(err);
     }
 
     const transaction = await sequelize.transaction();
 
     try {
-      existing!.quantity -= quantity;
+      existing.quantity = itemQuantity - quantity;
 
-      if (existing!.quantity === 0) {
-        room.items.delete(itemName);
+      if (existing.quantity === 0) {
+        roomModel.inventory = exclude(roomModel.inventory, itemName);
       }
 
       await roomModel.update({
-        inventory: room.items.serialize()
+        inventory: roomModel.inventory
       }, {
         transaction
       });
 
       if (itemName in user.inventory) {
-        user.inventory[itemName].quantity += quantity;
+        user.inventory[itemName].quantity = (user.inventory[itemName].quantity || 1) + quantity;
       } else {
-        user.inventory[itemName] = new Item({ ...existing!, quantity});
+        user.inventory[itemName] = { ...existing, quantity};
       }
 
       await user.update({
@@ -921,11 +922,7 @@ export async function takeItem(msg: CustomMessage): Promise<void> {
 
       sendMessage(msg, `${senderName(msg)} took ${quantity} of ${itemName}`);
     } catch (error) {
-      existing!.quantity += quantity;
-      room.items.set(itemName, existing!);
-
       await transaction.rollback();
-
       throw error;
     }
   } catch (error) {
