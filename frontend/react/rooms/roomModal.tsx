@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/unbound-method */
 import React from "react";
 
+import { RoomVisibility } from "../../../socket/helpers";
 import SearchBar from "../util/search";
 
 import Message from "./message";
@@ -10,10 +11,12 @@ export interface RoomData {
   archive: MessageData[];
   description: string;
   hasArchive?: boolean;
+  history?: boolean;
   messages: MessageData[];
   name: string;
   section: string;
   updatedAt?: number;
+  visibility?: RoomVisibility;
 }
 
 interface RoomModalProps {

@@ -36,7 +36,9 @@ import {
   ROOM_DELETE,
   ROOM_NAME,
   ROOM_CREATE,
-  ROOM_ITEM_CHANGE
+  ROOM_ITEM_CHANGE,
+  ROOM_VISIBILITY,
+  ROOM_HISTORY
 } from "../../socket/consts";
 import {
   MinimalCommand,
@@ -53,7 +55,9 @@ import {
   RoomDescriptionChange,
   RoomDeleteResult,
   RoomCreation,
-  RoomItemChange
+  RoomItemChange,
+  RoomVisibilityChange,
+  RoomHistoryChange
 } from "../../socket/helpers";
 import { UserData } from "../../socket/socket";
 
@@ -287,12 +291,14 @@ export class App extends React.Component<{}, AppState>{
             if (result.i) {
               state.rooms.set(result.i, {
                 description: result.d,
+                history: result.h,
                 id: result.i,
                 inventory: [],
                 name: result.n,
                 present: this.state.admin,
                 section: result.s,
-                updatedAt: new Date().getTime()
+                updatedAt: new Date().getTime(),
+                visibility: result.v!
               });
             }
           });
@@ -329,18 +335,37 @@ export class App extends React.Component<{}, AppState>{
       }
     });
 
+    socket.on(ROOM_HISTORY, (result: RoomHistoryChange) => {
+      if (typeof result === "string") {
+        alert(`Failed to update room history: ${result}`);
+      } else {
+        this.setState(oldState => {
+          return produce(oldState, state => {
+            const room = state.rooms.get(result.r);
+
+            if (room) {
+              room.history = result.n;
+            }
+          });
+        });
+      }
+    });
+
+
     socket.on(ROOM_INFORMATION, (json: RoomJson[]) => {
       const rooms = new Map<string, CurrentRoomData>();
 
       for (const room of json) {
         const data = {
           description: room.d,
+          history: room.h,
           id: room.i,
           inventory: room.c || [],
           name: room.n,
           present: room.p || false,
           section: room.s || "",
-          updatedAt: new Date().getTime()
+          updatedAt: new Date().getTime(),
+          visibility: room.v
         };
 
         rooms.set(room.i, data);
@@ -426,6 +451,22 @@ export class App extends React.Component<{}, AppState>{
 
             if (oldMessages) {
               oldMessages.name = data.n!;
+            }
+          });
+        });
+      }
+    });
+
+    socket.on(ROOM_VISIBILITY, (result: RoomVisibilityChange) => {
+      if (typeof result === "string") {
+        alert(`Failed to update visibility: ${result}`);
+      } else {
+        this.setState(oldState => {
+          return produce(oldState, state => {
+            const room = state.rooms.get(result.r);
+
+            if (room) {
+              room.visibility = result.n;
             }
           });
         });

@@ -7,7 +7,8 @@ import {
   ChannelCreationOverwrites,
   PermissionOverwrites,
   PermissionResolvable,
-  PermissionOverwriteOption
+  PermissionOverwriteOption,
+  OverwriteResolvable
 } from "discord.js";
 import { Op } from "sequelize";
 import { Server, Socket } from "socket.io";
@@ -54,7 +55,6 @@ export function triggerUser(member: User | GuildMember | DiscordUser,
   }
 }
 
-const roomAttributes = ["discordName", "id", "inventory", "name", "updatedAt"];
 
 export async function getRooms(user: GuildMember | User): Promise<RoomJson[]> {
   const visibleRooms = new Set<string>();
@@ -68,7 +68,7 @@ export async function getRooms(user: GuildMember | User): Promise<RoomJson[]> {
   let messageRooms: Room[];
 
   if (idIsAdmin(user.id)) {
-    messageRooms = await Room.findAll({ attributes: roomAttributes });
+    messageRooms = await Room.findAll();
   } else {
     const transaction = await sequelize.transaction();
 
@@ -76,7 +76,6 @@ export async function getRooms(user: GuildMember | User): Promise<RoomJson[]> {
       attributes: ["id"],
       include: [{
         as: "visitedRooms",
-        attributes: roomAttributes,
         model: Room,
         required: false
       }],
@@ -101,11 +100,9 @@ export async function getRooms(user: GuildMember | User): Promise<RoomJson[]> {
         }
       }, {
         as: "source",
-        attributes: roomAttributes,
         model: Room
       }, {
         as: "target",
-        attributes: roomAttributes,
         model: Room
       }],
       transaction
@@ -137,10 +134,12 @@ export async function getRooms(user: GuildMember | User): Promise<RoomJson[]> {
 export interface RoomJson {
   c?: MinimalItem[];
   d: string;
+  h?: boolean;
   i: string;
   n: string;
   p?: boolean;
   s?: string;
+  v?: RoomVisibility;
 }
 
 export function roomToJson(room: Room, present: boolean,
@@ -160,6 +159,18 @@ export function roomToJson(room: Room, present: boolean,
       .filter(item => isAdmin || !item.h);
 
     json.p = true;
+  }
+
+  if (room.history) {
+    json.h = true;
+  }
+
+  if (room.isPublic) {
+    json.v = "publicW";
+  } else if (room.isPrivate) {
+    json.v = "private";
+  } else {
+    json.v = "publicR";
   }
 
   return json;
@@ -447,7 +458,6 @@ export async function createMap(user: GuildMember | User): Promise<MinimalRoomWi
       attributes: ["id"],
       include: [{
         as: "visitedRooms",
-        attributes: roomAttributes,
         include: [{
           as: "sources",
           include: [{
@@ -643,7 +653,14 @@ Promise<UserItemChange | string> {
         changedItem.hidden       = defaultValue(data.n.h, false);
         changedItem.locked       = defaultValue(data.n.l, false);
         changedItem.name         = data.n.n;
-        changedItem.quantity     = defaultValue(data.n.q, 1);
+
+        const quantity = defaultValue(data.n.q, 1);
+
+        if (!isInt(quantity) || quantity < 1) {
+          return "Must provide integer quantity greater than 0";
+        } else {
+          changedItem.quantity = quantity;
+        }
 
         user.inventory[data.n.n] = changedItem;
 
@@ -658,7 +675,6 @@ Promise<UserItemChange | string> {
       await user.update({
         inventory: user.inventory
       });
-
 
       return {
         n: newItem,
@@ -915,12 +931,18 @@ function isColorArray(input: any): boolean {
   }
 }
 
+function isRoomVisibility(value: any): value is RoomVisibility {
+  return value === "publicW"
+    || value === "publicR"
+    || value === "private";
+}
+
 function checkRoomCreation(room: RoomCreation): string | undefined {
   if (!room.c || !room.d || !room.n || !room.s || !room.v) {
     return "You must provide a color, description, name, section, and visibility";
   } else if (!isColorArray(room.c)) {
     return "Must provide valid rgb color array";
-  } else if (room.v !== "publicW" && room.v !== "publicR" && room.v !== "private") {
+  } else if (!isRoomVisibility(room.v)) {
     return "Must provide a valid room visibility";
   }
 
@@ -1063,7 +1085,8 @@ export async function handleRoomCreation(room: RoomCreation): Promise<RoomCreati
     d: room.d,
     i: id,
     n: room.n,
-    s: room.s
+    s: room.s,
+    v: room.v
   };
 }
 
@@ -1124,7 +1147,14 @@ Promise<RoomItemChange | string> {
         changedItem.hidden       = defaultValue(data.n.h, false);
         changedItem.locked       = defaultValue(data.n.l, false);
         changedItem.name         = data.n.n;
-        changedItem.quantity     = defaultValue(data.n.q, 1);
+
+        const quantity = defaultValue(data.n.q, 1);
+
+        if (!isInt(quantity) || quantity < 1) {
+          return "Must provide integer quantity greater than 0";
+        } else {
+          changedItem.quantity = quantity;
+        }
 
         room.inventory[data.n.n] = changedItem;
 
@@ -1152,4 +1182,171 @@ Promise<RoomItemChange | string> {
   } else {
     return `Could not find ${data.r}`;
   }
+}
+
+export interface RoomVisibilityChange {
+  n: RoomVisibility;
+  o?: RoomVisibility;
+  r: string;
+}
+
+export async function handleRoomVisibilityChange(data: RoomVisibilityChange):
+Promise<RoomVisibilityChange | string> {
+  if (!isRoomVisibility(data.o)) {
+    return "You must provide valid prior visibility";
+  } else if (!isRoomVisibility(data.n)) {
+    return "You must provide valid new visibility";
+  } else if (!data.r) {
+    return "You must provide a room id";
+  }
+
+  await globalLock({ acquire: true, writer: true });
+
+  try {
+    const room = await Room.findOne({
+      where: {
+        id: data.r
+      }
+    });
+
+    if (!room) {
+      return `Could not find a room ${data.r}`;
+    }
+
+    const oldVisibility: RoomVisibility = room.isPublic ?
+      "publicW" : (room.isPrivate ? "private" : "publicR");
+
+    if (data.o !== oldVisibility) {
+      return `Old visibility for ${room.name} does not match current state, please refresh`;
+    }
+
+    const channel = guild.channels.resolve(room.id);
+
+    if (!channel) {
+      return `The channel ${room.name} no longer exists. Inconcistent state.`
+    }
+
+    const roleAllow: PermissionResolvable = ["VIEW_CHANNEL", "SEND_MESSAGES"];
+
+    if (room.history) {
+      roleAllow.push("READ_MESSAGE_HISTORY");
+    }
+
+    const basePermissions: OverwriteResolvable[] = [{
+      id: guild.roles.everyone.id,
+      deny: ["VIEW_CHANNEL", "SEND_MESSAGES", "READ_MESSAGE_HISTORY"]
+    }, {
+      id: room.role,
+      allow: roleAllow
+    }];
+
+    if (data.n !== "private") {
+      const otherRooms = await Room.findAll({
+        where: {
+          [Op.not]: {
+            id: room.id
+          },
+          parent: room.parent
+        }
+      });
+
+      const otherAllow: PermissionResolvable = ["VIEW_CHANNEL"];
+
+      if (data.n === "publicW") {
+        otherAllow.push("SEND_MESSAGES");
+      }
+
+      if (room.history) {
+        otherAllow.push("READ_MESSAGE_HISTORY");
+      }
+
+      for (const otherRoom of otherRooms) {
+        basePermissions.push({
+          id: otherRoom.role,
+          allow: otherAllow
+        });
+      }
+    }
+
+    await channel.overwritePermissions(basePermissions, `Update ${room.name}'s visibility`);
+
+    await room.update({
+      isPrivate: data.n === "private",
+      isPublic: data.n === "publicW"
+    });
+  } finally {
+    await globalLock({ acquire: false, writer: true });
+  }
+
+  return {
+    n: data.n,
+    r: data.r
+  };
+}
+
+export interface RoomHistoryChange {
+  n: boolean;
+  r: string;
+}
+
+export async function handleRoomHistoryChange(data: RoomHistoryChange):
+Promise<RoomHistoryChange | string> {
+  if (!data.r) {
+    return "Must provide room id";
+  } else if (data.n !== true && data.n !== false) {
+    return "Must provide new history as a boolean";
+  }
+
+  await globalLock({ acquire: true, writer: true });
+
+  try {
+    const room = await Room.findOne({
+      where: {
+        id: data.r
+      }
+    });
+
+    if (!room) {
+      return `Could not find room ${data.r}`;
+    } else if (room.history === data.n) {
+      return `Your current history is out of date for ${data.r}. Please refresh`;
+    }
+
+    const channel = guild.channels.resolve(room.id);
+
+    if (!channel) {
+      return `No channel ${room.name}. Probably in an inconsistent state`;
+    }
+
+    const overwrites: OverwriteResolvable[] = channel.permissionOverwrites.map(overwrite => {
+      if (overwrite.id === guild.roles.everyone.id) {
+        return overwrite;
+      }
+
+      if (data.n) {
+        return {
+          allow: overwrite.allow.add("READ_MESSAGE_HISTORY"),
+          id: overwrite.id
+        };
+      } else {
+        return {
+          allow: overwrite.allow.remove("READ_MESSAGE_HISTORY"),
+          id: overwrite.id
+        };
+      }
+    });
+
+    await channel.overwritePermissions(overwrites);
+
+    await room.update({
+      history: data.n === true
+    });
+  } finally {
+    await globalLock({ acquire: false, writer: true });
+  }
+
+  return {
+    n: data.n === true,
+    r: data.r
+  };
 }

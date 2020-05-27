@@ -48,8 +48,6 @@ RoomDescriptionState> {
 
     if (this.props.admin) {
       className += "col-lg-8 col-xs-12";
-    } else {
-      className += "col-12";
     }
 
     if (!this.props.admin) {

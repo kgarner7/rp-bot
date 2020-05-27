@@ -3,7 +3,7 @@ import React from "react";
 import Select, { StylesConfig} from "react-select";
 
 import { ROOM_DESCRIPTION, ROOM_DELETE, ROOM_NAME, ROOM_ITEM_CHANGE } from "../../../socket/consts";
-import { MinimalItem, RoomDescriptionChange, RoomItemChange } from "../../../socket/helpers";
+import { MinimalItem, RoomDescriptionChange, RoomItemChange, RoomVisibility } from "../../../socket/helpers";
 import Inventory from "../inventory/inventory";
 import NewUserItemEditor from "../usersView/newUserItemEditor";
 import Modal from "../util/modal";
@@ -12,6 +12,7 @@ import { compareString } from "../util/util";
 import { RoomCreate } from "./roomCreate";
 import RoomDescription from "./roomDescription";
 import RoomName from "./roomName";
+import { RoomMetadata } from "./roomMetadata";
 
 const style: StylesConfig = {
   menu: (provided, _state) => ({
@@ -29,15 +30,17 @@ const style: StylesConfig = {
 
 export interface RoomData {
   description: string;
+  history?: boolean;
   id: string;
   inventory: MinimalItem[];
   name: string;
   present: boolean;
   section: string;
   updatedAt?: number;
+  visibility?: RoomVisibility;
 }
 
-interface CurrentRoomsProps {
+export interface CurrentRoomsProps {
   admin: boolean;
   rooms: Map<string, RoomData>;
   selected: boolean;
@@ -52,7 +55,7 @@ export interface CurrentRoomsState {
 
 const EMPTY_LIST: MinimalItem[] = [];
 
-export class CurrentRooms extends React.Component<CurrentRoomsProps, CurrentRoomsState> {
+export class CurrentRooms extends React.PureComponent<CurrentRoomsProps, CurrentRoomsState> {
   public constructor(props: CurrentRoomsProps) {
     super(props);
     this.state = {
@@ -135,14 +138,14 @@ export class CurrentRooms extends React.Component<CurrentRoomsProps, CurrentRoom
         options={options}
         onChange={this.handleChange}
         styles={style}
-        className="col-12"
+        className="col-12 mb-4"
         value={selected}
       />;
     }
 
     return <div className={ className }>
       {begin}
-      <div className="row col-12">
+      <div className={this.props.admin ? "col-12 row" : "col-12"}>
         { this.props.admin &&
           <RoomName
             room={room}
@@ -156,6 +159,11 @@ export class CurrentRooms extends React.Component<CurrentRoomsProps, CurrentRoom
           room={ room }
         />
       </div>
+      <RoomMetadata
+        admin={this.props.admin}
+        room={room}
+        socket={this.props.socket}
+      />
       <Inventory
         edit={this.props.admin}
         handleItemChange={this.newItem}
@@ -186,6 +194,7 @@ export class CurrentRooms extends React.Component<CurrentRoomsProps, CurrentRoom
           </div>
           <Modal
             body={<NewUserItemEditor
+              itemCount={room?.inventory.length || 0}
               cancelEdit={CurrentRooms.cancelItemEdit}
               handleItemChange={this.newItem}
             />}

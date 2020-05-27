@@ -19,7 +19,9 @@ import {
   ROOM_DELETE,
   ROOM_NAME,
   ROOM_CREATE,
-  ROOM_ITEM_CHANGE
+  ROOM_ITEM_CHANGE,
+  ROOM_VISIBILITY,
+  ROOM_HISTORY
 } from "./consts";
 import {
   getArchivedRoomLogs,
@@ -44,7 +46,11 @@ import {
   RoomCreation,
   handleRoomCreation,
   RoomItemChange,
-  handleRoomItemChange
+  handleRoomItemChange,
+  RoomVisibilityChange,
+  handleRoomVisibilityChange,
+  RoomHistoryChange,
+  handleRoomHistoryChange
 } from "./helpers";
 
 export const sockets: Map<string, Set<string>> = new Map();
@@ -143,6 +149,13 @@ export function socket(app: any): Server {
       }
     });
 
+    sock.on(ROOM_HISTORY, async (data: RoomHistoryChange) => {
+      if (idIsAdmin(user.id)) {
+        const result = await handleRoomHistoryChange(data);
+        sock.emit(ROOM_HISTORY, result);
+      }
+    });
+
     sock.on(ROOM_INFORMATION, async () => {
       const rooms = await getRooms(user);
       sock.emit(ROOM_INFORMATION, rooms);
@@ -170,6 +183,13 @@ export function socket(app: any): Server {
         } else {
           io.emit(ROOM_NAME, result);
         }
+      }
+    });
+
+    sock.on(ROOM_VISIBILITY, async (data: RoomVisibilityChange) => {
+      if (idIsAdmin(user.id)) {
+        const result = await handleRoomVisibilityChange(data);
+        sock.emit(ROOM_VISIBILITY, result);
       }
     });
 

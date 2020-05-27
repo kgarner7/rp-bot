@@ -2,6 +2,7 @@ import React from "react";
 
 interface ItemProps {
   description: string;
+  hidden?: boolean;
   locked?: boolean;
   name: string;
   quantity?: number;
@@ -10,7 +11,12 @@ interface ItemProps {
 }
 
 export const Item = React.memo(function Item(props: ItemProps) {
-  const message = `${props.name} (${props.quantity || 1}${props.locked ? " locked": ""})`;
+  const hideMsg = props.hidden ? " hidden": "";
+  const lockMsg = props.locked ? " locked": "";
+  const quantity = props.quantity || 1;
+
+  const message = `${props.name} (${quantity}${lockMsg}${hideMsg})`;
+
   return (
     <div className="card item">
       <div className="card-body">

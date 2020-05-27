@@ -4,6 +4,8 @@ import React from "react";
 import { MinimalItem } from "../../../socket/helpers";
 
 interface NewUserItemEditorProps {
+  itemCount?: number;
+
   cancelEdit(): void;
   handleItemChange(oldItem: MinimalItem | undefined, newItem: MinimalItem | undefined): void;
 }
@@ -20,6 +22,18 @@ export class NewUserItemEditor extends React.PureComponent<NewUserItemEditorProp
     this.handleCancel = this.handleCancel.bind(this);
     this.handleChange = this.handleChange.bind(this);
     this.handleSave = this.handleSave.bind(this);
+  }
+
+  public componentDidUpdate(oldProps: NewUserItemEditorProps): void {
+    if (oldProps.itemCount !== this.props.itemCount) {
+      this.setState({
+        d: "",
+        h: undefined,
+        l: undefined,
+        n: "",
+        q: 1
+      });
+    }
   }
 
   public render(): JSX.Element {

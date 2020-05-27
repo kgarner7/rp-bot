@@ -82,10 +82,8 @@ class Inventory extends React.PureComponent<InventoryProps, InventoryState> {
     const width = this.props.width - (this.props.sidebar ? 200 : 0);
     let x = 0;
 
-    const filtered = this.props.inventory.filter(item => {
-      return !item.h &&
-        (this.state.filter === "" || item.n.startsWith(this.state.filter));
-    });
+    const filtered = this.props.inventory.filter(item =>
+      this.state.filter === "" || item.n.startsWith(this.state.filter));
 
     if (this.state.sort !== "none") {
       const sign = this.state.sort === "atoz" ? 1: -1;
@@ -118,6 +116,7 @@ class Inventory extends React.PureComponent<InventoryProps, InventoryState> {
         <div key={name}>
           <Item
             name={name}
+            hidden={item.h}
             description={item.d}
             quantity={item.q}
             toggle={this.toggleModal}
@@ -202,6 +201,10 @@ class Inventory extends React.PureComponent<InventoryProps, InventoryState> {
 
   private handleLayout(layout: ReactGridLayout.Layout[]): void {
     if (layout.length === 0) {
+      this.setState({
+        sizes: new Map()
+      });
+
       return;
     }
 

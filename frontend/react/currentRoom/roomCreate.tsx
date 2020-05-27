@@ -1,8 +1,8 @@
 /* eslint-disable @typescript-eslint/unbound-method */
 import React from "react";
 import { BlockPicker, ColorResult, RGBColor } from "react-color";
-// eslint-disable-next-line import/no-internal-modules
 import { Styles } from "react-select";
+// eslint-disable-next-line import/no-internal-modules
 import CreatableSelect from "react-select/creatable";
 
 import { ROOM_CREATE } from "../../../socket/consts";
@@ -44,7 +44,7 @@ const SELECT_STYLES: Partial<Styles> = {
   })
 };
 
-export class RoomCreate extends React.Component<RoomCreateProps, RoomCreateState> {
+export class RoomCreate extends React.PureComponent<RoomCreateProps, RoomCreateState> {
   public constructor(props: RoomCreateProps) {
     super(props);
 
@@ -64,9 +64,9 @@ export class RoomCreate extends React.Component<RoomCreateProps, RoomCreateState
     if (this.props.rooms !== oldProps.rooms) {
       this.setState({
         color: DEFAULT_COLOR,
-        description: undefined,
-        name: undefined,
-        section: undefined,
+        description: "",
+        name: "",
+        section: "",
         showColor: false,
         visibility: undefined
       });
@@ -82,7 +82,7 @@ export class RoomCreate extends React.Component<RoomCreateProps, RoomCreateState
     const currentSection = this.state.section ? {
       label: this.state.section,
       value: this.state.section
-    }: undefined;
+    }: null;
 
     const color = `rgb(${this.state.color.r},${this.state.color.g},${this.state.color.b})`;
 
@@ -105,15 +105,27 @@ export class RoomCreate extends React.Component<RoomCreateProps, RoomCreateState
           value={this.state.name}
         />
         <div className="input-group-btn btn-group-toggle" data-toggle="buttons">
-          <label className="btn btn-primary" id="publicW" onClick={this.handleVisibilityChange}>
+          <label
+            className={`btn btn-primary${this.state.visibility === "publicW" ? " active": ""}`}
+            id="publicW"
+            onClick={this.handleVisibilityChange}
+          >
             <input type="radio" name="v"/>
             Publically writeable
           </label>
-          <label className="btn btn-primary" id="publicR" onClick={this.handleVisibilityChange}>
+          <label
+            className={`btn btn-primary${this.state.visibility === "publicR" ? " active": ""}`}
+            id="publicR"
+            onClick={this.handleVisibilityChange}
+          >
             <input type="radio" name="v"/>
             Publically readable
           </label>
-          <label className="btn btn-primary" id="private" onClick={this.handleVisibilityChange}>
+          <label
+            className={`btn btn-primary${this.state.visibility === "private" ? " active": ""}`}
+            id="private"
+            onClick={this.handleVisibilityChange}
+          >
             <input type="radio" name="v"/>
             Private
           </label>
@@ -251,8 +263,10 @@ export class RoomCreate extends React.Component<RoomCreateProps, RoomCreateState
   }
 
   private handleVisibilityChange(event: React.MouseEvent<HTMLLabelElement, MouseEvent>): void {
-    this.setState({
-      visibility: (event.target as HTMLLabelElement).id as RoomVisibility
-    });
+    if (event.currentTarget) {
+      this.setState({
+        visibility: event.currentTarget.id as RoomVisibility
+      });
+    }
   }
 }
