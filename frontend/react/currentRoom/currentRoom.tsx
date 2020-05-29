@@ -1,18 +1,35 @@
 /* eslint-disable @typescript-eslint/unbound-method */
+import loadable from "@loadable/component";
 import React from "react";
 import Select, { StylesConfig} from "react-select";
 
-import { ROOM_DESCRIPTION, ROOM_DELETE, ROOM_NAME, ROOM_ITEM_CHANGE } from "../../../socket/consts";
-import { MinimalItem, RoomDescriptionChange, RoomItemChange, RoomVisibility } from "../../../socket/helpers";
-import Inventory from "../inventory/inventory";
-import NewUserItemEditor from "../usersView/newUserItemEditor";
+import {
+  ROOM_DESCRIPTION,
+  ROOM_DELETE,
+  ROOM_NAME,
+  ROOM_ITEM_CHANGE
+} from "../../../socket/consts";
+import {
+  MinimalItem,
+  RoomDescriptionChange,
+  RoomItemChange,
+  RoomVisibility
+} from "../../../socket/helpers";
 import Modal from "../util/modal";
 import { compareString } from "../util/util";
 
-import { RoomCreate } from "./roomCreate";
 import RoomDescription from "./roomDescription";
-import RoomName from "./roomName";
 import { RoomMetadata } from "./roomMetadata";
+import RoomName from "./roomName";
+
+const Inventory = loadable(() =>
+  import(/* webpackChunkName: "inventory" */ "../inventory/inventory"));
+
+const NewUserItemEditor = loadable(() =>
+  import(/* webpackChunkName: "newItemEditor" */ "../usersView/newUserItemEditor"));
+
+const RoomCreate = loadable(() =>
+  import(/* webpackChunkName: "roomCreate" */ "./roomCreate"));
 
 const style: StylesConfig = {
   menu: (provided, _state) => ({
@@ -79,13 +96,13 @@ export class CurrentRooms extends React.PureComponent<CurrentRoomsProps, Current
         const thisRoom = this.props.rooms.get(this.state.roomId)!;
         const oldRoom = oldProps.rooms.get(this.state.roomId);
 
-        if (oldRoom && thisRoom.inventory.length > oldRoom.inventory.length) {
+        if (this.props.admin && oldRoom && thisRoom.inventory.length > oldRoom.inventory.length) {
           $("#itemCreateModal").modal("hide");
         }
       }
     }
 
-    if (oldProps.rooms.size !== this.props.rooms.size) {
+    if (this.props.admin && oldProps.rooms.size !== this.props.rooms.size) {
       $("#roomCreateModal").modal("hide");
     }
   }

@@ -1,15 +1,26 @@
 /* eslint-disable @typescript-eslint/unbound-method */
+import loadable from "@loadable/component";
 import React from "react";
 import { Responsive, Layout } from "react-grid-layout";
 
 import { USER_ITEM_CHANGE, USER_LOCATION_CHANGE } from "../../../socket/consts";
-import { MinimalItem, UserItemChange, UsersAndRooms, UserInfo, UserLocationChange } from "../../../socket/helpers";
+import {
+  MinimalItem,
+  UserItemChange,
+  UsersAndRooms,
+  UserInfo,
+  UserLocationChange
+} from "../../../socket/helpers";
 import Modal from "../util/modal";
 
-import NewUserItemEditor from "./newUserItemEditor";
-import User from "./user";
-import UserItemEditor from "./userItemEditor";
 import RoomSelect from "./roomSelect";
+import User from "./user";
+
+const NewUserItemEditor = loadable(() =>
+  import(/* webpackChunkName: "newItemEditor" */ "./newUserItemEditor"));
+
+const UserItemEditor = loadable(() =>
+  import(/* webpackChunkName: "itemEditor" */ "./userItemEditor"));
 
 // eslint-disable-next-line @typescript-eslint/no-type-alias
 type LayoutMap = Map<string, [number, number]>;

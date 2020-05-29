@@ -7,7 +7,6 @@ import { compareString } from "../util/util";
 
 import Command, { CommandData } from "./command";
 
-
 export interface CommandsProps {
   commands: Dict<CommandData>;
   selected: boolean;

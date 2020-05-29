@@ -1,5 +1,7 @@
 export const CHANNEL_UPDATE = "channel update";
 export const COMMANDS = "commands";
+export const LINK_CREATE = "link create";
+export const LINK_DELETE = "link delete";
 export const MAPS = "maps";
 export const MESSAGES_GET = "get messages";
 export const MESSAGE_CREATE = "new message";

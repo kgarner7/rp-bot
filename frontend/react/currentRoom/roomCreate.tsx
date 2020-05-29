@@ -270,3 +270,5 @@ export class RoomCreate extends React.PureComponent<RoomCreateProps, RoomCreateS
     }
   }
 }
+
+export default RoomCreate;

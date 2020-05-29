@@ -40,12 +40,12 @@ export class Room extends React.PureComponent<RoomProps> {
     const scrollTarget = this.scroll === -1 ?
       this.messages.current.scrollHeight : this.scroll;
 
-    this.messages.current.scrollTo(0, scrollTarget);
+    this.messages.current.scrollTop = scrollTarget;
   }
 
   public componentDidUpdate(): void {
     if (this.scroll === -1) {
-      this.messages.current.scrollTo(0, this.messages.current.scrollHeight);
+      this.messages.current.scrollTop = this.messages.current.scrollHeight;
     }
   }
 

@@ -38,7 +38,9 @@ import {
   ROOM_CREATE,
   ROOM_ITEM_CHANGE,
   ROOM_VISIBILITY,
-  ROOM_HISTORY
+  ROOM_HISTORY,
+  LINK_CREATE,
+  LINK_DELETE
 } from "../../socket/consts";
 import {
   MinimalCommand,
@@ -57,13 +59,14 @@ import {
   RoomCreation,
   RoomItemChange,
   RoomVisibilityChange,
-  RoomHistoryChange
+  RoomHistoryChange,
+  LinkCreation,
+  LinkDeletion
 } from "../../socket/helpers";
 import { UserData } from "../../socket/socket";
 
 import { CommandData, CommandUse } from "./command/command";
 import { RoomData as CurrentRoomData } from "./currentRoom/currentRoom";
-import Inventory from "./inventory/inventory";
 import { MessageData } from "./rooms/room";
 import { RoomData as RoomMessagesData } from "./rooms/roomModal";
 import Header from "./util/header";
@@ -76,11 +79,14 @@ const Commands = loadable(() =>
 const CurrentRoom = loadable(() =>
   import(/* webpackChunkName: "currentRoom" */ "./currentRoom/currentRoom"));
 
-const Rooms = loadable(() =>
-  import(/* webpackChunkName: "rooms" */ "./rooms/rooms"));
+const Inventory = loadable(() =>
+  import(/* webpackChunkName: "inventory" */ "./inventory/inventory"));
 
 const Maps = loadable(() =>
   import(/* webpackChunkName: "maps" */ "./maps/maps"));
+
+const Rooms = loadable(() =>
+  import(/* webpackChunkName: "rooms" */ "./rooms/rooms"));
 
 const UsersView = loadable(() =>
   import(/* webpackChunkName: "usersView" */ "./usersView/usersView"));
@@ -165,6 +171,52 @@ export class App extends React.Component<{}, AppState>{
       }
 
       this.setState({ commands });
+    });
+
+    socket.on(LINK_CREATE, (data: LinkCreation) => {
+      if (typeof data === "string") {
+        alert(`Could not create a link: ${data}`);
+      } else {
+        this.setState(oldState => {
+          return produce(oldState, state => {
+            for (const link of state.roomsMap) {
+              if (link.i === data.f) {
+                link.l.push({
+                  h: data.o.h,
+                  i: data.o.i!,
+                  l: data.o.l,
+                  n: data.o.n,
+                  t: data.o.t!
+                });
+              } else if (link.i === data.t && data.i) {
+                link.l.push({
+                  h: data.i.h,
+                  i: data.i.i!,
+                  l: data.i.l,
+                  n: data.i.n,
+                  t: data.i.t!
+                });
+              }
+            }
+          });
+        });
+      }
+    });
+
+    socket.on(LINK_DELETE, (data: LinkDeletion) => {
+      if (typeof data === "string") {
+        alert(`Could not delete a link: ${data}`);
+      } else {
+        this.setState(oldState => {
+          return produce(oldState, state => {
+            for (const room of state.roomsMap) {
+              if (room.i === data.s) {
+                room.l = room.l.filter(link => link.i !== data.t);
+              }
+            }
+          });
+        });
+      }
     });
 
     socket.on(MAPS, (roomsMap: MinimalRoomWithLink[]) => {
@@ -350,7 +402,6 @@ export class App extends React.Component<{}, AppState>{
         });
       }
     });
-
 
     socket.on(ROOM_INFORMATION, (json: RoomJson[]) => {
       const rooms = new Map<string, CurrentRoomData>();
@@ -583,6 +634,7 @@ export class App extends React.Component<{}, AppState>{
             socket={socket}
           />
           <Inventory
+            html
             inventory={this.state.inventory}
             name="inventory"
             selected={ this.state.selected === VisibleStates.Inventory}
@@ -606,20 +658,26 @@ export class App extends React.Component<{}, AppState>{
             width={this.state.width}
           />
           <Maps
+            admin={this.state.admin}
             map={this.state.roomsMap }
             selected={this.state.selected === VisibleStates.Map}
+            socket={this.state.socket}
           />
           <Commands
             commands={this.state.commands}
             selected={this.state.selected === VisibleStates.Commands}
           />
-          <UsersView
-            selected={this.state.selected === VisibleStates.ViewUsers}
-            sidebar={this.state.sidebar}
-            socket={this.state.socket}
-            users={ this.state.users }
-            width={this.state.width}
-          />
+          {
+            this.state.admin &&
+            <UsersView
+              selected={this.state.selected === VisibleStates.ViewUsers}
+              sidebar={this.state.sidebar}
+              socket={this.state.socket}
+              users={ this.state.users }
+              width={this.state.width}
+            />
+          }
+
         </div>
       </div>
     );

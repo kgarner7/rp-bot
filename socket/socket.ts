@@ -21,7 +21,9 @@ import {
   ROOM_CREATE,
   ROOM_ITEM_CHANGE,
   ROOM_VISIBILITY,
-  ROOM_HISTORY
+  ROOM_HISTORY,
+  LINK_CREATE,
+  LINK_DELETE
 } from "./consts";
 import {
   getArchivedRoomLogs,
@@ -50,7 +52,9 @@ import {
   RoomVisibilityChange,
   handleRoomVisibilityChange,
   RoomHistoryChange,
-  handleRoomHistoryChange
+  handleRoomHistoryChange,
+  handleLinkCreation,
+  handleLinkDeletion
 } from "./helpers";
 
 export const sockets: Map<string, Set<string>> = new Map();
@@ -101,6 +105,20 @@ export function socket(app: any): Server {
     sock.on(COMMANDS, () => {
       const commands = getCommands(idIsAdmin(user.id));
       sock.emit(COMMANDS, commands);
+    });
+
+    sock.on(LINK_CREATE, async (data: any) => {
+      if (idIsAdmin(user.id)) {
+        const result = await handleLinkCreation(data);
+        sock.emit(LINK_CREATE, result);
+      }
+    });
+
+    sock.on(LINK_DELETE, async (data: any) => {
+      if (idIsAdmin(user.id)) {
+        const result = await handleLinkDeletion(data);
+        sock.emit(LINK_DELETE, result);
+      }
     });
 
     sock.on(MAPS, async () => {

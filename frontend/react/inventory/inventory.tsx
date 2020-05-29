@@ -1,14 +1,17 @@
 /* eslint-disable @typescript-eslint/unbound-method */
+import loadable from "@loadable/component";
 import React from "react";
 import { Responsive, Layout } from "react-grid-layout";
 
 import { MinimalItem } from "../../../socket/helpers";
-import UserItemEditor from "../usersView/userItemEditor";
 import Modal from "../util/modal";
 import SearchBar from "../util/search";
 import { compareString } from "../util/util";
 
 import Item from "./item";
+
+const UserItemEditor = loadable(() =>
+  import(/* webpackChunkName: "itemEditor" */ "../usersView/userItemEditor"));
 
 enum InventorySortPossibilities {
   NONE = "none",
@@ -25,6 +28,7 @@ const options: Array<[InventorySortPossibilities, string]> = [
 
 interface InventoryProps {
   edit?: boolean;
+  html?: boolean;
   name: string;
   inventory: MinimalItem[];
   selected: boolean;
@@ -175,7 +179,7 @@ class Inventory extends React.PureComponent<InventoryProps, InventoryState> {
           id={this.props.name}
           title={title}
           body={body}
-          html={this.props.edit}
+          html={this.props.edit || this.props.html}
         />
       </div>
     );

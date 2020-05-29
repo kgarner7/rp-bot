@@ -9,9 +9,6 @@ import Room from "./room";
 import RoomModal, { RoomData } from "./roomModal";
 
 enum RoomSortOptions {
-  NONE = "none",
-  NEWEST_MESSAGES = "ztoa-t",
-  OLDEST_MESSAGES = "atoz-t",
   ALPHA_INC_SECTION = "atoz-s",
   ALPHA_DEC_SECTION = "ztoa-s",
   ALPHA_INC_ROOM = "atoz-r",
@@ -19,9 +16,6 @@ enum RoomSortOptions {
 }
 
 const options: Array<[RoomSortOptions, string]> = [
-  [RoomSortOptions.NONE, "none"],
-  [RoomSortOptions.NEWEST_MESSAGES, "Recent messages"],
-  [RoomSortOptions.OLDEST_MESSAGES, "Older messages"],
   [RoomSortOptions.ALPHA_INC_SECTION, "A to Z (by section)"],
   [RoomSortOptions.ALPHA_DEC_SECTION, "Z to A (by section)"],
   [RoomSortOptions.ALPHA_INC_ROOM, "A to Z (by room)"],
@@ -70,7 +64,7 @@ class Rooms extends React.PureComponent<RoomsProps, RoomsState> {
       filter: "",
       roomId: undefined,
       sizes: new Map(),
-      sort: RoomSortOptions.NEWEST_MESSAGES
+      sort: RoomSortOptions.ALPHA_INC_ROOM
     };
 
     this.handleFilter = this.handleFilter.bind(this);
@@ -104,21 +98,17 @@ class Rooms extends React.PureComponent<RoomsProps, RoomsState> {
       });
     }
 
-    if (sort !== RoomSortOptions.NONE) {
-      const sign = sort.startsWith("atoz") ? 1: -1;
+    const sign = sort.startsWith("atoz") ? 1: -1;
 
-      rooms = rooms.sort((first, second) => {
-        const a = first[1], b = second[1];
+    rooms = rooms.sort((first, second) => {
+      const a = first[1], b = second[1];
 
-        if (sort.endsWith("-s")) {
-          return compareString(a.section, b.section, sign);
-        } else if (sort.endsWith("-r")) {
-          return compareString(a.name, b.name, sign);
-        } else {
-          return compareString(a.updatedAt, b.updatedAt, sign);
-        }
-      });
-    }
+      if (sort.endsWith("-s")) {
+        return compareString(a.section, b.section, sign);
+      } else {
+        return compareString(a.name, b.name, sign);
+      }
+    });
 
     const elements = rooms.map(room => {
       const name = room[1].name;
