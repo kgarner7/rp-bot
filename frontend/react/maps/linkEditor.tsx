@@ -1,7 +1,7 @@
 import React from "react";
 
-import { MinimalLink, LinkDeletion } from "../../../socket/helpers";
-import { LINK_DELETE } from "../../../socket/consts";
+import { LINK_DELETE, LINK_UPDATE } from "../../../socket/consts";
+import { MinimalLink, LinkDeletion, LinkChange } from "../../../socket/helpers";
 
 export interface LinkEditorProps extends MinimalLink {
   s: string;
@@ -15,6 +15,12 @@ export interface LinkEditorState {
   n?: string;
 }
 
+function hasChange(props: LinkEditorProps, state: LinkEditorState): boolean {
+  return ((state.h || false) !== (props.h || false))
+    || ((state.l || false) !== (props.l || false))
+    || (state.n !== undefined ? state.n !== props.n : false);
+}
+
 export class LinkEditor extends React.PureComponent<LinkEditorProps, LinkEditorState> {
   public constructor(props: LinkEditorProps) {
     super(props);
@@ -24,7 +30,18 @@ export class LinkEditor extends React.PureComponent<LinkEditorProps, LinkEditorS
     this.cancelEdit = this.cancelEdit.bind(this);
     this.handleChange = this.handleChange.bind(this);
     this.handleDelete = this.handleDelete.bind(this);
+    this.handleSave = this.handleSave.bind(this);
     this.startEdit = this.startEdit.bind(this);
+  }
+
+  public componentDidUpdate(oldProps: LinkEditorProps): void {
+    if (this.state.e) {
+      if (hasChange(oldProps, this.state) && !hasChange(this.props, this.state)) {
+        this.setState({
+          e: false
+        });
+      }
+    }
   }
 
   public render(): JSX.Element {
@@ -35,9 +52,7 @@ export class LinkEditor extends React.PureComponent<LinkEditorProps, LinkEditorS
     let changed = false;
 
     if (this.state.e) {
-      changed = ((this.state.h || false) !== (this.props.h || false))
-        || ((this.state.l || false) !== (this.props.l || false))
-        || (this.state.n !== undefined ? this.state.n !== this.props.n : false);
+      changed = hasChange(this.props, this.state);
     }
 
     return <li className="list-group-item">
@@ -76,6 +91,7 @@ export class LinkEditor extends React.PureComponent<LinkEditorProps, LinkEditorS
             className="btn btn-outline-success"
             type="button"
             hidden={!changed}
+            onClick={this.handleSave}
           >
             Save
           </button>
@@ -145,6 +161,31 @@ export class LinkEditor extends React.PureComponent<LinkEditorProps, LinkEditorS
       };
 
       this.props.socket.emit(LINK_DELETE, data);
+    }
+  }
+
+  private handleSave(): void {
+    if (hasChange(this.props, this.state)) {
+      const hidden = this.state.h !== undefined ? this.state.h : this.props.h;
+      const locked = this.state.l !== undefined ? this.state.l : this.props.l;
+      const name = this.state.n || this.props.n;
+
+      const data: LinkChange = {
+        f: this.props.s,
+        n: {
+          h: hidden,
+          l: locked,
+          n: name
+        },
+        o: {
+          h: this.props.h,
+          l: this.props.l,
+          n: this.props.n
+        },
+        t: this.props.i
+      };
+
+      this.props.socket.emit(LINK_UPDATE, data);
     }
   }
 

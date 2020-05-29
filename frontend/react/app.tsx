@@ -40,7 +40,8 @@ import {
   ROOM_VISIBILITY,
   ROOM_HISTORY,
   LINK_CREATE,
-  LINK_DELETE
+  LINK_DELETE,
+  LINK_UPDATE
 } from "../../socket/consts";
 import {
   MinimalCommand,
@@ -61,7 +62,8 @@ import {
   RoomVisibilityChange,
   RoomHistoryChange,
   LinkCreation,
-  LinkDeletion
+  LinkDeletion,
+  LinkChange
 } from "../../socket/helpers";
 import { UserData } from "../../socket/socket";
 
@@ -212,6 +214,28 @@ export class App extends React.Component<{}, AppState>{
             for (const room of state.roomsMap) {
               if (room.i === data.s) {
                 room.l = room.l.filter(link => link.i !== data.t);
+              }
+            }
+          });
+        });
+      }
+    });
+
+    socket.on(LINK_UPDATE, (data: LinkChange) => {
+      if (typeof data === "string") {
+        alert(`Could not update a link: ${data}`);
+      } else {
+        this.setState(oldState => {
+          return produce(oldState, state => {
+            for (const room of state.roomsMap) {
+              if (room.i === data.f) {
+                for (const link of room.l) {
+                  if (link.i === data.t) {
+                    link.h = data.n.h;
+                    link.l = data.n.l;
+                    link.n = data.n.n;
+                  }
+                }
               }
             }
           });
@@ -634,7 +658,7 @@ export class App extends React.Component<{}, AppState>{
             socket={socket}
           />
           <Inventory
-            html
+            html={true}
             inventory={this.state.inventory}
             name="inventory"
             selected={ this.state.selected === VisibleStates.Inventory}

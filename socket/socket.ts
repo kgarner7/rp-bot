@@ -23,7 +23,8 @@ import {
   ROOM_VISIBILITY,
   ROOM_HISTORY,
   LINK_CREATE,
-  LINK_DELETE
+  LINK_DELETE,
+  LINK_UPDATE
 } from "./consts";
 import {
   getArchivedRoomLogs,
@@ -54,7 +55,8 @@ import {
   RoomHistoryChange,
   handleRoomHistoryChange,
   handleLinkCreation,
-  handleLinkDeletion
+  handleLinkDeletion,
+  handleLinkChange
 } from "./helpers";
 
 export const sockets: Map<string, Set<string>> = new Map();
@@ -118,6 +120,13 @@ export function socket(app: any): Server {
       if (idIsAdmin(user.id)) {
         const result = await handleLinkDeletion(data);
         sock.emit(LINK_DELETE, result);
+      }
+    });
+
+    sock.on(LINK_UPDATE, async (data: any) => {
+      if (idIsAdmin(user.id)) {
+        const result = await handleLinkChange(data);
+        sock.emit(LINK_UPDATE, result);
       }
     });
 

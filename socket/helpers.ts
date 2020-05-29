@@ -1554,3 +1554,74 @@ export async function handleLinkDeletion(args: any): Promise<LinkDeletion | stri
 
   return args;
 }
+
+export interface MinimalLinkInfo {
+  h?: boolean;
+  l?: boolean;
+  n: string;
+}
+
+function isMinimalLinkInfo(args: any): args is MinimalLinkInfo {
+  return (args.h !== undefined ? typeof args.h === "boolean" : true)
+    && (args.l !== undefined ? typeof args.l === "boolean": true)
+    && (args.n && typeof args.n === "string");
+}
+
+export interface LinkChange {
+  f: string;
+  n: MinimalLinkInfo;
+  o?: MinimalLinkInfo;
+  t: string;
+}
+
+function isLinkChange(args: any): args is LinkChange {
+  return (args.f && typeof args.f === "string")
+    && (args.n && isMinimalLinkInfo(args.n))
+    && (args.o !== undefined ? isMinimalLinkInfo(args.o) : true)
+    && (args.t && typeof args.t === "string");
+}
+
+export async function handleLinkChange(args: any): Promise<LinkChange | string> {
+  if (!isLinkChange(args)) {
+    return "Invalid data format";
+  } else if (args.o === undefined) {
+    return "Must provide old state for verification";
+  }
+
+  await globalLock({ acquire: true, writer: true });
+
+  try {
+    const link = await Link.findOne({
+      where: {
+        sourceId: args.f,
+        targetId: args.t
+      }
+    });
+
+    if (!link) {
+      return "Could not find a link between those two rooms";
+    }
+
+    const oldStateMatches = ((args.o.h || false) === link.hidden)
+      && ((args.o.l || false) === link.locked)
+      && (args.o.n === link.name);
+
+    if (!oldStateMatches) {
+      return "Old state is not consistent. Please refresh for newest changes";
+    }
+
+    await link.update({
+      hidden: args.n.h || false,
+      locked: args.n.l || false,
+      name: args.n.n
+    });
+  } finally {
+    await globalLock({ acquire: false, writer: true });
+  }
+
+  return {
+    f: args.f,
+    n: args.n,
+    t: args.t
+  };
+}
