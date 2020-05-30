@@ -24,36 +24,36 @@ import {
 export const usage: Action = {
   log: {
     description: "View a transcript of the chats in a room",
-    uses: [
-      { explanation: "gets the log in your current room", use: "!log" },
-      {
-        example: "!log in room a",
-        explanation: "gets the log for a specific room",
-        use: "!log in **room**"
-      }
-    ]
+    uses: [{
+      explanation: "gets the log in your current room",
+      use: "!log"
+    }, {
+      example: "!log in room a",
+      explanation: "gets the log for a specific room",
+      use: "!log in **room**"
+    }]
   },
   users: {
     adminOnly: true,
     description: "gets information on all users",
-    uses: [
-      { use: "!users" }
-    ]
+    uses: [{
+      use: "!users"
+    }]
   },
   who: {
     description: "Gets all users in a room",
-    uses: [
-      { use: "!who" },
-      {
-        admin: true,
-        use: "!who in **room**"
-      }
-    ]
+    uses: [{
+      use: "!who"
+    }, {
+      admin: true,
+      use: "!who in **room**"
+    }]
   }
 };
 
 /**
  * Gets all the current individuals in a room
+ * Implementation for the !who command
  * @param msg the message to be evaluated
  */
 export async function members(msg: CustomMessage): Promise<void> {
@@ -87,7 +87,8 @@ export async function members(msg: CustomMessage): Promise<void> {
 /**
  * Shows the logs for a channel.
  * If this is called in a TextChannel, sends the logs of that channel.
- * If called in a DM, sends the logs of a particular channel
+ * If called in a DM, sends the logs of a particular channel.
+ * Implementation for the !logs command
  * @param msg the message we are handling
  */
 export async function showLogs(msg: CustomMessage): Promise<void> {
@@ -190,6 +191,11 @@ export async function showLogs(msg: CustomMessage): Promise<void> {
   }
 }
 
+/**
+ * Gets information about all of the users currently in the server
+ * Implementation for the !users command
+ * @param msg the message we are handling
+ */
 export async function users(msg: CustomMessage): Promise<void> {
   requireAdmin(msg);
 

@@ -15,42 +15,41 @@ import { getInt } from "./items";
 export const usage: Action = {
   create: {
     description: "Makes a request to create a new item",
-    uses: [
-      {
-        example: "!create paper text \"a piece of paper\"",
-        explanation: "Requests a new item, item name with description, description",
-        use: "!create **item name** text **description**"
-      },
-      {
-        explanation: "Requests the creation of number > 0 of an item",
-        use: "!create **number** of **item** text **description**"
-      }
-    ]
+    uses: [{
+      example: "!create paper text \"a piece of paper\"",
+      explanation: "Requests a new item, item name with description, description",
+      use: "!create **item name** text **description**"
+    },
+    {
+      example: "!create 5 of paper text \"a piece of paper\"",
+      explanation: "Requests the creation of number > 0 of an item",
+      use: "!create **number** of **item** text **description**"
+    }]
   },
   requests: {
     adminOnly: true,
     description: "Used to handle",
-    uses: [
-      {
-        explanation: "Gets a list of requests for users based on a simple filter",
-        use: "!requests **all | accepted | denied | none** for **optional userlist**"
-      },
-      {
-        explanation: "Rejects the request for the reason, text",
-        use: "!requests deny **number** reason **text**"
-      },
-      {
-        explanation: "Approves the request with the id, number",
-        use: "!requests **approve** **number**"
-      },
-      {
-        explanation: "Approves the request and overries the count/text",
-        use: "!requests approve **number** count **number** text **text**"
-      }
-    ]
+    uses: [{
+      explanation: "Gets a list of requests for users based on a simple filter",
+      use: "!requests **all | accepted | denied | none** for **optional userlist**"
+    }, {
+      explanation: "Rejects the request for the reason, text",
+      use: "!requests deny **number** reason **text**"
+    }, {
+      explanation: "Approves the request with the id, number",
+      use: "!requests **approve** **number**"
+    }, {
+      explanation: "Approves the request and overries the count/text",
+      use: "!requests approve **number** count **number** text **text**"
+    }]
   }
 };
 
+/**
+ * Allows the user to make a request to create an item.
+ * Implementation for the !create command.
+ * @param msg the message to be handled
+ */
 export async function createItem(msg: CustomMessage): Promise<void> {
   const command = parseCommand(msg, ["of", "text"]),
     user = await User.findOne({

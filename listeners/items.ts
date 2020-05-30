@@ -1,19 +1,17 @@
 import { TextChannel } from "discord.js";
-import { Op } from "sequelize";
+import { Op, WhereAttributeHash } from "sequelize";
 
 import { guild } from "../client";
 import {
   Dict,
   isAdmin,
   lineEnd,
-  requireAdmin,
+  requireAdmin
 } from "../helpers/base";
 import { CustomMessage, SortableArray } from "../helpers/classes";
 import { lock, unlock } from "../helpers/locks";
 import { isNone, None, Undefined, ItemModel } from "../helpers/types";
 import { Room, sequelize, User } from "../models/models";
-import { ROOM_INFORMATION, USER_INVENTORY_CHANGE } from "../socket/consts";
-import { inventoryToJson, roomToJson, triggerUser } from "../socket/helpers";
 
 import { Action } from "./actions";
 import {
@@ -27,121 +25,104 @@ import {
 
 export const usage: Action = {
   change: {
-    description:
-      "Changes the description of an item (including creation and destruction)",
-    uses: [
-      {
-        example: "!change paper for room delete",
-        explanation: "Deletes the item paper in the room, 'room'",
-        use: "!change **item** for **room** delete"
-      }
-    ]
+    adminOnly: true,
+    description: "Changes the description of an item (including creation and destruction)",
+    uses: [{
+      example: "!change paper for room delete",
+      explanation: "Deletes the item paper in the room, 'room'",
+      use: "!change **item** for **room** delete"
+    }]
   },
   consume: {
     description: "Removes a quantiy of items from your inventory. They cannot be locked",
-    uses: [
-      {
-        example: "!consume 5 of a pizza",
-        explanation: "Consumes 5 pizzas",
-        use: "!consume **number** of **item**"
-      }
-    ]
+    uses: [{
+      example: "!consume 5 of a pizza",
+      explanation: "Consumes 5 pizzas",
+      use: "!consume **number** of **item**"
+    }]
   },
   drop: {
     description: "Drops a number of items into the room",
-    uses: [
-      {
-        example: "!drop 5 of item 1",
-        explanation: "Drops 5 of itme 1 in the current room",
-        use: "!drop **number** of **item**"
-      },
-      {
-        admin: true,
-        example: "!drop 5 of item 1 in room a",
-        explanation: "Drops 5 of itme 1 in the specified room",
-        use: "!drop **number** of **item** in **room**"
-      }
-    ]
+    uses: [{
+      example: "!drop 5 of item 1",
+      explanation: "Drops 5 of itme 1 in the current room",
+      use: "!drop **number** of **item**"
+    }, {
+      admin: true,
+      example: "!drop 5 of item 1 in room a",
+      explanation: "Drops 5 of itme 1 in the specified room",
+      use: "!drop **number** of **item** in **room**"
+    }]
   },
   edit: {
     description: "Edit the description of an editable item",
-    uses: [
-      {
-        example: "!edit paper text \"a piece of paper\"",
-        explanation: "Edits the description of the editable item wiht name, item name",
-        use: "!edit **item name** text **description**"
-      },
-      {
-        explanation: "Appends the description to the items'description",
-        use: "!edit **item name** text **description** append"
-      }
-    ]
+    uses: [{
+      example: "!edit paper text \"a piece of paper\"",
+      explanation: "Edits the description of the editable item wiht name, item name",
+      use: "!edit **item name** text **description**"
+    }, {
+      explanation: "Appends the description to the items'description",
+      use: "!edit **item name** text **description** append"
+    }]
   },
   give: {
     description: "Gives item(s) to another player",
-    uses: [
-      {
-        example: "!give item 1 to user a",
-        explanation: "Gives one stack of an item to a user",
-        use: "!give **item** to **user**"
-      }, {
-        example: "!give 3 of item 1 to user a",
-        explanation: "Gives multiple stacks of an item you own to someone else",
-        use: "!give **number** of **item** to **user**"
-      }
-    ]
+    uses: [{
+      example: "!give item 1 to user a",
+      explanation: "Gives one stack of an item to a user",
+      use: "!give **item** to **user**"
+    }, {
+      example: "!give 3 of item 1 to user a",
+      explanation: "Gives multiple stacks of an item you own to someone else",
+      use: "!give **number** of **item** to **user**"
+    }]
   },
   inspect: {
     description: "Inspects an item in a room",
-    uses: [
-      {
-        example: "!inspect item 1",
-        use: "!inspect **item**"
-      }, {
-        admin: true,
-        example: "!inspect item 1 in room a",
-        use: "!inspect **item** in **room**"
-      }
-    ]
+    uses: [{
+      example: "!inspect item 1",
+      use: "!inspect **item**"
+    }, {
+      admin: true,
+      example: "!inspect item 1 in room a",
+      use: "!inspect **item** in **room**"
+    }]
   },
   inventory: {
     description: "View your inventory",
-    uses: [ { use: "!inventory" } ]
+    uses: [{
+      use: "!inventory"
+    }]
   },
   items: {
     description: "View all items in a room",
-    uses: [
-      { use: "!items" },
-      {
-        admin: true,
-        example: "!items in room a",
-        use: "!items in **room**"
-      }
-    ]
+    uses: [{
+      use: "!items"
+    }, {
+      admin: true,
+      example: "!items in room a",
+      use: "!items in **room**"
+    }]
   },
   take: {
     description: "Take an item and add it to your inventory",
-    uses: [
-      {
-        example: "take item 1",
-        explanation: "Takes (1) of an item",
-        use: "!take **item**"
-      },
-      {
-        example: "take item 1 in room a",
-        use: "!take **item** in **room**"
-      },
-      {
-        example: "take 2 of item 1",
-        explanation: "Takes (n > 0) of an item, up to its quantity",
-        use: "!take **number** of **item**"
-      },
-      {
-        admin: true,
-        example: "take 2 of item 1 in room a",
-        use: "!take **number** of **item** in **room**"
-      }
-    ]
+    uses: [{
+      example: "take item 1",
+      explanation: "Takes (1) of an item",
+      use: "!take **item**"
+    }, {
+      admin: true,
+      example: "take item 1 in room a",
+      use: "!take **item** in **room**"
+    }, {
+      example: "take 2 of item 1",
+      explanation: "Takes (n > 0) of an item, up to its quantity",
+      use: "!take **number** of **item**"
+    }, {
+      admin: true,
+      example: "take 2 of item 1 in room a",
+      use: "!take **number** of **item** in **room**"
+    }]
   }
 };
 
@@ -261,17 +242,8 @@ export async function consume(msg: CustomMessage): Promise<void> {
 }
 
 const ITEM_KEYWORDS = [
-  "count",
-  "delete",
-  "edit",
-  "for",
-  "hide",
-  "lock",
-  "no-edit",
-  "show",
-  "text",
-  "type",
-  "unlock"
+  "count", "delete", "edit", "for", "hide",
+  "lock", "no-edit", "show", "text", "type", "unlock"
 ];
 
 export async function changeItem(msg: CustomMessage): Promise<void> {
@@ -451,8 +423,6 @@ export async function dropItem(msg: CustomMessage): Promise<void> {
       throw new Error(`You cannot drop ${itemName}: it is locked`);
     }
 
-    console.log(item);
-
     const itemQuantity = item.quantity || 1;
 
     if (quantity > itemQuantity) {
@@ -540,6 +510,8 @@ export async function editItem(msg: CustomMessage): Promise<void> {
   }
 }
 
+const idPattern = /^\<@!\d+\>/;
+
 // eslint-disable-next-line complexity
 export async function giveItem(msg: CustomMessage): Promise<void> {
   const command = parseCommand(msg, ["of", "to"]),
@@ -549,17 +521,29 @@ export async function giveItem(msg: CustomMessage): Promise<void> {
 
   const targetJoined = targetName.join();
 
+  let otherArgs: WhereAttributeHash;
+  let targetId: string | undefined;
+
+  if (idPattern.test(targetJoined)) {
+    targetId = targetJoined.substring(3, targetJoined.length - 1);
+    otherArgs = {
+      id: targetId
+    };
+  } else {
+    otherArgs = {
+      [Op.or]: [
+        { discordName: targetName },
+        { name: targetName }
+      ]
+    };
+  }
+
   let users = await User.findAll({
     attributes: ["discordName", "id", "name"],
     where: {
       [Op.or]: [
         { id: msg.author.id },
-        {
-          [Op.or]: [
-            { discordName: targetName },
-            { name: targetName }
-          ]
-        }
+        otherArgs
       ]
     }
   });
@@ -570,7 +554,10 @@ export async function giveItem(msg: CustomMessage): Promise<void> {
   for (const user of users) {
     if (user.id === msg.author.id) {
       sender = user;
-    } else if (user.name === targetJoined || user.discordName === targetJoined) {
+    } else if (user.name === targetJoined
+      || user.discordName === targetJoined
+      || user.id === targetId) {
+
       target = user;
     }
   }

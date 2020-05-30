@@ -26,38 +26,36 @@ import {
   LINK_DELETE,
   LINK_UPDATE
 } from "./consts";
+import { getCommands } from "./helpers/commands";
 import {
-  getArchivedRoomLogs,
-  getCommands,
-  getMessages,
-  getRooms,
-  getUser,
-  inventoryToJson,
-  setServer,
   createMap,
-  getChannelInfo,
-  ChannelInfo,
-  getUsersInfo,
-  UserItemChange,
-  handleUserItemChange,
-  UserLocationChange,
-  handleUserLocationChange,
-  RoomDescriptionChange,
-  handleRoomDescriptionChange,
-  handleRoomDelete,
-  handleRoomNameChange,
-  RoomCreation,
-  handleRoomCreation,
-  RoomItemChange,
-  handleRoomItemChange,
-  RoomVisibilityChange,
-  handleRoomVisibilityChange,
-  RoomHistoryChange,
-  handleRoomHistoryChange,
   handleLinkCreation,
   handleLinkDeletion,
   handleLinkChange
-} from "./helpers";
+} from "./helpers/links";
+import {
+  handleRoomCreation,
+  handleRoomDelete,
+  handleRoomDescriptionChange,
+  handleRoomHistoryChange,
+  handleRoomItemChange,
+  handleRoomNameChange,
+  handleRoomVisibilityChange,
+  ChannelInfo,
+  getChannelInfo,
+  getMessages,
+  getRooms,
+  getArchivedRoomLogs,
+  inventoryToJson
+} from "./helpers/rooms";
+import {
+  setServer,
+  getUser,
+  handleUserLocationChange,
+  UsersAndRooms,
+  getUsersInfo,
+  handleUserItemChange
+} from "./helpers/users";
 
 export const sockets: Map<string, Set<string>> = new Map();
 
@@ -66,7 +64,61 @@ export interface UserData {
   n: string;
 }
 
-// tslint:disable-next-line:no-any
+function handleEvent<I, O>(sock: SocketIO.Socket, event: string,
+                           handler: (arg: I) => Promise<O | string>, userId: string,
+                           io: Server | undefined = undefined): void {
+
+
+  let socketHandler: (data: I) => Promise<void>;
+
+  if (io === undefined) {
+    socketHandler = async (data): Promise<void> => {
+      if (idIsAdmin(userId)) {
+        try {
+          const output = await handler(data);
+          sock.emit(event, output);
+
+        } catch (error) {
+          console.error(error);
+          sock.emit(error, (error as Error).message);
+        }
+      }
+    };
+  } else {
+    socketHandler = async (data): Promise<void> => {
+      if (idIsAdmin(userId)) {
+        try {
+          const output = await handler(data);
+          if (typeof output === "string") {
+            sock.emit(event, output);
+          } else {
+            io.emit(event, output);
+          }
+        } catch (error) {
+          console.error(error);
+          sock.emit(error, (error as Error).message);
+        }
+      }
+    };
+  }
+
+  sock.on(event, socketHandler);
+}
+
+function handleCustomEvent<O>(sock: SocketIO.Socket, event: string,
+                              handler: () => Promise<O>): void {
+
+  sock.on(event, async () => {
+    try {
+      const result = await handler();
+      sock.emit(event, result);
+    } catch (error) {
+      console.error((error as Error).message);
+    }
+  });
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function socket(app: any): Server {
   const io = socketio.listen(app, {
     cookie: false
@@ -90,176 +142,84 @@ export function socket(app: any): Server {
 
     sock.on(CHANNEL_UPDATE,
       async (roomId: string, callback: (data: ChannelInfo | undefined) => void) => {
-
-        const data = await getChannelInfo(roomId, user.id);
-
-        callback(data);
-      });
-
-    sock.on(CHANNEL_UPDATE,
-      async (roomId: string, callback: (data: ChannelInfo | undefined) => void) => {
-
-        const data = await getChannelInfo(roomId, user.id);
-
-        callback(data);
+        try {
+          const data = await getChannelInfo(roomId, user.id);
+          callback(data);
+        } catch (error) {
+          console.error((error as Error).message);
+        }
       });
 
     sock.on(COMMANDS, () => {
-      const commands = getCommands(idIsAdmin(user.id));
-      sock.emit(COMMANDS, commands);
-    });
-
-    sock.on(LINK_CREATE, async (data: any) => {
-      if (idIsAdmin(user.id)) {
-        const result = await handleLinkCreation(data);
-        sock.emit(LINK_CREATE, result);
+      try {
+        const commands = getCommands(idIsAdmin(user.id));
+        sock.emit(COMMANDS, commands);
+      } catch (error) {
+        console.error((error as Error).message);
       }
     });
 
-    sock.on(LINK_DELETE, async (data: any) => {
-      if (idIsAdmin(user.id)) {
-        const result = await handleLinkDeletion(data);
-        sock.emit(LINK_DELETE, result);
-      }
-    });
+    handleEvent(sock, LINK_CREATE, handleLinkCreation, user.id);
 
-    sock.on(LINK_UPDATE, async (data: any) => {
-      if (idIsAdmin(user.id)) {
-        const result = await handleLinkChange(data);
-        sock.emit(LINK_UPDATE, result);
-      }
-    });
+    handleEvent(sock, LINK_DELETE, handleLinkDeletion, user.id);
 
-    sock.on(MAPS, async () => {
-      const map = await createMap(user);
-      sock.emit(MAPS, map);
-    });
+    handleEvent(sock, LINK_UPDATE, handleLinkChange, user.id);
 
-    sock.on(MESSAGES_GET, async () => {
-      const messages = await getMessages(user, sock.request.session.loginTime);
-      sock.emit(MESSAGES_GET, messages);
-    });
+    handleCustomEvent(sock, MAPS, () => createMap(user));
 
-    sock.on(ROOM_CREATE, async (data: RoomCreation) => {
-      if (idIsAdmin(user.id)) {
-        const result = await handleRoomCreation(data);
+    handleCustomEvent(sock, MESSAGES_GET, () => getMessages(user, sock.request.session.loginTime));
 
-        if (typeof result === "string") {
-          sock.emit(ROOM_CREATE, result);
-        } else {
-          io.emit(ROOM_CREATE, result);
-        }
-      }
-    });
+    handleEvent(sock, ROOM_CREATE, handleRoomCreation, user.id, io);
 
-    sock.on(ROOM_DELETE, async (roomId: string) => {
-      if (idIsAdmin(user.id)) {
-        const result = await handleRoomDelete(roomId);
+    handleEvent(sock, ROOM_DELETE, handleRoomDelete, user.id, io);
 
-        if (typeof result === "string") {
-          sock.emit(ROOM_DELETE, result);
-        } else {
-          io.emit(ROOM_DELETE, result);
-        }
-      }
-    });
+    handleEvent(sock, ROOM_DESCRIPTION, handleRoomDescriptionChange, user.id, io);
 
-    sock.on(ROOM_DESCRIPTION, async (data: RoomDescriptionChange) => {
-      if (idIsAdmin(user.id)) {
-        const result = await handleRoomDescriptionChange(data);
+    handleEvent(sock, ROOM_HISTORY, handleRoomHistoryChange, user.id);
 
-        if (typeof result === "string") {
-          sock.emit(ROOM_DESCRIPTION, result);
-        } else {
-          io.emit(ROOM_DESCRIPTION, result);
-        }
-      }
-    });
+    handleCustomEvent(sock, ROOM_INFORMATION, () => getRooms(user));
 
-    sock.on(ROOM_HISTORY, async (data: RoomHistoryChange) => {
-      if (idIsAdmin(user.id)) {
-        const result = await handleRoomHistoryChange(data);
-        sock.emit(ROOM_HISTORY, result);
-      }
-    });
-
-    sock.on(ROOM_INFORMATION, async () => {
-      const rooms = await getRooms(user);
-      sock.emit(ROOM_INFORMATION, rooms);
-    });
-
-    sock.on(ROOM_ITEM_CHANGE, async (data: RoomItemChange) => {
-      if (idIsAdmin(user.id)) {
-        const result = await handleRoomItemChange(data);
-        sock.emit(ROOM_ITEM_CHANGE, result);
-      }
-    });
+    handleEvent(sock, ROOM_ITEM_CHANGE, handleRoomItemChange, user.id);
 
     sock.on(ROOM_LOGS, async (roomId: string) => {
-      const messages = await getArchivedRoomLogs(roomId, user,
-        sock.request.session.loginTime);
-      sock.emit(ROOM_LOGS, messages, roomId);
-    });
-
-    sock.on(ROOM_NAME, async (data: RoomDescriptionChange) => {
-      if (idIsAdmin(user.id)) {
-        const result = await handleRoomNameChange(data);
-
-        if (typeof result === "string") {
-          sock.emit(ROOM_NAME, result);
-        } else {
-          io.emit(ROOM_NAME, result);
-        }
+      try {
+        const messages = await getArchivedRoomLogs(roomId, user,
+          sock.request.session.loginTime);
+        sock.emit(ROOM_LOGS, messages, roomId);
+      } catch (error) {
+        console.error((error as Error).message);
       }
     });
 
-    sock.on(ROOM_VISIBILITY, async (data: RoomVisibilityChange) => {
-      if (idIsAdmin(user.id)) {
-        const result = await handleRoomVisibilityChange(data);
-        sock.emit(ROOM_VISIBILITY, result);
-      }
-    });
+    handleEvent(sock, ROOM_NAME, handleRoomNameChange, user.id, io);
 
-    sock.on(USER_INVENTORY_CHANGE, async () => {
+    handleEvent(sock, ROOM_VISIBILITY, handleRoomVisibilityChange, user.id);
+
+    handleCustomEvent(sock, USER_INVENTORY_CHANGE, async () => {
       const redlock = await lock({ user: user.id });
 
-      await user.reload({ attributes: ["inventory" ]});
-
-      await unlock(redlock);
-
-      const json = inventoryToJson(user.inventory);
-      sock.emit(USER_INVENTORY_CHANGE, json);
-    });
-
-    sock.on(USER_LOCATION_CHANGE, async (data: UserLocationChange) => {
-      if (idIsAdmin(user.id)) {
-        const result = await handleUserLocationChange(data);
-        sock.emit(USER_LOCATION_CHANGE, result);
+      try {
+        await user.reload({ attributes: ["inventory" ]});
+      } finally {
+        await unlock(redlock);
       }
+
+      return inventoryToJson(user.inventory);
     });
 
-    sock.on(USER_NAME, async () => {
+    handleEvent(sock, USER_LOCATION_CHANGE, handleUserLocationChange, user.id);
+
+    handleCustomEvent<UserData>(sock, USER_NAME, async () => {
       await user.reload({ attributes: ["discordName"] });
-      sock.emit(USER_NAME, {
+      return {
         a: idIsAdmin(user.id),
         n: user.discordName
-      } as UserData);
+      };
     });
 
-    sock.on(USERS_INFO, async () => {
-      if (idIsAdmin(user.id)) {
-        const usersInfo = await getUsersInfo();
-        sock.emit(USERS_INFO, usersInfo);
-      }
-    });
+    handleEvent<void, UsersAndRooms>(sock, USERS_INFO, getUsersInfo, user.id);
 
-    sock.on(USER_ITEM_CHANGE, async (data: UserItemChange) => {
-      if (idIsAdmin(user.id)) {
-        const result = await handleUserItemChange(data);
-
-        sock.emit(USER_ITEM_CHANGE, result);
-      }
-    });
+    handleEvent(sock, USER_ITEM_CHANGE, handleUserItemChange, user.id);
 
     sock.on("disconnect", () => {
       const userSet = sockets.get(user.id);

@@ -20,7 +20,8 @@ import {
   MESSAGE_UPDATE,
   ROOM_INFORMATION
 } from "./socket/consts";
-import { getRooms, triggerRoom, triggerUser } from "./socket/helpers";
+import { triggerRoom, getRooms } from "./socket/helpers/rooms";
+import { triggerUser } from "./socket/helpers/users";
 
 export const client = new Client();
 export let guild: Guild;
@@ -80,10 +81,6 @@ client.on("messageUpdate", async (_old, msg) => {
 
 client.on("message", async (msg: DiscordMessage) => {
   if (invalid(msg)) return;
-
-  // const haiku = toHaiku(msg.content);
-
-  // if (haiku) msg.reply(haiku);
 
   const content: string = msg.content;
   const member = msg.member || guild.members.resolve(msg.author.id)!;

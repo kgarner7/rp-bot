@@ -21,28 +21,23 @@ import {
 export const usage: Action = {
   move: {
     description: "Move through an unlocked door or any available room",
-    uses: [
-      {
-        example: "!move room a",
-        explanation: "Moves to any room that you have visited that is available",
-        use: "!move **room a**"
-      },
-      {
-        example: "!move through Door 1",
-        explanation: "Moves through an unlocked door. Will be marked as visited",
-        use: "!move through **door**"
-      }
-    ]
+    uses: [{
+      example: "!move room a",
+      explanation: "Moves to any room that you have visited that is available",
+      use: "!move **room a**"
+    }, {
+      example: "!move through Door 1",
+      explanation: "Moves through an unlocked door. Will be marked as visited",
+      use: "!move through **door**"
+    }]
   },
   mv: {
     adminOnly: true,
     description: "Forceably moves a user to another room",
-    uses: [
-      {
-        example: "!mv user 1 to room a",
-        use: "!mv **user** to **room**"
-      }
-    ]
+    uses: [{
+      example: "!mv user 1 to room a",
+      use: "!mv **user** to **room**"
+    }]
   }
 };
 

@@ -1,7 +1,6 @@
 import { compare, hash } from "bcrypt";
 import express, { NextFunction, Request , Response } from "express";
 
-import { idIsAdmin } from "../helpers/base";
 import { isNone, None } from "../helpers/types";
 import { User } from "../models/models";
 

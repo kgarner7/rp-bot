@@ -1,60 +1,26 @@
 import {
-  GuildMember,
-  Message as DiscordMessage,
   TextChannel,
-  User as DiscordUser,
-  CategoryChannel,
+  PermissionResolvable,
   ChannelCreationOverwrites,
   PermissionOverwrites,
-  PermissionResolvable,
+  CategoryChannel,
   PermissionOverwriteOption,
-  OverwriteResolvable
+  OverwriteResolvable,
+  GuildMember,
+  User as DiscordUser,
+  Message as DiscordMessage
 } from "discord.js";
 import { Op } from "sequelize";
-import { Server, Socket } from "socket.io";
 
-import { guild } from "../client";
-import { Dict, idIsAdmin } from "../helpers/base";
-import { lock, unlock, globalLock } from "../helpers/locks";
-import { None, ItemModel } from "../helpers/types";
-import { usages } from "../listeners/actions";
-import { currentRoom, getRoomModel } from "../listeners/baseHelpers";
-import { moveMember } from "../listeners/movement";
-import { Link, Message, Room, sequelize, User } from "../models/models";
+import { guild } from "../../client";
+import { defaultValue } from "../../frontend/react/util/util";
+import { idIsAdmin, Dict } from "../../helpers/base";
+import { lock, unlock, globalLock } from "../../helpers/locks";
+import { ItemModel } from "../../helpers/types";
+import { sequelize, Link, Message, Room, User } from "../../models/models";
 
-import { sockets } from "./socket";
-
-let serverSocket: Server;
-
-export function setServer(socket: Server): void {
-  serverSocket = socket;
-}
-
-export async function getUser(sock: Socket): Promise<None<User>> {
-  if (sock.request.session && sock.request.session.userId) {
-    return User.findOne({
-      where: {
-        id: sock.request.session.userId
-      }
-    });
-  } else {
-    return undefined;
-  }
-}
-
-export function triggerUser(member: User | GuildMember | DiscordUser,
-                            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                            event: string, message: any): void {
-  const notifiers = sockets.get(member.id);
-
-  if (notifiers) {
-    for (const socketId of notifiers) {
-      serverSocket.to(socketId)
-        .emit(event, message);
-    }
-  }
-}
-
+import { triggerUser } from "./users";
+import { sameItem, isInt } from "./util";
 
 export async function getRooms(user: GuildMember | User): Promise<RoomJson[]> {
   const visibleRooms = new Set<string>();
@@ -377,141 +343,6 @@ export async function getMessages(user: User | GuildMember | DiscordUser,
   return response;
 }
 
-export interface MinimalCommand {
-  a?: boolean;
-  d: string;
-  u: MinimalUsage[];
-}
-
-export interface MinimalUsage {
-  a?: boolean;
-  e?: string;
-  u: string;
-  x?: string;
-}
-
-export function getCommands(isAdmin: boolean): Dict<MinimalCommand> {
-  const commands: Dict<MinimalCommand> = { };
-
-  for (const [name, description] of Object.entries(usages)) {
-    if (description.adminOnly && !isAdmin) continue;
-
-    const command: MinimalCommand = {
-      d: description.description,
-      u: []
-    };
-
-    if (description.adminOnly) command.a = true;
-
-    for (const use of description.uses) {
-      if (use.admin && !isAdmin) continue;
-
-      const usage: MinimalUsage = { u: use.use };
-      if (use.admin) usage.a = true;
-      if (use.example) usage.x = use.example;
-      if (use.explanation) usage.e = use.explanation;
-
-      command.u.push(usage);
-    }
-
-    if (command.u.length > 0) {
-      commands[name] = command;
-    }
-  }
-
-  return commands;
-}
-
-export interface MinimalRoomWithLink {
-  i: string;
-  l: MinimalLink[];
-  n: string;
-}
-
-export interface MinimalLink {
-  h?: boolean;
-  i: string;
-  l?: boolean;
-  n: string;
-  t: string;
-}
-
-export async function createMap(user: GuildMember | User): Promise<MinimalRoomWithLink[]> {
-  let rooms: Room[];
-
-  if (idIsAdmin(user.id)) {
-    rooms = await Room.findAll({
-      include: [{
-        as: "sources",
-        include: [{
-          as: "target",
-          model: Room
-        }],
-        model: Link,
-        required: false
-      }]
-    });
-
-
-  } else {
-    const userModel = await User.findOne({
-      include: [{
-        as: "visitedRooms",
-        include: [{
-          as: "sources",
-          include: [{
-            as: "target",
-            model: Room
-          }],
-          model: Link,
-          where: {
-            hidden: false
-          },
-          required: false
-        }],
-        model: Room
-      }],
-      where: {
-        id: user.id
-      }
-    });
-
-    rooms = userModel?.visitedRooms || [];
-
-    if (userModel && rooms) {
-      const linkIds = new Set((await userModel.getVisitedLinks()).map(link => link.id));
-
-      for (const room of rooms) {
-        for (const link of room.sources) {
-          if (!linkIds.has(link.id)) {
-            link.target.name = `${ link.name}??`;
-          }
-        }
-      }
-    }
-  }
-
-  return rooms.map(room => {
-    const links = room.sources.map(source => {
-      const link: MinimalLink = {
-        i: source.target.id,
-        n: source.name,
-        t: source.target.name
-      };
-
-      if (source.hidden) link.h = true;
-      if (source.locked) link.l = true;
-
-      return link;
-    });
-
-    return {
-      i: room.id,
-      l: links,
-      n: room.name
-    };
-  });
-}
 
 export interface ChannelInfo {
   d: string;
@@ -541,214 +372,6 @@ Promise<ChannelInfo | undefined> {
   }
 
   return undefined;
-}
-
-export interface UserInfo {
-  i: MinimalItem[];
-  l: string;
-  n: string;
-}
-
-export interface UsersAndRooms {
-  r: string[];
-  u: UserInfo[];
-}
-
-export async function getUsersInfo(): Promise<UsersAndRooms> {
-  // eslint-disable-next-line @typescript-eslint/require-array-sort-compare
-  const rooms = (await Room.findAll())
-    .map(room => room.name)
-    .sort();
-
-  const userInfo =  (await User.findAll())
-    .filter(user => !idIsAdmin(user.id))
-    .map(user => {
-      const inventory = inventoryToJson(user.inventory);
-      const member = guild.members.resolve(user.id);
-
-      let location = "";
-
-      if (member) {
-        location = currentRoom(member) || "";
-      }
-
-      return {
-        i: inventory,
-        l: location,
-        n: user.name
-      };
-    });
-
-  return {
-    r: rooms,
-    u: userInfo
-  };
-}
-
-export interface UserItemChange {
-  n?: MinimalItem;
-  o?: MinimalItem;
-  u: string;
-}
-
-function defaultValue<T>(value: T | undefined, ifNot: T): T{
-  return value === undefined ? ifNot : value;
-}
-
-function sameItem(item: MinimalItem, existing: ItemModel): boolean {
-  return item.d === existing.description
-    && defaultValue(item.e, false) === defaultValue(existing.editable, false)
-    && defaultValue(item.h, false) === defaultValue(existing.hidden, false)
-    && defaultValue(item.l, false) === defaultValue(existing.locked, false)
-    && defaultValue(item.q, 1) === defaultValue(existing.quantity, 1);
-}
-
-export async function handleUserItemChange(data: UserItemChange):
-Promise<UserItemChange | string> {
-
-  if (!data.o && !data.n) {
-    return "Must provide an old and/or new item";
-  }
-
-  const user = await User.findOne({
-    where: {
-      name: data.u
-    }
-  });
-
-  if (user) {
-    const redlock = await lock({ user: user.id });
-
-    try {
-      await user.reload({
-        attributes: ["inventory"]
-      });
-
-      let existingItem: ItemModel | undefined;
-
-      if (data.o) {
-        existingItem = user.inventory[data.o.n];
-
-        if (!existingItem) {
-          return `User ${user.name} does not have`;
-        } else if (!sameItem(data.o, existingItem)) {
-          return `The item ${data.o.n} for ${data.u} has changed`;
-        }
-      }
-
-      let oldItem: MinimalItem | undefined;
-      let newItem: MinimalItem | undefined;
-
-      if (data.n) {
-        if (!data.o && data.n.n in user.inventory) {
-          return `User ${data.u} already has item ${data.n.n}`;
-        } else if (!data.n.n) {
-          return "Must provide a name for the new item";
-        }
-
-        const changedItem = existingItem || {} as ItemModel;
-
-        changedItem.description  = defaultValue(data.n.d, "");
-        changedItem.editable     = defaultValue(data.n.e, false);
-        changedItem.hidden       = defaultValue(data.n.h, false);
-        changedItem.locked       = defaultValue(data.n.l, false);
-        changedItem.name         = data.n.n;
-
-        const quantity = defaultValue(data.n.q, 1);
-
-        if (!isInt(quantity) || quantity < 1) {
-          return "Must provide integer quantity greater than 0";
-        } else {
-          changedItem.quantity = quantity;
-        }
-
-        user.inventory[data.n.n] = changedItem;
-
-        newItem = data.n;
-      } else {
-        // eslint-disable-next-line @typescript-eslint/no-dynamic-delete
-        delete user.inventory[data.o!.n];
-
-        oldItem = data.o;
-      }
-
-      await user.update({
-        inventory: user.inventory
-      });
-
-      return {
-        n: newItem,
-        o: oldItem,
-        u: data.u
-      };
-    } finally {
-      await unlock(redlock);
-    }
-  } else {
-    return `Could not find ${data.u}`;
-  }
-}
-
-export interface UserLocationChange {
-  n: string;
-  o?: string;
-  u: string;
-}
-
-export async function handleUserLocationChange(data: UserLocationChange):
-Promise<UserLocationChange | string> {
-  const user = await User.findOne({
-    where: {
-      name: data.u
-    }
-  });
-
-  if (user) {
-    const redlock = await lock({ user: user.id });
-
-    try {
-      const member = guild.members.cache.get(user.id);
-
-      if (!member) {
-        return `No member ${user.name} in this guild server`;
-      }
-
-      if (data.o && data.o !== "") {
-        if (member.roles.cache.size === 0) {
-          return `User ${user.name} is no longer in ${data.o}. Please refresh to get recent data`;
-        }
-
-        const oldRoom = await getRoomModel(member.roles.cache.first()!.name);
-
-        if (!oldRoom) {
-          return `Could not find a room for ${user.name}. Something has gone very wrong`;
-        } else if (oldRoom.name !== data.o) {
-          return `User ${user.name} is no longer in ${data.o}. Please refresh to get recent data`;
-        }
-      } else if (member.roles.cache.size > 1) {
-        return `User ${user.name} is in a room. You should refresh to get the newest data`;
-      }
-
-      const newRoom = await getRoomModel(data.n);
-
-      if (newRoom) {
-        await moveMember(member, newRoom.name);
-      } else {
-        return `Room ${data.n} does not exist`;
-      }
-    } catch (error) {
-      console.error(error);
-    } finally {
-      await unlock(redlock);
-    }
-  } else {
-    return `Could not find a user ${data.u}`;
-  }
-
-  return {
-    n: data.n,
-    u: data.u
-  };
 }
 
 export interface RoomDescriptionChange {
@@ -878,12 +501,16 @@ Promise<RoomDescriptionChange | string> {
       return `No channel with id ${change.r}`;
     }
 
-    await channel.setName(change.n);
-
     const guildRole = guild.roles.cache.find(role => role.name === room.name);
 
     if (guildRole) {
+      await Promise.all([
+        channel.setName(change.n),
+        guildRole.setName(change.n)
+      ]);
       await guildRole.setName(change.n);
+    } else {
+      await channel.setName(change.n);
     }
 
     await room.update({
@@ -912,12 +539,7 @@ export interface RoomCreation {
   v?: RoomVisibility;
 }
 
-function isInt(value: any): boolean {
-  return !isNaN(value)
-    && parseInt(value) == value
-    && !isNaN(parseInt(value, 10));
-}
-
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 function isColorArray(input: any): boolean {
   if (!Array.isArray(input) || input.length !== 3) {
     return false;
@@ -931,6 +553,7 @@ function isColorArray(input: any): boolean {
   }
 }
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 function isRoomVisibility(value: any): value is RoomVisibility {
   return value === "publicW"
     || value === "publicR"
@@ -1021,6 +644,7 @@ export async function handleRoomCreation(room: RoomCreation): Promise<RoomCreati
         allowed.push("READ_MESSAGE_HISTORY");
       }
 
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const existingPromises: Array<Promise<any>> = [];
 
       for (const existingRoom of rooms) {
@@ -1214,7 +838,7 @@ Promise<RoomVisibilityChange | string> {
     }
 
     const oldVisibility: RoomVisibility = room.isPublic ?
-      "publicW" : (room.isPrivate ? "private" : "publicR");
+      "publicW" : room.isPrivate ? "private" : "publicR";
 
     if (data.o !== oldVisibility) {
       return `Old visibility for ${room.name} does not match current state, please refresh`;
@@ -1223,7 +847,7 @@ Promise<RoomVisibilityChange | string> {
     const channel = guild.channels.resolve(room.id);
 
     if (!channel) {
-      return `The channel ${room.name} no longer exists. Inconcistent state.`
+      return `The channel ${room.name} no longer exists. Inconcistent state.`;
     }
 
     const roleAllow: PermissionResolvable = ["VIEW_CHANNEL", "SEND_MESSAGES"];
@@ -1348,280 +972,5 @@ Promise<RoomHistoryChange | string> {
   return {
     n: data.n === true,
     r: data.r
-  };
-}
-
-export interface NewLink {
-  h?: boolean;
-  i?: string;
-  l?: boolean;
-  n: string;
-  t?: string;
-}
-
-export interface LinkCreation {
-  b: boolean;
-  f: string;
-  i?: NewLink;
-  o: NewLink;
-  t: string;
-}
-
-function isNewLink(value: any): value is NewLink {
-  return (value && typeof value === "object")
-  && (value.n && typeof value.n === "string")
-  && (value.h !== undefined ? typeof value.h === "boolean" : true)
-  && (value.l !== undefined ? typeof value.l === "boolean" : true);
-}
-
-function isLinkCreation(value: any): value is LinkCreation {
-  const baseCheck =  (value.b !== undefined ? typeof value.b === "boolean" : true)
-    && (value.f && typeof value.f === "string")
-    && isNewLink(value.o)
-    && (value.t && typeof value.t === "string");
-
-  if (!baseCheck) {
-    return false;
-  }
-
-  if (value.i) {
-    return isNewLink(value.i);
-  } else {
-    return true;
-  }
-}
-
-export async function handleLinkCreation(args: any): Promise<LinkCreation | string> {
-  if (!isLinkCreation(args)) {
-    return "Invalid data for link creation";
-  }
-
-  await globalLock({ acquire: true, writer: true });
-
-  let oldLink: NewLink;
-  let newLink: NewLink | undefined;
-
-  try {
-    let existingLinks: Link[];
-
-    if (args.b) {
-      existingLinks = await Link.findAll({
-        where: {
-          [Op.or]: [{
-            sourceId: args.f,
-            targetId: args.t
-          }, {
-            sourceId: args.t,
-            targetId: args.f
-          }]
-        }
-      });
-    } else {
-      existingLinks = await Link.findAll({
-        where: {
-          [Op.or]: [{
-            sourceId: args.f,
-            targetId: args.t
-          }]
-        }
-      });
-    }
-
-    if (existingLinks.length > 0) {
-      return "There are existing links between the rooms. Please refresh to get the recent state";
-    }
-
-    const rooms = await Room.findAll({
-      where: {
-        id: {
-          [Op.or]: [args.f, args.t]
-        }
-      }
-    });
-
-    if (rooms.length < 2) {
-      return "Could not find both source and destination room";
-    }
-
-    let source: Room = rooms[0];
-    let target: Room = rooms[1];
-
-    for (const room of rooms) {
-      if (room.id === args.f) {
-        source = room;
-      } else {
-        target = room;
-      }
-    }
-
-    const transaction = await sequelize.transaction();
-
-    try {
-      await Link.create({
-        hidden: args.o.h || false,
-        locked: args.o.l || false,
-        name: args.o.n,
-        sourceId: args.f,
-        targetId: args.t
-      }, {
-        transaction
-      });
-
-      oldLink = {
-        i: args.t,
-        t: target.name,
-        ...args.o
-      };
-
-      if (args.i) {
-        await Link.create({
-          hidden: args.i.h || false,
-          locked: args.i.l || false,
-          name: args.i.n,
-          sourceId: args.t,
-          targetId: args.f
-        }, {
-          transaction
-        });
-
-        newLink = {
-          i: args.f,
-          t: source.name,
-          ...args.i
-        };
-      }
-
-      await transaction.commit();
-    } catch (error) {
-      await transaction.rollback();
-      throw error;
-    }
-  } finally {
-    await globalLock({ acquire: false, writer: true });
-  }
-
-  return {
-    b: args.b,
-    f: args.f,
-    i: newLink,
-    o: oldLink,
-    t: args.t
-  };
-}
-
-export interface LinkDeletion {
-  h: boolean;
-  l: boolean;
-  n: string;
-  s: string;
-  t: string;
-}
-
-function isLinkDeletion(args: any): args is LinkDeletion {
-  return (args.h !== undefined ? typeof args.h === "boolean" : true)
-    && (args.l !== undefined ? typeof args.l === "boolean" : true)
-    && (args.n && typeof args.n === "string")
-    && (args.s && typeof args.s === "string")
-    && (args.t && typeof args.t === "string");
-}
-
-export async function handleLinkDeletion(args: any): Promise<LinkDeletion | string> {
-  if (!isLinkDeletion(args)) {
-    return "Not valid data";
-  }
-
-  await globalLock({ acquire: true, writer: true });
-
-  try {
-    const link = await Link.findOne({
-      where: {
-        hidden: args.h,
-        locked: args.l,
-        name: args.n,
-        sourceId: args.s,
-        targetId: args.t
-      }
-    });
-
-    if (!link) {
-      return "Could not find a link matching those descriptions";
-    }
-
-    await link.destroy();
-  } finally {
-    await globalLock({ acquire: false, writer: true });
-  }
-
-  return args;
-}
-
-export interface MinimalLinkInfo {
-  h?: boolean;
-  l?: boolean;
-  n: string;
-}
-
-function isMinimalLinkInfo(args: any): args is MinimalLinkInfo {
-  return (args.h !== undefined ? typeof args.h === "boolean" : true)
-    && (args.l !== undefined ? typeof args.l === "boolean": true)
-    && (args.n && typeof args.n === "string");
-}
-
-export interface LinkChange {
-  f: string;
-  n: MinimalLinkInfo;
-  o?: MinimalLinkInfo;
-  t: string;
-}
-
-function isLinkChange(args: any): args is LinkChange {
-  return (args.f && typeof args.f === "string")
-    && (args.n && isMinimalLinkInfo(args.n))
-    && (args.o !== undefined ? isMinimalLinkInfo(args.o) : true)
-    && (args.t && typeof args.t === "string");
-}
-
-export async function handleLinkChange(args: any): Promise<LinkChange | string> {
-  if (!isLinkChange(args)) {
-    return "Invalid data format";
-  } else if (args.o === undefined) {
-    return "Must provide old state for verification";
-  }
-
-  await globalLock({ acquire: true, writer: true });
-
-  try {
-    const link = await Link.findOne({
-      where: {
-        sourceId: args.f,
-        targetId: args.t
-      }
-    });
-
-    if (!link) {
-      return "Could not find a link between those two rooms";
-    }
-
-    const oldStateMatches = ((args.o.h || false) === link.hidden)
-      && ((args.o.l || false) === link.locked)
-      && (args.o.n === link.name);
-
-    if (!oldStateMatches) {
-      return "Old state is not consistent. Please refresh for newest changes";
-    }
-
-    await link.update({
-      hidden: args.n.h || false,
-      locked: args.n.l || false,
-      name: args.n.n
-    });
-  } finally {
-    await globalLock({ acquire: false, writer: true });
-  }
-
-  return {
-    f: args.f,
-    n: args.n,
-    t: args.t
   };
 }

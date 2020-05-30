@@ -14,28 +14,22 @@ import { parseCommand, sendMessage } from "./baseHelpers";
 
 export const usage: Action = {
   play: {
+    adminOnly: true,
     description: "Play music (optionally in a set of rooms)",
-    uses: [
-      {
-        admin: true,
-        explanation: "Plays the song, song.mp3 in the general voice chat",
-        use: "!play **song path** in **voice chat list** **loop?**"
-      },
-      {
-        admin: true,
-        explanation: "Plays a youtube video",
-        use: "!play **url** tube"
-      }
-    ]
+    uses: [{
+      explanation: "Plays the song, song.mp3 in the general voice chat",
+      use: "!play **song path** in **voice chat list** **loop?**"
+    }, {
+      admin: true,
+      explanation: "Plays a youtube video",
+      use: "!play **url** tube"
+    }]
   },
   stop: {
     description: "Stops all music being played",
-    uses: [
-      {
-        admin: true,
-        use: "!stop"
-      }
-    ]
+    uses: [{
+      use: "!stop"
+    }]
   }
 };
 
