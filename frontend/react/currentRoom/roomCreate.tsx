@@ -6,7 +6,7 @@ import { Styles } from "react-select";
 import CreatableSelect from "react-select/creatable";
 
 import { ROOM_CREATE } from "../../../socket/consts";
-import { RoomCreation, RoomVisibility } from "../../../socket/helpers";
+import { RoomVisibility, RoomCreation } from "../../../socket/helpers/rooms";
 
 interface RoomCreateProps {
   rooms: number;

@@ -23,10 +23,10 @@ input[type=number] {
   margin-bottom: 0px;
 }
 .arrowheadPath {
-  fill: white !important;
+  fill: black !important;
 }
 .path {
-  stroke: white !important; 
+  stroke: black !important; 
 }
 .poll {
   padding: 0.25rem 1.5rem;
@@ -43,4 +43,7 @@ input[type=number] {
   left: 0;
   bottom: 0;
   right: 0;
+}
+#id {
+  max-width: 100%;
 }

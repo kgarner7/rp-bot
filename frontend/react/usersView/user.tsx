@@ -1,6 +1,6 @@
 import React from "react";
 
-import { UserInfo } from "../../../socket/helpers";
+import { UserInfo } from "../../../socket/helpers/users";
 
 interface UserProps extends UserInfo {
   toggleModal(username: string): void;

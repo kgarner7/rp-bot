@@ -4,13 +4,13 @@ import React from "react";
 import { Responsive, Layout } from "react-grid-layout";
 
 import { USER_ITEM_CHANGE, USER_LOCATION_CHANGE } from "../../../socket/consts";
+import { MinimalItem } from "../../../socket/helpers/rooms";
 import {
-  MinimalItem,
-  UserItemChange,
   UsersAndRooms,
   UserInfo,
+  UserItemChange,
   UserLocationChange
-} from "../../../socket/helpers";
+} from "../../../socket/helpers/users";
 import Modal from "../util/modal";
 
 import RoomSelect from "./roomSelect";

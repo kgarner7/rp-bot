@@ -6,9 +6,9 @@ import {
 } from "../../../socket/consts";
 import {
   RoomVisibility,
-  RoomVisibilityChange,
-  RoomHistoryChange
-} from "../../../socket/helpers";
+  RoomHistoryChange,
+  RoomVisibilityChange
+} from "../../../socket/helpers/rooms";
 
 import { RoomData } from "./currentRoom";
 
