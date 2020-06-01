@@ -1,10 +1,10 @@
 import React from "react";
 
 import { LINK_DELETE, LINK_UPDATE } from "../../../socket/consts";
-import { MinimalLink, LinkDeletion, LinkChange } from "../../../socket/helpers";
+import { MinimalLink, LinkDeletion, LinkChange } from "../../../socket/helpers/links";
 
 export interface LinkEditorProps extends MinimalLink {
-  s: string;
+  o: string;
   socket: SocketIOClient.Socket;
 }
 
@@ -156,7 +156,7 @@ export class LinkEditor extends React.PureComponent<LinkEditorProps, LinkEditorS
         h: this.props.h === true,
         l: this.props.l === true,
         n: this.props.n,
-        s: this.props.s,
+        s: this.props.o,
         t: this.props.i
       };
 
@@ -171,7 +171,7 @@ export class LinkEditor extends React.PureComponent<LinkEditorProps, LinkEditorS
       const name = this.state.n || this.props.n;
 
       const data: LinkChange = {
-        f: this.props.s,
+        f: this.props.o,
         n: {
           h: hidden,
           l: locked,

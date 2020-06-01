@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/unbound-method */
 import React from "react";
 
-import { MinimalItem } from "../../../socket/helpers";
+import { MinimalItem } from "../../../socket/helpers/rooms";
 import { defaultValue } from "../util/util";
 
 interface UserItemEditorProps extends MinimalItem {

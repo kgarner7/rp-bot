@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/unbound-method */
 import React from "react";
 
-import { UserInfo } from "../../../socket/helpers";
+import { UserInfo } from "../../../socket/helpers/users";
 
 interface RoomSelectProps {
   options: string[];

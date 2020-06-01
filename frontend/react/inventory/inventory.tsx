@@ -3,7 +3,7 @@ import loadable from "@loadable/component";
 import React from "react";
 import { Responsive, Layout } from "react-grid-layout";
 
-import { MinimalItem } from "../../../socket/helpers";
+import { MinimalItem } from "../../../socket/helpers/rooms";
 import Modal from "../util/modal";
 import SearchBar from "../util/search";
 import { compareString } from "../util/util";

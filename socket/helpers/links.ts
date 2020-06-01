@@ -9,6 +9,7 @@ export interface MinimalRoomWithLink {
   i: string;
   l: MinimalLink[];
   n: string;
+  s: string;
 }
 
 export interface MinimalLink {
@@ -16,6 +17,7 @@ export interface MinimalLink {
   i: string;
   l?: boolean;
   n: string;
+  s: string;
   t: string;
 }
 
@@ -79,6 +81,7 @@ export async function createMap(user: GuildMember | User): Promise<MinimalRoomWi
       const link: MinimalLink = {
         i: source.target.id,
         n: source.name,
+        s: source.target.parent,
         t: source.target.name
       };
 
@@ -91,7 +94,8 @@ export async function createMap(user: GuildMember | User): Promise<MinimalRoomWi
     return {
       i: room.id,
       l: links,
-      n: room.name
+      n: room.name,
+      s: room.parent
     };
   });
 }
@@ -101,6 +105,7 @@ export interface NewLink {
   i?: string;
   l?: boolean;
   n: string;
+  s?: string;
   t?: string;
 }
 
@@ -217,6 +222,7 @@ export async function handleLinkCreation(args: any): Promise<LinkCreation | stri
 
       oldLink = {
         i: args.t,
+        s: target.parent,
         t: target.name,
         ...args.o
       };
@@ -234,6 +240,7 @@ export async function handleLinkCreation(args: any): Promise<LinkCreation | stri
 
         newLink = {
           i: args.f,
+          s: source.parent,
           t: source.name,
           ...args.i
         };

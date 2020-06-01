@@ -43,28 +43,28 @@ import {
   LINK_DELETE,
   LINK_UPDATE
 } from "../../socket/consts";
+import { MinimalCommand } from "../../socket/helpers/commands";
 import {
-  MinimalCommand,
   MinimalRoomWithLink,
-  MinimalItem,
-  MinimalMessageWithChannel,
-  MinimalMessageWithoutChannel,
-  ChannelWithMinimalMessages,
-  RoomJson,
-  ChannelInfo,
-  UserItemChange,
-  UsersAndRooms,
-  UserLocationChange,
-  RoomDescriptionChange,
-  RoomDeleteResult,
-  RoomCreation,
-  RoomItemChange,
-  RoomVisibilityChange,
-  RoomHistoryChange,
   LinkCreation,
   LinkDeletion,
   LinkChange
-} from "../../socket/helpers";
+} from "../../socket/helpers/links";
+import {
+  MinimalItem,
+  MinimalMessageWithChannel,
+  ChannelWithMinimalMessages,
+  RoomCreation,
+  RoomDeleteResult,
+  RoomDescriptionChange,
+  RoomHistoryChange,
+  RoomJson,
+  RoomItemChange,
+  MinimalMessageWithoutChannel,
+  RoomVisibilityChange,
+  ChannelInfo
+} from "../../socket/helpers/rooms";
+import { UsersAndRooms, UserItemChange, UserLocationChange } from "../../socket/helpers/users";
 import { UserData } from "../../socket/socket";
 
 import { CommandData, CommandUse } from "./command/command";
@@ -188,6 +188,7 @@ export class App extends React.Component<{}, AppState>{
                   i: data.o.i!,
                   l: data.o.l,
                   n: data.o.n,
+                  s: data.o.s || "",
                   t: data.o.t!
                 });
               } else if (link.i === data.t && data.i) {
@@ -196,6 +197,7 @@ export class App extends React.Component<{}, AppState>{
                   i: data.i.i!,
                   l: data.i.l,
                   n: data.i.n,
+                  s: data.i.s || "",
                   t: data.i.t!
                 });
               }

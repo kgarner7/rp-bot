@@ -3,7 +3,7 @@ import mermaid from "mermaid";
 import React, { Fragment } from "react";
 
 import { LINK_CREATE } from "../../../socket/consts";
-import { MinimalRoomWithLink, LinkCreation } from "../../../socket/helpers";
+import { MinimalRoomWithLink, LinkCreation } from "../../../socket/helpers/links";
 import Modal from "../util/modal";
 
 import { JQueryClickEvent } from "./adminState";
@@ -11,7 +11,7 @@ import { JQueryClickEvent } from "./adminState";
 const AdminState = loadable(() =>
   import(/* webpackChunkName: "adminMapState" */ "./adminState"));
 
-const LinkEditor = loadable(() => 
+const LinkEditor = loadable(() =>
   import(/* webpackChunkName: "linkEditor" */ "./linkEditor"));
 
 const LinkForm = loadable(() =>
@@ -56,45 +56,60 @@ export class Maps extends React.PureComponent<MapProps, MapState> {
   public componentDidUpdate(oldProps: MapProps, oldState: MapState): void {
     if (this.props.map !== oldProps.map) {
       if (this.props.map.length > 0) {
-        let roomString = "graph TD\n";
+        let roomString = "graph LR\n";
 
-        const roomNameMapping = new Map<string, string>();
+        const sectionsMap = new Map<string | undefined, string[]>();
 
-        for (const room of this.props.map) {
-          let roomId: string;
-
-          if (roomNameMapping.has(room.n)) {
-            roomId = roomNameMapping.get(room.n) || "";
-          } else {
-            roomId = room.i;
-            roomNameMapping.set(room.n, roomId);
-          }
-
-          if (room.l.length > 0) {
-            for (const link of room.l) {
-              roomString += `${roomId}["${room.n}"]`;
+        for (const source of this.props.map) {
+          if (source.l.length > 0) {
+            for (const link of source.l) {
+              let linkString = `${source.i}[${source.n}]`;
 
               if (link.h) {
-                roomString += `-. "${link.n}" .->`;
+                linkString += ".->";
               } else if (link.l) {
-                roomString += `-- "${link.n}" -->`;
+                linkString += "-->";
               } else {
-                roomString += `== "${link.n}" ==>`;
+                linkString += "==>";
               }
 
-              let targetId: string;
+              linkString += `${link.i}[${link.t}]`;
 
-              if (roomNameMapping.has(link.t)) {
-                targetId = roomNameMapping.get(link.t) || "";
-              } else {
-                targetId = link.i;
-                roomNameMapping.set(link.t, targetId);
+              let targetSection: string | undefined;
+
+              if (source.s === link.s) {
+                targetSection = link.s;
               }
 
-              roomString += `${targetId}["${link.t}"]\n`;
+              if (sectionsMap.has(targetSection)) {
+                sectionsMap.get(targetSection)!.push(linkString);
+              } else {
+                sectionsMap.set(targetSection, [linkString]);
+              }
             }
           } else {
-            roomString += `${roomId}["${room.n}"]\n`;
+            let targetSection: string | undefined;
+
+            if (source.s === source.s) {
+              targetSection = source.s;
+            }
+
+            const linkString = `${source.i}[${source.n}]`;
+
+            if (sectionsMap.has(targetSection)) {
+              sectionsMap.get(targetSection)!.push(linkString);
+            } else {
+              sectionsMap.set(targetSection, [linkString]);
+            }
+          }
+        }
+
+        for (const [section, links] of sectionsMap.entries()) {
+          if (section) {
+            roomString += `subgraph ${section}\n`;
+            roomString += `${links.join("\n")}\nend\n`;
+          } else {
+            roomString += `${links.join("\n")}\n`;
           }
         }
 
@@ -144,7 +159,7 @@ export class Maps extends React.PureComponent<MapProps, MapState> {
             const links = selectedRoom.l.map(link => {
               return <LinkEditor
                 key={link.i}
-                s={selectedRoom.i}
+                o={selectedRoom.i}
                 socket={this.props.socket}
                 {...link}/>;
             });

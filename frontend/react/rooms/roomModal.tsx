@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/unbound-method */
 import React from "react";
 
-import { RoomVisibility } from "../../../socket/helpers";
+import { RoomVisibility } from "../../../socket/helpers/rooms";
 import SearchBar from "../util/search";
 
 import Message from "./message";

@@ -11,10 +11,10 @@ import {
 } from "../../../socket/consts";
 import {
   MinimalItem,
-  RoomDescriptionChange,
+  RoomVisibility,
   RoomItemChange,
-  RoomVisibility
-} from "../../../socket/helpers";
+  RoomDescriptionChange
+} from "../../../socket/helpers/rooms";
 import Modal from "../util/modal";
 import { compareString } from "../util/util";
 
