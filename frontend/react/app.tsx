@@ -700,7 +700,7 @@ export class App extends React.Component<{}, AppState>{
     }
 
     window.addEventListener("resize", () => {
-      this.setState({width: document.body.clientWidth});
+      this.setState({width: screen.width});
     });
 
     this.getLogs = this.getLogs.bind(this);
