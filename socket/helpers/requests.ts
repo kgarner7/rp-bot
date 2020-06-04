@@ -1,7 +1,7 @@
 import { Transaction } from "sequelize";
 
 import { guild } from "../../client";
-import { idIsAdmin, sentToAdmins } from "../../helpers/base";
+import { idIsAdmin, sentToAdmins, Dict } from "../../helpers/base";
 import { lock, unlock } from "../../helpers/locks";
 import { ignorePromise } from "../../listeners/baseHelpers";
 import { Request, User, sequelize } from "../../models/models";
@@ -60,13 +60,17 @@ export async function getRequests(id: string): Promise<MinimalRequest[]> {
 
 export interface RequestChange {
   a: boolean;
+  d?: string;
   i: number;
+  q?: number;
   r?: string;
 }
 
 function isRequestChange(data: any): data is RequestChange {
   return (typeof data.a === "boolean")
+    && (data.d !== undefined ? typeof data.d === "string": true)
     && (data.i && typeof data.i === "number")
+    && (data.q !== undefined ? typeof data.q === "number": true)
     && (data.r !== undefined ? typeof data.r === "string" : true);
 }
 
@@ -124,6 +128,20 @@ export async function handleRequestChange(data: any): Promise<RequestChange | st
           throw new Error(`No user ${request.UserId}`);
         }
 
+        const updateResult: Dict<string | number> = {
+          status: RequestStatus.ACCEPTED
+        };
+
+        if (data.d) {
+          request.description = data.d;
+          updateResult.description = data.d;
+        }
+
+        if (data.q) {
+          request.quantity = data.q;
+          updateResult.quantity = data.q;
+        }
+
         const name = request.name;
         let message: string;
 
@@ -145,7 +163,7 @@ export async function handleRequestChange(data: any): Promise<RequestChange | st
           message = `Created ${request.quantity} of new item ${name}: ${request.description}`;
         }
 
-        await request.update({ status: RequestStatus.ACCEPTED }, { transaction });
+        await request.update(updateResult, { transaction });
         await user.update({ inventory: user.inventory }, { transaction });
 
         notifyUser(user.id, message);

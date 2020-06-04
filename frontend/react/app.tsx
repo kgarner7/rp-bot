@@ -384,6 +384,14 @@ export class App extends React.Component<{}, AppState>{
                   request.s = 2;
                   request.r = result.r;
                 }
+
+                if (result.d) {
+                  request.d = result.d;
+                }
+
+                if (result.q) {
+                  request.q = result.q;
+                }
               }
             }
           });

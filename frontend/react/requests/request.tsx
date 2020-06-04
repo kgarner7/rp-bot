@@ -3,6 +3,7 @@ import React from "react";
 import { MinimalRequest } from "../../../socket/helpers/requests";
 
 export interface RequestProps extends MinimalRequest {
+  v?: boolean;
   toggle(id: number): void;
 }
 
@@ -13,10 +14,12 @@ const Request = React.memo(function Request(props: RequestProps) {
     message += `by ${props.u} `;
   }
 
-  switch (props.s) {
-    case 1: message += "(accepted)"; break;
-    case 2: message += "(denied)"; break;
-    default: message += "(pending)";
+  if (props.v) {
+    switch (props.s) {
+      case 1: message += "(accepted)"; break;
+      case 2: message += "(denied)"; break;
+      default: message += "(pending)";
+    }
   }
 
   return <div className="card">

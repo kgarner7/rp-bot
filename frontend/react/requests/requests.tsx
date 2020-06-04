@@ -118,14 +118,16 @@ export class Requests extends React.PureComponent<RequestsProps, RequestsState> 
       return included;
     })
       .sort((a, b) => compareString(a.i, b.i, -1))
-      .map(request => <Request key={request.i} toggle={this.toggle} {...request}/>);
+      .map(request =>
+        <Request key={request.i} toggle={this.toggle}
+          v={this.state.sort === RequestSort.ALL}
+          {...request}/>);
 
     let placeholder = "Request id or item name";
 
     if (this.props.admin) {
       placeholder += " or u: for username";
     }
-
 
     let body: JSX.Element | string = "";
     let title = "";
@@ -145,7 +147,30 @@ export class Requests extends React.PureComponent<RequestsProps, RequestsState> 
       if (this.props.admin && activeRequest.s === 0) {
         body = <React.Fragment>
           <h4>This request is <strong>{statusString}</strong></h4>
-          <div>{activeRequest.d}</div>
+          <div className="input-group mt-3">
+            <div className="input-group-prepend">
+              <span className="input-group-text">Quantity override</span>
+            </div>
+            <input
+              className="form-control"
+              onChange={this.handleChange}
+              name="q"
+              placeholder="quantity"
+              type="number"
+              min={1}
+              value={this.state.quantity || activeRequest.q}
+            />
+          </div>
+          <div className="input-group mt-3">
+            <div className="input-group-prepend">
+              <span className="input-group-text">Description override</span>
+            </div>
+            <textarea
+              className="form-control" name="d"
+              onChange={this.handleChange} value={this.state.description || activeRequest.d}
+              placeholder="description"
+            />
+          </div>
           <div className="input-group mt-3">
             <div className="input-group-prepend">
               <button
@@ -267,6 +292,14 @@ export class Requests extends React.PureComponent<RequestsProps, RequestsState> 
         i: this.state.activeReq
       };
 
+      if (this.state.description) {
+        data.d = this.state.description;
+      }
+
+      if (this.state.quantity) {
+        data.q = this.state.quantity;
+      }
+
       this.props.socket.emit(REQUEST_CHANGE, data);
     }
   }
@@ -331,7 +364,9 @@ export class Requests extends React.PureComponent<RequestsProps, RequestsState> 
   private toggle(id: number): void {
     this.setState({
       activeReq: id,
-      deny: ""
+      deny: "",
+      description: undefined,
+      quantity: undefined
     });
 
     $("#requestsModal").modal("show");
