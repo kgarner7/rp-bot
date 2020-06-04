@@ -709,7 +709,7 @@ export class App extends React.Component<{}, AppState>{
   }
 
   public render(): JSX.Element {
-    const wrapperClass = `d-flex${  this.state.sidebar ? "": " toggled"}`;
+    const wrapperClass = `d-md-flex${this.state.sidebar ? "": " toggled"}`;
 
     return(
       <div id="wrapper" className={wrapperClass}>

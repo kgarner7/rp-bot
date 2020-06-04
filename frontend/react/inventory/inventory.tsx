@@ -6,7 +6,7 @@ import { Responsive, Layout } from "react-grid-layout";
 import { MinimalItem } from "../../../socket/helpers/rooms";
 import Modal from "../util/modal";
 import SearchBar from "../util/search";
-import { compareString } from "../util/util";
+import { compareString, calculateWidth } from "../util/util";
 
 import Item from "./item";
 
@@ -83,7 +83,7 @@ class Inventory extends React.PureComponent<InventoryProps, InventoryState> {
 
   public render(): JSX.Element {
     const layout: Layout[] = [];
-    const width = this.props.width - (this.props.sidebar ? 200 : 0);
+    const width = calculateWidth(this.props);
     let x = 0;
 
     const filtered = this.props.inventory.filter(item =>

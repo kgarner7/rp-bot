@@ -8,8 +8,6 @@ body {
 }
 
 #sidebar-wrapper {
-  min-height: 100vh;
-  margin-left: -200px;
   -webkit-transition: margin .10s ease-out;
   -moz-transition: margin .10s ease-out;
   -o-transition: margin .10s ease-out;
@@ -21,17 +19,23 @@ body {
   font-size: 1.2rem;
 }
 
-#sidebar-wrapper .list-group {
-  width: 200px;
+#page-content-wrapper {
+  min-width: 70%;
 }
 
-#page-content-wrapper {
-  min-width: 100vw;
+@media (max-width: 767px) {
+  #wrapper.toggled #sidebar-wrapper {
+    display: none;
+  }
 }
 
 @media (min-width: 768px) {
+  #sidebar-wrapper .list-group {
+    width: 200px;
+  }
 
   #sidebar-wrapper {
+    min-height: 100vh;
     margin-left: 0;
   }
 

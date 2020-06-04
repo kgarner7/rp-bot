@@ -15,6 +15,7 @@ import Modal from "../util/modal";
 
 import RoomSelect from "./roomSelect";
 import User from "./user";
+import { calculateWidth } from "../util/util";
 
 const NewUserItemEditor = loadable(() =>
   import(/* webpackChunkName: "newItemEditor" */ "./newUserItemEditor"));
@@ -65,7 +66,7 @@ class UsersView extends React.Component<UsersViewProps, UsersViewState> {
 
   public render(): JSX.Element {
     const layout: Layout[] = [];
-    const width = this.props.width - (this.props.sidebar ? 200 : 0);
+    const width = calculateWidth(this.props);
 
     let x = 0;
 

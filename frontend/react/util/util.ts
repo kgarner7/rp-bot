@@ -8,6 +8,13 @@ export enum VisibleStates {
   ViewUsers = "View users"
 }
 
+export const MIN_SIDEBAR_WIDTH = 786;
+export const SIDEBAR_WIDTH = 200;
+
+export function calculateWidth({sidebar, width}: {sidebar?: boolean, width: number}): number {
+  return width >= MIN_SIDEBAR_WIDTH && sidebar ? width - SIDEBAR_WIDTH: width;
+}
+
 export function compareString<T>(a: T, b: T, sign: number): number {
   if (a > b) {
     return sign;

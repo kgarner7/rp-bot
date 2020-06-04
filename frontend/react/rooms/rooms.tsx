@@ -3,7 +3,7 @@ import React from "react";
 import { Responsive, Layout } from "react-grid-layout";
 
 import SearchBar from "../util/search";
-import { compareString } from "../util/util";
+import { compareString, calculateWidth } from "../util/util";
 
 import Room from "./room";
 import RoomModal, { RoomData } from "./roomModal";
@@ -76,7 +76,7 @@ class Rooms extends React.PureComponent<RoomsProps, RoomsState> {
 
   public render(): JSX.Element {
     const layout: Layout[] = [];
-    const width = this.props.width - (this.props.sidebar ? 200 : 0);
+    const width = calculateWidth(this.props);
     let x = 0, y = 0;
 
     let rooms = Array.from(this.props.rooms.entries());
