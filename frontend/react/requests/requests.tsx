@@ -61,7 +61,7 @@ export class Requests extends React.PureComponent<RequestsProps, RequestsState> 
   }
 
   public componentDidUpdate(oldProps: RequestsProps): void {
-    if (this.state.activeReq) {
+    if (this.state.activeReq && oldProps !== this.props) {
       for (const request of this.props.requests) {
         if (request.i === this.state.activeReq && request.s !== 0) {
           $("#requestsModal").modal("hide");
