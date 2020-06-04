@@ -614,7 +614,7 @@ export async function handleRoomCreation(room: RoomCreation): Promise<RoomCreati
       allow: roleAllow,
       id: role.id
     }, {
-      deny: ["VIEW_CHANNEL", "SEND_MESSAGES"],
+      deny: ["VIEW_CHANNEL", "SEND_MESSAGES", "READ_MESSAGE_HISTORY"],
       id: guild.roles.everyone.id
     }];
 

@@ -5,7 +5,7 @@ import { requireAdmin, sentToAdmins } from "../helpers/base";
 import { CustomMessage } from "../helpers/classes";
 import { lock, unlock } from "../helpers/locks";
 import { Undefined } from "../helpers/types";
-import { Request, User } from "../models/models";
+import { Request, User, sequelize } from "../models/models";
 import { RequestStatus } from "../models/request";
 
 import { Action } from "./actions";
@@ -168,87 +168,98 @@ async function changeRequestStatus(msg: CustomMessage,
     getInt(command.args.get("deny")![0]) :
     getInt(command.args.get("approve")![0]);
 
-  const request = await Request.findOne({
-    include: [{
-      attributes: ["discordName", "id", "inventory"],
-      model: User
-    }],
-    where: {
-      id: requestId
-    }
-  });
+  const transaction = await sequelize.transaction();
 
-  if (!request) throw new Error(`No request of id ${requestId}`);
-  else if (request.getStatus() !== "pending") {
-    throw new Error(`Request ${requestId} is not pending`);
-  }
-
-  const requester = guild.members.resolve(request.UserId)!;
-
-  if (command.args.has("deny")) {
-    const reason = command.args.get("reason");
-
-    if (reason === undefined) throw new Error("Must provide reason for denial");
-
-    const reasonString = reason.join(" ");
-
-    await request.update({
-      reasonString,
-      status: RequestStatus.DENIED
+  try {
+    const request = await Request.findOne({
+      include: [{
+        attributes: ["discordName", "id", "inventory"],
+        model: User
+      }],
+      where: {
+        id: requestId
+      },
+      lock: true,
+      transaction
     });
 
-    ignorePromise(requester.send(`Your request for ${request.name} was denied: ${reasonString}`));
-    sendMessage(msg, `Successfully declined ${requestId} for ${requester.displayName}`);
-  } else {
-    const name = request.name;
-
-    let changedMessage = "",
-      description = request.description,
-      quantity = request.quantity;
-
-    if (command.args.has("count")) {
-      quantity = getInt(command.args.get("quantity")![0]);
-      changedMessage = `\nquantity ${request.quantity} => ${quantity}`;
+    if (!request) throw new Error(`No request of id ${requestId}`);
+    else if (request.getStatus() !== "pending") {
+      throw new Error(`Request ${requestId} is not pending`);
     }
 
-    if (command.args.has("text")) {
-      description = command.args.get("text")!.join(" ");
-      changedMessage += `\ndescription ${request.description} => ${description}`;
-    }
+    const requester = guild.members.resolve(request.UserId)!;
 
-    const redlock = await lock({ user: requester.id });
+    if (command.args.has("deny")) {
+      const reason = command.args.get("reason");
 
-    try {
-      const user = request.User;
-      await user.reload({ attributes: ["inventory" ]});
+      if (reason === undefined) throw new Error("Must provide reason for denial");
 
-      let message: string;
+      const reasonString = reason.join(" ");
 
-      if (name in user.inventory) {
-        user.inventory[name].quantity = (user.inventory[name].quantity || 1) + quantity;
-        user.inventory[name].description = description;
+      await request.update({
+        reasonString,
+        status: RequestStatus.DENIED
+      }, { transaction });
 
-        message = `You already have ${name}. Its quantity and description were updated`;
-      } else {
-        user.inventory[name] = {
-          description,
-          editable: true,
-          hidden: false,
-          locked: false,
-          name,
-          quantity
-        };
+      ignorePromise(requester.send(`Your request for ${request.name} was denied: ${reasonString}`));
+      sendMessage(msg, `Successfully declined ${requestId} for ${requester.displayName}`);
+    } else {
+      const name = request.name;
 
-        message = `Created ${quantity} of new item ${name}: ${description}`;
+      let changedMessage = "",
+        description = request.description,
+        quantity = request.quantity;
+
+      if (command.args.has("count")) {
+        quantity = getInt(command.args.get("quantity")![0]);
+        changedMessage = `\nquantity ${request.quantity} => ${quantity}`;
       }
 
-      await request.update({  status: RequestStatus.ACCEPTED });
-      await user.update({ inventory: user.inventory });
+      if (command.args.has("text")) {
+        description = command.args.get("text")!.join(" ");
+        changedMessage += `\ndescription ${request.description} => ${description}`;
+      }
 
-      ignorePromise(requester.send(message + changedMessage));
-      sendMessage(msg, `Created ${quantity} of ${name} for ${user.discordName}`);
-    } finally {
-      await unlock(redlock);
+      const redlock = await lock({ user: requester.id });
+
+      try {
+        const user = request.User;
+        await user.reload({ attributes: ["inventory" ]});
+
+        let message: string;
+
+        if (name in user.inventory) {
+          user.inventory[name].quantity = (user.inventory[name].quantity || 1) + quantity;
+          user.inventory[name].description = description;
+
+          message = `You already have ${name}. Its quantity and description were updated`;
+        } else {
+          user.inventory[name] = {
+            description,
+            editable: true,
+            hidden: false,
+            locked: false,
+            name,
+            quantity
+          };
+
+          message = `Created ${quantity} of new item ${name}: ${description}`;
+        }
+
+        await request.update({  status: RequestStatus.ACCEPTED }, { transaction });
+        await user.update({ inventory: user.inventory }, { transaction });
+
+        ignorePromise(requester.send(message + changedMessage));
+        sendMessage(msg, `Created ${quantity} of ${name} for ${user.discordName}`);
+      } finally {
+        await unlock(redlock);
+      }
     }
+
+    await transaction.commit();
+  } catch (error) {
+    await transaction.rollback();
+    throw error;
   }
 }

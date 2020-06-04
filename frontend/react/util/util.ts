@@ -2,6 +2,7 @@ export enum VisibleStates {
   Commands = "Commands",
   CurrentRooms = "Rooms and items",
   Inventory = "Inventory",
+  Requests = "Requests",
   RoomLogs = "View messages",
   Map = "Map",
   ViewUsers = "View users"

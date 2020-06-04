@@ -24,7 +24,10 @@ import {
   ROOM_HISTORY,
   LINK_CREATE,
   LINK_DELETE,
-  LINK_UPDATE
+  LINK_UPDATE,
+  REQUESTS_GET,
+  REQUEST_CHANGE,
+  REQUEST_CREATE
 } from "./consts";
 import { getCommands } from "./helpers/commands";
 import {
@@ -33,6 +36,7 @@ import {
   handleLinkDeletion,
   handleLinkChange
 } from "./helpers/links";
+import { getRequests, handleRequestChange, handleRequestCreation } from "./helpers/requests";
 import {
   handleRoomCreation,
   handleRoomDelete,
@@ -168,6 +172,19 @@ export function socket(app: any): Server {
     handleCustomEvent(sock, MAPS, () => createMap(user));
 
     handleCustomEvent(sock, MESSAGES_GET, () => getMessages(user, sock.request.session.loginTime));
+
+    handleEvent(sock, REQUEST_CHANGE, handleRequestChange, user.id);
+
+    sock.on(REQUEST_CREATE, async (data: any) => {
+      try {
+        const result = await handleRequestCreation(data, user);
+        sock.emit(REQUEST_CREATE, result);
+      } catch (error) {
+        sock.emit(REQUEST_CREATE, (error as Error).message);
+      }
+    });
+
+    handleCustomEvent(sock, REQUESTS_GET, () => getRequests(user.id));
 
     handleEvent(sock, ROOM_CREATE, handleRoomCreation, user.id, io);
 

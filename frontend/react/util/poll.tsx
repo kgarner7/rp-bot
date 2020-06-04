@@ -7,7 +7,8 @@ import {
   ROOM_INFORMATION,
   USER_INVENTORY_CHANGE,
   USERS_INFO,
-  COMMANDS
+  COMMANDS,
+  REQUESTS_GET
 } from "../../../socket/consts";
 
 import { VisibleStates } from "./util";
@@ -19,6 +20,7 @@ const COMMAND_MAPPING: {
   [VisibleStates.CurrentRooms]: ROOM_INFORMATION,
   [VisibleStates.Commands]: COMMANDS,
   [VisibleStates.Map]: MAPS,
+  [VisibleStates.Requests]: REQUESTS_GET,
   [VisibleStates.ViewUsers]: USERS_INFO
 };
 

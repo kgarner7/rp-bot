@@ -41,7 +41,10 @@ import {
   ROOM_HISTORY,
   LINK_CREATE,
   LINK_DELETE,
-  LINK_UPDATE
+  LINK_UPDATE,
+  REQUESTS_GET,
+  REQUEST_CHANGE,
+  REQUEST_CREATE
 } from "../../socket/consts";
 import { MinimalCommand } from "../../socket/helpers/commands";
 import {
@@ -50,6 +53,7 @@ import {
   LinkDeletion,
   LinkChange
 } from "../../socket/helpers/links";
+import { MinimalRequest, RequestChange, RequestCreation } from "../../socket/helpers/requests";
 import {
   MinimalItem,
   MinimalMessageWithChannel,
@@ -87,6 +91,9 @@ const Inventory = loadable(() =>
 const Maps = loadable(() =>
   import(/* webpackChunkName: "maps" */ "./maps/maps"));
 
+const Requests = loadable(() =>
+  import(/* webpackChunkName: "requests" */ "./requests/requests"));
+
 const Rooms = loadable(() =>
   import(/* webpackChunkName: "rooms" */ "./rooms/rooms"));
 
@@ -98,7 +105,8 @@ const USER_OPS = [
   VisibleStates.RoomLogs,
   VisibleStates.CurrentRooms,
   VisibleStates.Commands,
-  VisibleStates.Map
+  VisibleStates.Map,
+  VisibleStates.Requests
 ];
 const ADMIN_OPS = [VisibleStates.ViewUsers];
 
@@ -119,6 +127,7 @@ interface AppState {
   admin: boolean;
   commands: Dict<CommandData>;
   inventory: MinimalItem[];
+  requests: MinimalRequest[];
   roomMessages: Map<string, RoomMessagesData>;
   rooms: Map<string, CurrentRoomData>;
   roomsMap: MinimalRoomWithLink[];
@@ -138,6 +147,7 @@ export class App extends React.Component<{}, AppState>{
       admin: false,
       commands: {},
       inventory: [],
+      requests: [],
       roomMessages: new Map(),
       rooms: new Map(),
       roomsMap: [],
@@ -358,6 +368,55 @@ export class App extends React.Component<{}, AppState>{
 
         this.setState(nextState);
       });
+    });
+
+    socket.on(REQUEST_CHANGE, (result: RequestChange) => {
+      if (typeof result === "string") {
+        alert(`Failed to handle request: ${result}`);
+      } else {
+        this.setState(oldState => {
+          return produce(oldState, state => {
+            for (const request of state.requests) {
+              if (request.i === result.i) {
+                if (result.a) {
+                  request.s = 1;
+                } else {
+                  request.s = 2;
+                  request.r = result.r;
+                }
+              }
+            }
+          });
+        });
+      }
+    });
+
+    socket.on(REQUEST_CREATE, (result: RequestCreation) => {
+      if (typeof result === "string") {
+        alert(`Failed to handle request creation: ${result}`);
+      } else {
+        this.setState(oldState => {
+          return produce(oldState, state => {
+            state.requests.push({
+              c: result.c!,
+              d: result.d,
+              i: result.i!,
+              n: result.n,
+              q: result.q,
+              s: 0,
+              u: result.u
+            });
+          });
+        });
+      }
+    });
+
+    socket.on(REQUESTS_GET, (data: MinimalRequest[]) => {
+      if (!isEqual(this.state.requests, data)) {
+        this.setState({
+          requests: data
+        });
+      }
     });
 
     socket.on(ROOM_CREATE, (result: RoomCreation) => {
@@ -687,6 +746,12 @@ export class App extends React.Component<{}, AppState>{
             admin={this.state.admin}
             map={this.state.roomsMap }
             selected={this.state.selected === VisibleStates.Map}
+            socket={this.state.socket}
+          />
+          <Requests
+            admin={this.state.admin}
+            requests={this.state.requests}
+            selected={this.state.selected === VisibleStates.Requests}
             socket={this.state.socket}
           />
           <Commands
