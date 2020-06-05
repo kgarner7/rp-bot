@@ -1,3 +1,5 @@
+import React from "react";
+
 import App from "./app";
 
 import "../styles/sidebar.css"

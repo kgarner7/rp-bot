@@ -1,3 +1,5 @@
+import { StylesConfig } from "react-select";
+
 export enum VisibleStates {
   Commands = "Commands",
   CurrentRooms = "Rooms and items",
@@ -28,3 +30,17 @@ export function compareString<T>(a: T, b: T, sign: number): number {
 export function defaultValue<T>(value: T | undefined, ifNot: T): T{
   return value === undefined ? ifNot : value;
 }
+
+export const SELECT_STYLE: StylesConfig = {
+  menu: (provided, _state) => ({
+    ...provided,
+    "z-index": 5
+  }),
+  option: (provided, state) => ({
+    ...provided,
+    backgroundColor: state.isSelected ? "#00bc8c" : "white",
+    borderBottom: "1px solid black",
+    color: "black",
+    padding: 10
+  })
+};

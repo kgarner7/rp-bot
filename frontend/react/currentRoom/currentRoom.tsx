@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/unbound-method */
 import loadable from "@loadable/component";
 import React from "react";
-import Select, { StylesConfig} from "react-select";
+import Select from "react-select";
 
 import {
   ROOM_DESCRIPTION,
@@ -16,7 +16,7 @@ import {
   RoomDescriptionChange
 } from "../../../socket/helpers/rooms";
 import Modal from "../util/modal";
-import { compareString } from "../util/util";
+import { compareString, SELECT_STYLE } from "../util/util";
 
 import RoomDescription from "./roomDescription";
 import { RoomMetadata } from "./roomMetadata";
@@ -30,20 +30,6 @@ const NewUserItemEditor = loadable(() =>
 
 const RoomCreate = loadable(() =>
   import(/* webpackChunkName: "roomCreate" */ "./roomCreate"));
-
-const style: StylesConfig = {
-  menu: (provided, _state) => ({
-    ...provided,
-    "z-index": 5
-  }),
-  option: (provided, state) => ({
-    ...provided,
-    backgroundColor: state.isSelected ? "#00bc8c" : "white",
-    borderBottom: "1px solid black",
-    color: "black",
-    padding: 10
-  })
-};
 
 export interface RoomData {
   description: string;
@@ -141,7 +127,7 @@ export class CurrentRooms extends React.PureComponent<CurrentRoomsProps, Current
         <Select
           options={options}
           onChange={this.handleChange}
-          styles={style}
+          styles={SELECT_STYLE}
           className="col-lg-10 col-xs-8"
           value={selected}
         />
@@ -154,7 +140,7 @@ export class CurrentRooms extends React.PureComponent<CurrentRoomsProps, Current
       begin = <Select
         options={options}
         onChange={this.handleChange}
-        styles={style}
+        styles={SELECT_STYLE}
         className="col-12 mb-4"
         value={selected}
       />;

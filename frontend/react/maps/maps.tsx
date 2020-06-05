@@ -1,12 +1,16 @@
 import loadable from "@loadable/component";
 import mermaid from "mermaid";
 import React, { Fragment } from "react";
+import Select, { ValueType, ActionMeta } from "react-select";
 
 import { LINK_CREATE } from "../../../socket/consts";
 import { MinimalRoomWithLink, LinkCreation } from "../../../socket/helpers/links";
 import Modal from "../util/modal";
+import { SELECT_STYLE } from "../util/util";
 
 import { JQueryClickEvent } from "./adminState";
+import produce from "immer";
+import { Dict } from "../../../helpers/base";
 
 const AdminState = loadable(() =>
   import(/* webpackChunkName: "adminMapState" */ "./adminState"));
@@ -26,6 +30,7 @@ export enum SelectionState {
 interface MapProps {
   admin?: boolean;
   map: MinimalRoomWithLink[];
+  sections: Set<string>;
   selected: boolean;
   socket: SocketIOClient.Socket;
 }
@@ -35,6 +40,7 @@ interface MapState {
   mode: SelectionState;
   selected: string[];
   waiting?: boolean;
+  viewing: string[];
 }
 
 export class Maps extends React.PureComponent<MapProps, MapState> {
@@ -44,23 +50,30 @@ export class Maps extends React.PureComponent<MapProps, MapState> {
     this.state = {
       html: "",
       mode: SelectionState.NO_INTERACTION,
-      selected: []
+      selected: [],
+      viewing: []
     };
 
     this.createLink = this.createLink.bind(this);
+    this.handleChange = this.handleChange.bind(this);
     this.handleNewLink = this.handleNewLink.bind(this);
     this.handleStateChange = this.handleStateChange.bind(this);
     this.showNode = this.showNode.bind(this);
   }
 
   public componentDidUpdate(oldProps: MapProps, oldState: MapState): void {
-    if (this.props.map !== oldProps.map) {
+    if (this.props.map !== oldProps.map || this.state.viewing !== oldState.viewing) {
       if (this.props.map.length > 0) {
         let roomString = "graph LR\n";
 
         const sectionsMap = new Map<string | undefined, string[]>();
 
         for (const source of this.props.map) {
+          if (this.state.viewing.length > 0 && !this.state.viewing.includes(source.s)) {
+            console.log("skipping");
+            continue;
+          }
+
           if (source.l.length > 0) {
             for (const link of source.l) {
               let linkString = `${source.i}[${source.n}]`;
@@ -218,8 +231,25 @@ export class Maps extends React.PureComponent<MapProps, MapState> {
       </h3>;
     }
 
+    const selectOpts: Array<{ label: string; value: string}> = [];
+
+    for (const section of this.props.sections) {
+      selectOpts.push({
+        label: section,
+        value: section
+      });
+    }
+
     return <div className={ className }>
       <div className="col-12 row">
+        <Select
+          className="col-12"
+          isClearable
+          isMulti
+          onChange={this.handleChange}
+          options={selectOpts}
+          styles={SELECT_STYLE}
+        />
         { this.props.admin &&
           <Fragment>
             <AdminState
@@ -260,6 +290,13 @@ export class Maps extends React.PureComponent<MapProps, MapState> {
       } else if (this.state.selected.length === 0) {
         alert("You cannot link a room to itself");
       }
+    });
+  }
+
+  private handleChange(value: any): void {
+    const views = value.map((item: Dict<string>) => item.value);
+    this.setState({
+      viewing: views
     });
   }
 

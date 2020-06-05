@@ -3,6 +3,7 @@ import express, { NextFunction, Request , Response } from "express";
 
 import { isNone, None } from "../helpers/types";
 import { User } from "../models/models";
+import { resolve } from "path";
 
 const MIN_PASS_LENGTH = 8;
 const SALT_ROUNDS = 15;
@@ -39,7 +40,7 @@ router.get("/", requireLogin, wrapper(async (req, res, _next) => {
   });
 
   if (user) {
-    res.render("main");
+    res.sendFile(resolve("frontend/views/main.html"));
   } else {
     req.session!.userId = undefined;
     res.redirect("/login");

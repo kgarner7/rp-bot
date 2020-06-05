@@ -131,6 +131,7 @@ interface AppState {
   roomMessages: Map<string, RoomMessagesData>;
   rooms: Map<string, CurrentRoomData>;
   roomsMap: MinimalRoomWithLink[];
+  sections: Set<string>;
   selected: VisibleStates;
   sidebar: boolean;
   socket: SocketIOClient.Socket;
@@ -151,6 +152,7 @@ export class App extends React.Component<{}, AppState>{
       roomMessages: new Map(),
       rooms: new Map(),
       roomsMap: [],
+      sections: new Set(),
       selected: VisibleStates.Inventory,
       sidebar: true,
       socket,
@@ -257,7 +259,9 @@ export class App extends React.Component<{}, AppState>{
 
     socket.on(MAPS, (roomsMap: MinimalRoomWithLink[]) => {
       if (!isEqual(this.state.roomsMap, roomsMap)) {
-        this.setState({ roomsMap });
+        const sections = new Set(roomsMap.map(room => room.s));
+
+        this.setState({ roomsMap, sections });
       }
     });
 
@@ -753,6 +757,7 @@ export class App extends React.Component<{}, AppState>{
           <Maps
             admin={this.state.admin}
             map={this.state.roomsMap }
+            sections={this.state.sections}
             selected={this.state.selected === VisibleStates.Map}
             socket={this.state.socket}
           />
