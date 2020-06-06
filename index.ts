@@ -4,7 +4,6 @@ import { createServer } from "http";
 import bodyParser from "body-parser";
 import compression from "compression";
 import connectRedis from "connect-redis";
-import cookieParser from "cookie-parser";
 import express, { NextFunction, Request, Response } from "express";
 import session from "express-session";
 import helmet from "helmet";
@@ -35,6 +34,7 @@ const sessionMiddleware = session({
   cookie: {
     httpOnly: true,
     maxAge: MAX_AGE,
+    sameSite: true,
     secure: process.env.NODE_ENV === "production"
   },
   resave: true,
@@ -57,7 +57,6 @@ app.use(bodyParser.json());
 app.use(express.static("./frontend/scripts", options));
 app.use(express.static("./frontend/styles", options));
 app.use(compression());
-app.use(cookieParser());
 app.use(sessionMiddleware);
 app.set("view engine", "ejs");
 app.set("views", "./frontend/views");

@@ -699,6 +699,13 @@ export class App extends React.Component<{}, AppState>{
       }
     });
 
+    socket.on("disconnect", (reason: string) => {
+      if (reason === "io server disconnect") {
+        alert("Your session has timed out. Moving to login page");
+        location.href = "/login";
+      }
+    });
+
     for (const task of startupTasks) {
       socket.emit(task);
     }

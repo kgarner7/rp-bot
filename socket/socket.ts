@@ -68,6 +68,27 @@ export interface UserData {
   n: string;
 }
 
+async function stillAlive(sock: SocketIO.Socket): Promise<boolean> {
+  const session = sock.request.session as Express.Session | undefined;
+
+  if (!session) {
+    sock.disconnect(true);
+
+    return false;
+  }
+
+  return new Promise(resolve => {
+    session.reload(error => {
+      if (error) {
+        sock.disconnect(true);
+        resolve(false);
+      } else {
+        resolve(true);
+      }
+    });
+  });
+}
+
 function handleEvent<I, O>(sock: SocketIO.Socket, event: string,
                            handler: (arg: I) => Promise<O | string>, userId: string,
                            io: Server | undefined = undefined): void {
@@ -77,7 +98,7 @@ function handleEvent<I, O>(sock: SocketIO.Socket, event: string,
 
   if (io === undefined) {
     socketHandler = async (data): Promise<void> => {
-      if (idIsAdmin(userId)) {
+      if (await stillAlive(sock) && idIsAdmin(userId)) {
         try {
           const output = await handler(data);
           sock.emit(event, output);
@@ -90,7 +111,7 @@ function handleEvent<I, O>(sock: SocketIO.Socket, event: string,
     };
   } else {
     socketHandler = async (data): Promise<void> => {
-      if (idIsAdmin(userId)) {
+      if (await stillAlive(sock) && idIsAdmin(userId)) {
         try {
           const output = await handler(data);
           if (typeof output === "string") {
@@ -113,6 +134,8 @@ function handleCustomEvent<O>(sock: SocketIO.Socket, event: string,
                               handler: () => Promise<O>): void {
 
   sock.on(event, async () => {
+    if (!await stillAlive(sock)) return;
+
     try {
       const result = await handler();
       sock.emit(event, result);
@@ -131,6 +154,8 @@ export function socket(app: any): Server {
   setServer(io);
 
   io.on("connection", async sock => {
+    if (!await stillAlive(sock)) return;
+
     const user = await getUser(sock);
 
     if (!user) {
@@ -146,6 +171,8 @@ export function socket(app: any): Server {
 
     sock.on(CHANNEL_UPDATE,
       async (roomId: string, callback: (data: ChannelInfo | undefined) => void) => {
+        if (!await stillAlive(sock)) return;
+
         try {
           const data = await getChannelInfo(roomId, user.id);
           callback(data);
@@ -155,12 +182,17 @@ export function socket(app: any): Server {
       });
 
     sock.on(COMMANDS, () => {
-      try {
-        const commands = getCommands(idIsAdmin(user.id));
-        sock.emit(COMMANDS, commands);
-      } catch (error) {
-        console.error((error as Error).message);
-      }
+      stillAlive(sock).then(result => {
+        if (result) {
+          try {
+            const commands = getCommands(idIsAdmin(user.id));
+            sock.emit(COMMANDS, commands);
+          } catch (error) {
+            console.error((error as Error).message);
+          }
+        }
+      })
+        .catch(console.error);
     });
 
     handleEvent(sock, LINK_CREATE, handleLinkCreation, user.id);
@@ -176,6 +208,8 @@ export function socket(app: any): Server {
     handleEvent(sock, REQUEST_CHANGE, handleRequestChange, user.id);
 
     sock.on(REQUEST_CREATE, async (data: any) => {
+      if (!await stillAlive(sock)) return;
+
       try {
         const result = await handleRequestCreation(data, user);
         sock.emit(REQUEST_CREATE, result);
@@ -199,6 +233,8 @@ export function socket(app: any): Server {
     handleEvent(sock, ROOM_ITEM_CHANGE, handleRoomItemChange, user.id);
 
     sock.on(ROOM_LOGS, async (roomId: string) => {
+      if (!await stillAlive(sock)) return;
+
       try {
         const messages = await getArchivedRoomLogs(roomId, user,
           sock.request.session.loginTime);
