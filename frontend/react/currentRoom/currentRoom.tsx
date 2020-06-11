@@ -103,7 +103,7 @@ export class CurrentRooms extends React.PureComponent<CurrentRoomsProps, Current
       .sort((a, b) => compareString(a[1].name, b[1].name, 1))
       .map(entry => {
         const value = {
-          label: entry[1].name,
+          label: `(${entry[1].section}) ${entry[1].name} `,
           value: entry[0]
         };
 
@@ -128,6 +128,7 @@ export class CurrentRooms extends React.PureComponent<CurrentRoomsProps, Current
           options={options}
           onChange={this.handleChange}
           styles={SELECT_STYLE}
+          placeholder="Search by room and/or section"
           className="col-lg-10 col-xs-8"
           value={selected}
         />
