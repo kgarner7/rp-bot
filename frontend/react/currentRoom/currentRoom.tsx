@@ -58,6 +58,10 @@ export interface CurrentRoomsState {
 
 const EMPTY_LIST: MinimalItem[] = [];
 
+function fullString(room: RoomData): string {
+  return `(${room.section}) ${room.name} `;
+}
+
 export class CurrentRooms extends React.PureComponent<CurrentRoomsProps, CurrentRoomsState> {
   public constructor(props: CurrentRoomsProps) {
     super(props);
@@ -100,10 +104,10 @@ export class CurrentRooms extends React.PureComponent<CurrentRoomsProps, Current
 
     const options = Array.from(this.props.rooms.entries())
       .filter(entry => entry[1].present)
-      .sort((a, b) => compareString(a[1].name, b[1].name, 1))
+      .sort((a, b) => compareString(fullString(a[1]), fullString(b[1]), 1))
       .map(entry => {
         const value = {
-          label: `(${entry[1].section}) ${entry[1].name} `,
+          label: fullString(entry[1]),
           value: entry[0]
         };
 
