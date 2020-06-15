@@ -18,6 +18,7 @@ import { doors, handleLock, hide, links, usage as LinkUsage } from "./links";
 import { move, usage as MovementUsage, userMove } from "./movement";
 import { play, stop, usage as PlayUsage } from "./music";
 import { createItem, requests, usage as RequestUsage } from "./requests";
+import { roll, usage as RollUsage } from "./rolls";
 import { getAvailableRooms, usage as RoomUsage } from "./rooms";
 import { members, showLogs, usage as UserUsage, users } from "./users";
 
@@ -44,6 +45,7 @@ export const usages: Action = {
   ...RoomUsage,
   ...PlayUsage,
   ...RequestUsage,
+  ...RollUsage,
   ...UserUsage
 };
 
@@ -129,6 +131,7 @@ export const actions: Dict<(msg: CustomMessage) => Promise<void>> = {
   mv: move,
   play,
   requests,
+  roll,
   rooms: getAvailableRooms,
   stop,
   take: takeItem,
