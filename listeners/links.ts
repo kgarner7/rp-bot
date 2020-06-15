@@ -349,6 +349,8 @@ export async function doors(msg: CustomMessage): Promise<void> {
         if (link.hidden) {
           messageString += " (hidden)";
         }
+
+        messageString += "\n";
       }
     }
   } else {
