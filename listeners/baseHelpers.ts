@@ -5,7 +5,7 @@ import { guild } from "../client";
 import { isAdmin } from "../helpers/base";
 import { CustomMessage } from "../helpers/classes";
 import { Null } from "../helpers/types";
-import { Room as RoomModel, Link } from "../models/models";
+import { Room as RoomModel, Link, User } from "../models/models";
 
 const MAX_MESSAGE_SIZE = 1900;
 
@@ -13,12 +13,44 @@ export function ignorePromise<T>(promise: Promise<T>): void {
   promise.catch(error => console.error(error));
 }
 
+async function getLinksMap(id: string): Promise<Map<string, string[]>> {
+  const links = await Link.findAll({
+    include: [{
+      as: "source",
+      model: RoomModel
+    }, {
+      as: "target",
+      model: RoomModel
+    }, {
+      as: "visitors",
+      model: User,
+      where: { id }
+    }],
+    where: {
+      hidden: false,
+      locked: false
+    }
+  });
+
+  const mapping = new Map<string, string[]>();
+
+  for (const link of links) {
+    const existingList = mapping.get(link.source.name);
+
+    if (existingList) {
+      existingList.push(link.target.name);
+    } else {
+      mapping.set(link.source.name, [link.target.name]);
+    }
+  }
+
+  return mapping;
+}
+
 /**
  * Gets the rooms adjacent to the target room
  */
-export async function adjacentRooms(msg: CustomMessage): Promise<string[]> {
-  const roomList: string[] = [];
-
+export async function adjacentRooms(msg: CustomMessage, target?: string): Promise<string[]> {
   const member = guild.members.resolve(msg.author.id)!;
 
   if (!member) return [];
@@ -27,27 +59,32 @@ export async function adjacentRooms(msg: CustomMessage): Promise<string[]> {
 
   if (!role) return [];
 
-  const room = await RoomModel.findOne({
-    include: [{
-      as: "sources",
-      include: [{
-        as: "target",
-        model: RoomModel
-      }],
-      model: Link
-    }],
-    where: {
-      name: role.name
+  const mapping = await getLinksMap(msg.author.id);
+
+  if (mapping.size === 0) return [];
+
+  const roomsToVisit = new Set<string>([role.name]);
+  const visitedRooms = new Set<string>();
+
+  while (roomsToVisit.size > 0) {
+    const source = roomsToVisit.values().next().value;
+    visitedRooms.add(source);
+    roomsToVisit.delete(source);
+
+    if (mapping.has(source)) {
+      for (const targetRoom of mapping.get(source)!) {
+        if (targetRoom === target) return [targetRoom];
+
+        if (!visitedRooms.has(targetRoom)) {
+          roomsToVisit.add(targetRoom);
+        }
+      }
     }
-  });
-
-  if (!room) return [];
-
-  for (const link of room.sources) {
-    roomList.push(link.target.name);
   }
 
-  return roomList;
+  visitedRooms.delete(role.name);
+
+  return [...visitedRooms];
 }
 
 /**

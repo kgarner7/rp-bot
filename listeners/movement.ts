@@ -194,18 +194,21 @@ export async function userMove(msg: CustomMessage): Promise<void> {
       } else {
         throw new Error("There are no available neighbors");
       }
+    } else {
+      const targetRoom = await getRoomModel(name);
+
+      if (!targetRoom) {
+        throw new Error("That room does not exist");
+      }
+
+      const neighbors: string[] = await adjacentRooms(msg, targetRoom.name);
+
+      if (neighbors.length === 0) {
+        throw new Error("You cannot access that room");
+      }
+
+      await moveMember(member, targetRoom.name);
     }
-
-    const neighbors: string[] = await adjacentRooms(msg);
-    const targetRoom = await getRoomModel(name);
-
-    if (!targetRoom) {
-      throw new Error("That room does not exist");
-    } else if (!neighbors.includes(targetRoom.name)) {
-      throw new Error("You cannot access that room");
-    }
-
-    await moveMember(member, targetRoom.name);
   } catch (error) {
     throw error;
   } finally {

@@ -23,7 +23,13 @@ export async function getAvailableRooms(msg: CustomMessage): Promise<void> {
   const roomList: string[] = (await adjacentRooms(msg))
     .sort();
 
-  sendMessage(msg,
-    `Here are the rooms you can visit:${lineEnd}${roomList.join(lineEnd)}`,
-    true);
+  let message: string;
+
+  if (roomList.length > 0) {
+    message = `Here are the rooms you can visit:${lineEnd}${roomList.join(lineEnd)}`;
+  } else {
+    message = "There are no rooms you can visit";
+  }
+
+  sendMessage(msg, message, true);
 }
