@@ -1,12 +1,11 @@
 {
   "extends": "./tsconfig.json",
   "compilerOptions": {
-    "target": "es2015",
+    "target": "es2018",
     "moduleResolution": "node"
   },
   "exclude": [
     "frontend/react",
-    "**/*.spec.ts",
-    "rooms"
+    "**/*.spec.ts"
   ]
 }

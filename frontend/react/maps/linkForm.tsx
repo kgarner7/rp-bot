@@ -1,6 +1,7 @@
 import React from "react";
 
-import { LinkCreation } from "../../../socket/helpers";
+import { LinkCreation } from "../../../socket/helpers/links";
+
 
 export interface LinkFormProps {
   selected: string[];

@@ -2,6 +2,7 @@
 import React from "react";
 import { Responsive, Layout } from "react-grid-layout";
 
+import { handleLayoutChange } from "../util/resize";
 import SearchBar from "../util/search";
 import { compareString, calculateWidth } from "../util/util";
 
@@ -196,34 +197,7 @@ class Rooms extends React.PureComponent<RoomsProps, RoomsState> {
   }
 
   private handleLayout(layout: ReactGridLayout.Layout[]): void {
-    if (layout.length === 0) {
-      return;
-    }
-
-    this.setState(state => {
-      const currentMap = state.sizes;
-      const layoutMap = new Map();
-
-      let changed = false;
-
-      for (const item of layout) {
-        const currentLayout = currentMap.get(item.i);
-        const layoutChange = currentLayout === undefined
-          || currentLayout[0] !== item.w
-          || currentLayout[1] !== item.h;
-
-        if (layoutChange) {
-          layoutMap.set(item.i, [item.w, item.h]);
-          changed = true;
-        }
-      }
-
-      if (changed) {
-        return { sizes: layoutMap };
-      } else {
-        return { sizes: currentMap };
-      }
-    });
+    handleLayoutChange(layout, this);
   }
 
   private toggleModal(roomId: string): void {

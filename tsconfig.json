@@ -19,6 +19,7 @@
     "pretty": true,
     "removeComments": true,
     "resolveJsonModule": true,
+    "sourceMap": true,
     "strict": true,
     "strictBindCallApply": true,
     "strictFunctionTypes": true,
@@ -34,8 +35,8 @@
     "helpers",
     "listeners",
     "models",
-    "rooms",
-    "socket"
+    "socket",
+    "tests"
   ],
   "exclude": [
     "data",

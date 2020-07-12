@@ -12,10 +12,11 @@ import {
   UserLocationChange
 } from "../../../socket/helpers/users";
 import Modal from "../util/modal";
+import { handleLayoutChange } from "../util/resize";
+import { calculateWidth } from "../util/util";
 
 import RoomSelect from "./roomSelect";
 import User from "./user";
-import { calculateWidth } from "../util/util";
 
 const NewUserItemEditor = loadable(() =>
   import(/* webpackChunkName: "newItemEditor" */ "./newUserItemEditor"));
@@ -44,7 +45,7 @@ export interface UsersViewState {
   sizes: LayoutMap;
 }
 
-class UsersView extends React.Component<UsersViewProps, UsersViewState> {
+class UsersView extends React.PureComponent<UsersViewProps, UsersViewState> {
   public constructor(props: UsersViewProps) {
     super(props);
 
@@ -196,33 +197,7 @@ class UsersView extends React.Component<UsersViewProps, UsersViewState> {
   }
 
   private handleLayout(layout: ReactGridLayout.Layout[]): void {
-    if (layout.length === 0) {
-      return;
-    }
-
-    this.setState(state => {
-      const currentMap = state.sizes;
-      const layoutMap: LayoutMap = new Map();
-
-      let changed = false;
-
-      for(const item of layout) {
-        const currentLayout = currentMap.get(item.i),
-          layoutChange = currentLayout === undefined ||
-            currentLayout[0] !== item.w || currentLayout[1] !== item.h;
-
-        if (layoutChange) {
-          layoutMap.set(item.i, [item.w, item.h]);
-          changed = true;
-        }
-      }
-
-      if (changed) {
-        return { sizes: layoutMap };
-      } else {
-        return { sizes: currentMap };
-      }
-    });
+    handleLayoutChange(layout, this);
   }
 
   private handleLocationChange(original: string, newRoom: string): void {

@@ -1,9 +1,10 @@
+import { resolve } from "path";
+
 import { compare, hash } from "bcrypt";
 import express, { NextFunction, Request , Response } from "express";
 
 import { isNone, None } from "../helpers/types";
 import { User } from "../models/models";
-import { resolve } from "path";
 
 const MIN_PASS_LENGTH = 8;
 const SALT_ROUNDS = 15;

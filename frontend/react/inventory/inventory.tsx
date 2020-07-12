@@ -5,6 +5,7 @@ import { Responsive, Layout } from "react-grid-layout";
 
 import { MinimalItem } from "../../../socket/helpers/rooms";
 import Modal from "../util/modal";
+import { handleLayoutChange } from "../util/resize";
 import SearchBar from "../util/search";
 import { compareString, calculateWidth } from "../util/util";
 
@@ -204,37 +205,7 @@ class Inventory extends React.PureComponent<InventoryProps, InventoryState> {
   }
 
   private handleLayout(layout: ReactGridLayout.Layout[]): void {
-    if (layout.length === 0) {
-      this.setState({
-        sizes: new Map()
-      });
-
-      return;
-    }
-
-    this.setState(state => {
-      const currentMap = state.sizes;
-      const layoutMap: LayoutMap = new Map();
-
-      let changed = false;
-
-      for(const item of layout) {
-        const currentLayout = currentMap.get(item.i),
-          layoutChange = currentLayout === undefined ||
-            currentLayout[0] !== item.w || currentLayout[1] !== item.h;
-
-        if (layoutChange) {
-          layoutMap.set(item.i, [item.w, item.h]);
-          changed = true;
-        }
-      }
-
-      if (changed) {
-        return { sizes: layoutMap };
-      } else {
-        return { sizes: currentMap };
-      }
-    });
+    handleLayoutChange(layout, this);
   }
 
   private handleWidth(_width: number, _margin: [number, number], cols: number): void {

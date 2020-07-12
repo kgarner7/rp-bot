@@ -9,11 +9,11 @@ const LOCK_PREFIX = "discordo:";
 const Locks = {
   BASE_RANDOM_DELAY: 100,
   BASE_WAIT_TIME: 300,
-  PENDING: `${LOCK_PREFIX  }waiting-writers`,
-  READERS: `${LOCK_PREFIX  }readers`,
-  ROOMS: `${LOCK_PREFIX  }rooms`,
-  USERS: `${LOCK_PREFIX  }users`,
-  WRITER: `${LOCK_PREFIX  }writer`
+  PENDING: `${LOCK_PREFIX}waiting-writers`,
+  READERS: `${LOCK_PREFIX}readers`,
+  ROOMS: `${LOCK_PREFIX}rooms`,
+  USERS: `${LOCK_PREFIX}users`,
+  WRITER: `${LOCK_PREFIX}writer`
 };
 
 export async function resetLocks(): Promise<void> {
@@ -97,7 +97,8 @@ async function acquireWriter(): Promise<boolean> {
 
         if (err) {
           console.error(err);
-          resolve(false); return;
+          resolve(false);
+          return;
         }
 
         const [readers, hasWriter] = res;
@@ -130,7 +131,10 @@ async function acquireReader(): Promise<boolean> {
       .incr(Locks.READERS)
       .exec((err, res) => {
         if (err) {
-          resolve(false); return;
+          client.decr(Locks.READERS, () => {
+            resolve(false);
+          });
+          return;
         }
 
         const [pendingWrites, hasWriter] = res;

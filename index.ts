@@ -97,7 +97,7 @@ initDB()
       await client.login(config.botToken);
 
       server.listen(PORT, () => {
-        console.error("started server");
+        console.error(`started server on port ${PORT}`);
       });
     } catch (error) {
       console.error((error as Error).stack);
