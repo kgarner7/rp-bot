@@ -21,7 +21,7 @@
     "express-session": "^1.17.1",
     "glob": "^7.1.6",
     "helmet": "^3.22.0",
-    "immer": "^7.0.7",
+    "immer": "^8.0.1",
     "jsonfile": "^6.0.1",
     "lodash": "^4.17.15",
     "moment": "^2.25.3",
