@@ -32,7 +32,7 @@
     "react-color": "^2.18.1",
     "react-dom": "^16.13.1",
     "react-select": "^3.1.0",
-    "redis": "^3.0.2",
+    "redis": "^3.1.1",
     "redlock": "^4.1.0",
     "sequelize": "^6.3.3",
     "socket.io": "^2.4.0",
